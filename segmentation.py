@@ -33,17 +33,25 @@ def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False) :
     """
 
     #Integrity checks
-    check_array(dapi, ndim= 3, dtype= [np.uint8, np.uint16, np.int32, np.int64, np.float32, np.float64])
+    check_array(dapi, ndim= [2,3], dtype= [np.uint8, np.uint16, np.int32, np.int64, np.float32, np.float64])
     check_parameter(diameter= (int), anisotropy= (int), use_gpu= (bool))
+    ndim = dapi.ndim
 
     #Segmentation
     nucleus_model = models.Cellpose(gpu= use_gpu, model_type = "nuclei")
+    min_objct_size = int(round((np.pi * (diameter/2)**2) /2)) # area in pixel
     channels = [0,0]
-    nucleus_label = nucleus_model.eval(dapi, diameter= diameter, channels = channels, anisotropy= anisotropy, do_3D= True, stitch_threshold = 0.1)[0]
-    for label_num in range(0,len(nucleus_label)) :
-        min_objct_size = int(round((np.pi * (diameter/2)**2) /2)) # area in pixel
-        nucleus_label[label_num] = seg.clean_segmentation(nucleus_label[label_num], small_object_size= min_objct_size)
+
+    if ndim == 3 :
+        nucleus_label = nucleus_model.eval(dapi, diameter= diameter, channels = channels, anisotropy= anisotropy, do_3D= True, stitch_threshold = 0.1)[0]
+        for label_num in range(0,len(nucleus_label)) :
+            nucleus_label[label_num] = seg.clean_segmentation(nucleus_label[label_num], small_object_size= min_objct_size)
     
+    else :
+        nucleus_label = nucleus_model.eval(dapi, diameter= diameter, channels = channels)[0]
+        nucleus_label = np.array(nucleus_label, dtype= np.int64)
+        nucleus_label = seg.clean_segmentation(nucleus_label, small_object_size= min_objct_size)
+
     nucleus_label = seg.remove_disjoint(nucleus_label)
 
 
@@ -91,7 +99,7 @@ def Cytoplasm_segmentation(cy3, dapi= None, diameter= 250, maximal_distance= 100
             nucleus_slices = unstack_slices(dapi)
             image = merge_channels_fromlists(cytoplasm_slices, nucleus_slices)
         else :
-            image = merge_channels(cytoplasm_slices,dapi)
+            image = merge_channels(cy3,dapi)
 
 
     cytoplasm_labels = cytoplasm_model.eval(image, diameter= diameter, channels= channels, do_3D= False)[0]
@@ -104,7 +112,7 @@ def Cytoplasm_segmentation(cy3, dapi= None, diameter= 250, maximal_distance= 100
 
 
 
-def pbody_segmentation(egfp, sigma = 2, threshold = 180, small_obj_sz= 250, fill= True) :
+def pbody_segmentation(egfp, sigma = 1, threshold = 650, small_obj_sz= 250, fill= True) :
     """Performs Pbody segmentation on 2D or 3D egfp numpy array
     
     Parameters
@@ -125,13 +133,13 @@ def pbody_segmentation(egfp, sigma = 2, threshold = 180, small_obj_sz= 250, fill
     dim = egfp.ndim
 
 
-    egfp_log = stack.log_filter(egfp,sigma)
+    egfp_gauss = stack.gaussian_filter(egfp,sigma)
 
     if dim == 2 :
-        egfp_label = _pbody_slice_seg(egfp_log, threshold=threshold, small_object_size=small_obj_sz, fill_holes=fill)
+        egfp_label = _pbody_slice_seg(egfp_gauss, threshold=threshold, small_object_size=small_obj_sz, fill_holes=fill)
 
     else :
-        slices = unstack_slices(egfp_log)
+        slices = unstack_slices(egfp_gauss)
         label_list = []
         for z in range(0,len(slices)):
             label_list += [_pbody_slice_seg(slices[z], threshold=threshold, small_object_size=small_obj_sz, fill_holes=fill)]
@@ -144,7 +152,7 @@ def pbody_segmentation(egfp, sigma = 2, threshold = 180, small_obj_sz= 250, fill
 def _pbody_slice_seg(image, threshold, small_object_size, fill_holes) : 
         
         egfp_mask = seg.thresholding(image, threshold)
-        egfp_mask = seg.clean_segmentation(egfp_mask,small_object_size= small_object_size, fill_holes= fill_holes )
+        #egfp_mask = seg.clean_segmentation(egfp_mask,small_object_size= small_object_size, fill_holes= fill_holes )
         egfp_label = seg.label_instances(egfp_mask)
 
         return egfp_label
