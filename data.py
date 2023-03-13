@@ -1,7 +1,11 @@
 import pandas as pd
 import os
 import re
-from bigfish.stack import check_array, check_parameter,read_image
+import numpy as np
+import CustomPandasFramework.DataFrames as DataFrame
+import CustomPandasFramework.operations as dataOp
+from bigfish.stack import check_parameter,read_image
+from bigfish.classification import compute_features
 
 def get_Input(input_path, channels_list) :
     """ Returns a panda dataFrame filled with input folder info. To learn about expected data informations/shape see newFrame_Input.   
@@ -135,6 +139,40 @@ def get_acquisition_num(Input) :
     return acquisition_num
 
 
+def get_rootfilename(acquisition_index, Input_frame):
+    """Returns root filename of an acquisition from Input frame
+    
+    Parameters
+    ----------
+        acquisition_index : int
+        Input_frame : pd.DataFrame
+            Input dataframes are computed from newFrame_Input
+    Returns
+    -------
+        res : str.
+    """
+    check_parameter(acquisition_index = (int), Input_frame = pd.DataFrame)
+
+    res = Input_frame.value_counts(subset=["root filename", "acquisition index"]).reset_index(drop= False).at[acquisition_index, "root filename"]
+    return res
+
+def get_rnaname(acquisition_index, Input_frame):
+    """Returns the RNA name of an acquisition from the Input frame
+
+    Parameters
+    ----------
+        acquisition_index : int
+        Input_frame : pd.DataFrame
+            Input dataframes are computed from newFrame_Input
+    Returns
+    -------
+        res : str.
+    """
+    root = get_rootfilename(acquisition_index, Input_frame)
+    regex = "(\w*)--"
+    res = re.findall(regex,root)[0]
+    return res
+
 def newFrame_Input() :
     """Returns an empty pandas DataFrame with expected input data shape. 
     This frame is used for navigating through files put in the input folder during the segmentation process and isn't meant to be stored, therefor it does not contains any key.
@@ -160,3 +198,52 @@ def newFrame_Input() :
         })
     
     return(new_Input)
+
+
+
+
+def get_Cell(acquisition_id, cell_id, cell, voxel_size = (300,103,103)):
+    """Returns DataFrame with expected Cell datashape containing all cell level features. Features are computed using bigFish built in functions.
+    
+    Parameters
+    ----------
+        acquisition_id : int
+            Unique identifier for current acquisition.
+        cell_id : int 
+            Unique identifier for current cell.
+        cell : dict
+            Dictionary computed from bigFish.multistack.extract_cell
+    
+    Returns
+    -------
+        new_Cell : pd.Dataframe
+    """
+    #Integrity checks
+    check_parameter(acquisition_id = (int), cell_id = (int), cell = (dict), voxel_size = (tuple, list))
+
+    voxel_size_yx = voxel_size[1] # la résolution dans le plan devrait être toujours x/y indep
+    cell_mask = cell["cell_mask"]
+    nuc_mask = cell["nuc_mask"]
+    rna_coord = cell["rna_coord"]
+    foci_coord = cell["foci"]
+    smfish = cell["smfish"]
+
+    features, features_names = compute_features(cell_mask= cell_mask, nuc_mask= nuc_mask, ndim= 3, rna_coord= rna_coord, smfish= smfish, foci_coord= foci_coord, voxel_size_yx= voxel_size_yx,
+        centrosome_coord=None,
+        compute_distance=True,
+        compute_intranuclear=True,
+        compute_protrusion=True,
+        compute_dispersion=True,
+        compute_topography=True,
+        compute_foci=True,
+        compute_area=True,
+        return_names=True)
+    
+    header = ["id", "AcquisitionId"] + features_names
+    data = np.append([cell_id, acquisition_id], features)
+    data = data.reshape([1,-1])
+    datashape_ref = DataFrame.newframe_Cell()
+    new_Cell = pd.DataFrame(data= data, columns= header)
+    dataOp.check_samedatashape(new_Cell, datashape_ref) # Ensure datashape stability along different runs
+
+    return new_Cell
