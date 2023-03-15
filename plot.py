@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import bigfish.stack as stack
+import bigfish.plot as plot 
 from skimage.measure import regionprops
 
 def plot_labels(labelled_image, path_output= None, show= True, axis= False, close= True):
@@ -26,7 +27,21 @@ def plot_labels(labelled_image, path_output= None, show= True, axis= False, clos
     return plot
 
 def plot_detection_steps(raw_im, spots, spots_postdecomp, cluster, contrast= True, cmap= "gray", path_output= None, ext= None, show= True) :
-
+    """Plot all detections result. Need all results from spots detection, spots decompisition and cluster detection. To plot individual detection result use bigfish.plot.
+    
+    Parameters
+    ----------
+    raw_im : np.ndarray
+        A 2-d image with shape (y, x).
+    spots : list or np.ndarray
+        Array with coordinates and shape (nb_spots, 3) or (nb_spots, 2).
+    spots_postdecom : list or np.ndarray
+        Array with coordinates and shape (nb_spots, 3) or (nb_spots, 2).
+    cluster : list or np.ndarray
+        Array with coordinates and shape (nb_cluster, 3) or (nb_cluster, 2).
+    contrast : bool
+    
+    """
     if contrast : raw_im= stack.rescale(raw_im, channel_to_stretch= 0)
     if not isinstance(spots, list):
         spots = [spots]
@@ -137,3 +152,30 @@ def save_plot(path_output, ext):
     else:
         Warning("Plot is not saved because the extension is not valid: "
                 "{0}.".format(ext))
+        
+
+def plot_cell(cell, title= None, path_output= None, show= True):
+    """Plot cell plot from bigfish.plot.
+    Parameters
+    ----------
+        cell : dict
+            Result from multistack.extract cell.
+        title : str
+        path_output : str
+        show : bool
+        """
+    
+    cell_mask = cell["cell_mask"]
+    cell_coord = cell["cell_coord"]
+    nuc_mask = cell["nuc_mask"]
+    nuc_coord = cell["nuc_coord"]
+    rna_coord = cell["rna_coord"]
+    foci_coord = cell["foci"]
+    ts_coord = cell["transcription_site"]
+    image_contrasted = cell["image"]
+
+    plot.plot_cell(
+            ndim=3, cell_coord=cell_coord, nuc_coord=nuc_coord, 
+            rna_coord=rna_coord, foci_coord=foci_coord, other_coord=ts_coord, 
+            image=image_contrasted, cell_mask=cell_mask, nuc_mask=nuc_mask, 
+            title= title, show= show, path_output= path_output)

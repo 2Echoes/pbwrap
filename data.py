@@ -31,7 +31,7 @@ def get_Input(input_path, channels_list) :
     #filename
     Input = newFrame_Input()
     filenames = os.listdir(input_path)
-    Input.loc[:, "filename"] = filenames
+    Input["filename"] = filenames
 
     #Channel labelling
     for channel in channels_list :
