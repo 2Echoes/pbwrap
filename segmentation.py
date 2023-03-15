@@ -112,7 +112,7 @@ def Cytoplasm_segmentation(cy3, dapi= None, diameter= 250, maximal_distance= 100
 
 
 
-def pbody_segmentation(egfp, sigma = 1, threshold = 650, small_obj_sz= 250, fill= True) :
+def pbody_segmentation(egfp, sigma = 1, threshold = 300, small_obj_sz= 250, fill= True) :
     """Performs Pbody segmentation on 2D or 3D egfp numpy array
     
     Parameters

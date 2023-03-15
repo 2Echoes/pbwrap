@@ -24,3 +24,116 @@ def plot_labels(labelled_image, path_output= None, show= True, axis= False, clos
     if close : plt.close()
 
     return plot
+
+def plot_detection_steps(raw_im, spots, spots_postdecomp, cluster, contrast= True, cmap= "gray", path_output= None, ext= None, show= True) :
+
+    if contrast : raw_im= stack.rescale(raw_im, channel_to_stretch= 0)
+    if not isinstance(spots, list):
+        spots = [spots]
+    if not isinstance(spots_postdecomp, list):
+        spots_postdecomp = [spots_postdecomp]
+    if not isinstance(cluster, list):
+        cluster = [cluster]
+    
+
+
+    fig, ax = plt.subplots(2,2, sharex='col', figsize= (20,20))
+    ax[0][0].imshow(raw_im, cmap= cmap)
+    ax[0][1].imshow(raw_im, cmap= cmap)
+    ax[1][0].imshow(raw_im, cmap= cmap)
+    ax[1][1].imshow(raw_im, cmap= cmap)
+
+    #spots
+    for i, coordinates in enumerate(spots):
+
+        # get 2-d coordinates
+        if coordinates.shape[1] == 3:
+            coordinates_2d = coordinates[:, 1:]
+        else:
+            coordinates_2d = coordinates
+
+        # plot symbols
+        for y, x in coordinates_2d:
+            ax[0][1].scatter(x,y, s= 1, color= 'red', linewidth= 0.5)
+
+    for i, coordinates in enumerate(spots_postdecomp):
+
+        # get 2-d coordinates
+        if coordinates.shape[1] == 3:
+            coordinates_2d = coordinates[:, 1:]
+        else:
+            coordinates_2d = coordinates
+
+        # plot symbols
+        for y, x in coordinates_2d:
+            ax[1][0].scatter(x,y, s=1, color= 'red', linewidth= 0.5)
+
+    for i, coordinates in enumerate(cluster):
+
+        # get 2-d coordinates
+        if coordinates.shape[1] == 3:
+            coordinates_2d = coordinates[:, 1:]
+        else:
+            coordinates_2d = coordinates
+
+        # plot symbols
+        for y, x in coordinates_2d:
+            ax[1][1].scatter(x,y, s=4, color= 'blue', linewidth= 1.5)
+
+
+    #titles and layout
+    ax[0][0].set_title("raw image",fontweight="bold", fontsize=10)
+    ax[0][1].set_title("spot detection",fontweight="bold", fontsize=10)
+    ax[1][0].set_title("spot decomposition",fontweight="bold", fontsize=10)
+    ax[1][1].set_title("clusters detected",fontweight="bold", fontsize=10)
+
+    ax[0][0].axis("off")
+    ax[0][1].axis("off")
+    ax[1][0].axis("off")
+    ax[1][1].axis("off")
+    plt.tight_layout()
+
+    # output
+    if path_output is not None:
+        save_plot(path_output, ext)
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
+
+def save_plot(path_output, ext):
+    """Save the plot.
+
+    Parameters
+    ----------
+    path_output : str
+        Path to save the image (without extension).
+    ext : str or List[str]
+        Extension used to save the plot. If it is a list of strings, the plot
+        will be saved several times.
+
+    """
+    # add extension at the end of the filename
+    if ext == None : ext ='png'
+    extension = "." + ext
+    if extension not in path_output:
+        path_output += extension
+
+    # save the plot
+    if isinstance(ext, str):
+        # add extension at the end of the filename
+        extension = "." + ext
+        if extension not in path_output:
+            path_output += extension
+        plt.savefig(path_output, format=ext)
+    elif isinstance(ext, list):
+        for ext_ in ext:
+            # add extension at the end of the filename
+            extension = "." + ext_
+            if extension not in path_output:
+                path_output += extension
+            plt.savefig(path_output, format=ext_)
+    else:
+        Warning("Plot is not saved because the extension is not valid: "
+                "{0}.".format(ext))
