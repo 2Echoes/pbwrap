@@ -202,7 +202,7 @@ def newFrame_Input() :
 
 
 
-def get_Cell(acquisition_id, cell_id, cell, voxel_size = (300,103,103)):
+def get_Cell(acquisition_id, cell, voxel_size = (300,103,103)):
     """Returns DataFrame with expected Cell datashape containing all cell level features. Features are computed using bigFish built in functions.
     
     Parameters
@@ -240,7 +240,7 @@ def get_Cell(acquisition_id, cell_id, cell, voxel_size = (300,103,103)):
         return_names=True)
     
     header = ["id", "AcquisitionId"] + features_names
-    data = np.append([cell_id, acquisition_id], features)
+    data = np.append([0, acquisition_id], features)
     data = data.reshape([1,-1])
     datashape_ref = DataFrame.newframe_Cell()
     new_Cell = pd.DataFrame(data= data, columns= header)
