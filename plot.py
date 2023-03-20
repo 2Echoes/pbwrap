@@ -26,7 +26,7 @@ def plot_labels(labelled_image, path_output= None, show= True, axis= False, clos
 
     return plot
 
-def plot_detection_steps(raw_im, spots, spots_postdecomp, cluster, contrast= True, cmap= "gray", path_output= None, ext= None, show= True) :
+def plot_detection_steps(raw_im, spots, spots_postdecomp, cluster, contrast= True, cmap= "gray", rna_name= None, path_output= None, ext= None, show= True) :
     """Plot all detections result. Need all results from spots detection, spots decompisition and cluster detection. To plot individual detection result use bigfish.plot.
     
     Parameters
@@ -68,8 +68,8 @@ def plot_detection_steps(raw_im, spots, spots_postdecomp, cluster, contrast= Tru
             coordinates_2d = coordinates
 
         # plot symbols
-        for y, x in coordinates_2d:
-            ax[0][1].scatter(x,y, s= 1, color= 'red', linewidth= 0.5)
+        y,x = zip(*coordinates_2d)
+        ax[0][1].scatter(x,y, s= 1, color= 'red', linewidth= 0.5)
 
     for i, coordinates in enumerate(spots_postdecomp):
 
@@ -80,8 +80,8 @@ def plot_detection_steps(raw_im, spots, spots_postdecomp, cluster, contrast= Tru
             coordinates_2d = coordinates
 
         # plot symbols
-        for y, x in coordinates_2d:
-            ax[1][0].scatter(x,y, s=1, color= 'red', linewidth= 0.5)
+        y,x = zip(*coordinates_2d)
+        ax[1][0].scatter(x,y, s=1, color= 'red', linewidth= 0.5)
 
     for i, coordinates in enumerate(cluster):
 
@@ -92,15 +92,16 @@ def plot_detection_steps(raw_im, spots, spots_postdecomp, cluster, contrast= Tru
             coordinates_2d = coordinates
 
         # plot symbols
-        for y, x in coordinates_2d:
-            ax[1][1].scatter(x,y, s=4, color= 'blue', linewidth= 1.5)
+        y,x = zip(*coordinates_2d)
+        ax[1][1].scatter(x,y, s=4, color= 'blue', linewidth= 1.5)
 
 
     #titles and layout
-    ax[0][0].set_title("raw image",fontweight="bold", fontsize=10)
-    ax[0][1].set_title("spot detection",fontweight="bold", fontsize=10)
-    ax[1][0].set_title("spot decomposition",fontweight="bold", fontsize=10)
-    ax[1][1].set_title("clusters detected",fontweight="bold", fontsize=10)
+    if rna_name == None: ax[0][0].set_title("raw image",fontweight="bold", fontsize=10)
+    else: ax[0][0].set_title("raw image ({0})".format(rna_name), fontweight = "bold", fontsize= 10)
+    ax[0][1].set_title("spot detection : {0} spots".format(len(spots[0])),fontweight="bold", fontsize=10)
+    ax[1][0].set_title("spot decomposition {0} spots".format(len(spots_postdecomp[0])),fontweight="bold", fontsize=10)
+    ax[1][1].set_title("clusters detected {0} clusters".format(len(cluster[0])),fontweight="bold", fontsize=10)
 
     ax[0][0].axis("off")
     ax[0][1].axis("off")
@@ -179,3 +180,4 @@ def plot_cell(cell, title= None, path_output= None, show= True):
             rna_coord=rna_coord, foci_coord=foci_coord, other_coord=ts_coord, 
             image=image_contrasted, cell_mask=cell_mask, nuc_mask=nuc_mask, 
             title= title, show= show, path_output= path_output)
+    

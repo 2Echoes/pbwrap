@@ -5,7 +5,9 @@ import cellpose.models as models
 import pandas as pd
 from bigfish.stack import check_array, check_parameter
 from pbwrap.integrity import check_sameshape
-from skimage.measure import regionprops_table 
+from skimage.measure import regionprops_table
+from skimage.segmentation import random_walker 
+from skimage.transform import resize, resize_local_mean
 
 
 ###### Image segmentation
@@ -37,22 +39,40 @@ def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False) :
     check_parameter(diameter= (int), anisotropy= (int), use_gpu= (bool))
     ndim = dapi.ndim
 
+    #image downscale
+    scale_factor = diameter / 17
+    if ndim == 2 :
+        dapi_rescaled = resize(dapi, (round(dapi.shape[0] / scale_factor), round(dapi.shape[1] / scale_factor)), anti_aliasing= True)
+    else : 
+        dapi_rescaled = resize(dapi, (round(dapi.shape[0] / scale_factor), round(dapi.shape[1] / scale_factor), round(dapi.shape[2] / scale_factor)), anti_aliasing= True)
+
     #Segmentation
     nucleus_model = models.Cellpose(gpu= use_gpu, model_type = "nuclei")
-    min_objct_size = int(round((np.pi * (diameter/2)**2) /2)) # area in pixel
+    min_objct_size = int(round((np.pi * (diameter/2)**2) /4)) # area in pixel
+    min_objct_size_rescaled = int(round((np.pi * (17/2)**2) /2))
     channels = [0,0]
 
     if ndim == 3 :
-        nucleus_label = nucleus_model.eval(dapi, diameter= diameter, channels = channels, anisotropy= anisotropy, do_3D= True, stitch_threshold = 0.1)[0]
-        for label_num in range(0,len(nucleus_label)) :
-            nucleus_label[label_num] = seg.clean_segmentation(nucleus_label[label_num], small_object_size= min_objct_size)
+        nucleus_label = nucleus_model.eval(dapi_rescaled, diameter= 17, channels = channels, anisotropy= anisotropy, do_3D= True, stitch_threshold = 0.1)[0]
+        # for label_num in range(0,len(nucleus_label)) :
+            # nucleus_label[label_num] = seg.clean_segmentation(nucleus_label[label_num], small_object_size= min_objct_size_rescaled)
     
     else :
-        nucleus_label = nucleus_model.eval(dapi, diameter= diameter, channels = channels)[0]
+        nucleus_label = nucleus_model.eval(dapi_rescaled, diameter= 17, channels = channels)[0]
         nucleus_label = np.array(nucleus_label, dtype= np.int64)
-        nucleus_label = seg.clean_segmentation(nucleus_label, small_object_size= min_objct_size)
-
+        # nucleus_label = seg.clean_segmentation(nucleus_label, small_object_size= min_objct_size_rescaled)
+    
+    #Image upscale
+    nucleus_label = resize(nucleus_label, dapi.shape, preserve_range= True)
+    nucleus_label = np.array(nucleus_label, dtype= np.int64)
+    if ndim == 3 :
+        for z in range(0,len(nucleus_label)): nucleus_label[z] = seg.clean_segmentation(nucleus_label[z], small_object_size= min_objct_size, delimit_instance=True, fill_holes= True)
+    else : nucleus_label = seg.clean_segmentation(nucleus_label, small_object_size= min_objct_size, delimit_instance=True,  fill_holes= True)
     nucleus_label = seg.remove_disjoint(nucleus_label)
+    nucleus_label[nucleus_label < 1] = 0
+    nucleus_label[nucleus_label > 0] = 1
+    nucleus_label= seg.label_instances(np.array(nucleus_label, dtype = bool)) 
+
 
 
     return nucleus_label
@@ -85,7 +105,7 @@ def Cytoplasm_segmentation(cy3, dapi= None, diameter= 250, maximal_distance= 100
 
     #Segmentation
     if cy3.ndim == 3 : cytoplasm_slices = unstack_slices(cy3)
-    cytoplasm_model = models.Cellpose(gpu= use_gpu, model_type = "cyto")
+    cytoplasm_model = models.Cellpose(gpu= use_gpu, model_type = "TN1")
  
 
     if type(dapi) == type(None) : 
@@ -109,43 +129,126 @@ def Cytoplasm_segmentation(cy3, dapi= None, diameter= 250, maximal_distance= 100
 
     return cytoplasm_label
 
+def Cytoplasm_segmentation_old(cy3, dapi= None, diameter= 250, maximal_distance= 100, use_gpu= False) :
+    """Due to bad performance using 3D cellpose with cy3 channel image. A 2D cell segmentation is performed for each slice and a 3D labelling is performed using a closest centroid method.
+
+    Parameters
+    ----------
+
+        cy3 :      np.ndarray, ndim = 3 (z,y,x). 
+            cy3 should only contains the data to be analysed, prepropressing and out of focus filtering should be done prior to this operation. 
+        diameter :  Int. 
+            Average diameter of a cell in pixel. Used to rescale cellpose trained model to incoming data.
+        use_gpu :   Bool. 
+            Enable Cellpose build-in option to use GPU.
+    
+    Returns
+    -------
+    
+        cytoplasm_labels : List[np.ndarray] 
+            List of numpy arrays with shape(x,y). Eache element correspond to a z plane and each object has a different pixel value and 0 is background.
+    """
+    #Integrity checks
+    check_array(cy3, ndim= [2,3], dtype= [np.uint8, np.uint16, np.int32, np.int64, np.float32, np.float64])
+    check_parameter(diameter= (int), dapi= (np.ndarray, type(None)), use_gpu= (bool))
+
+
+    #image downscale
+    scale_factor = diameter / 30
+    if cy3.ndim == 2 :
+        cy3_rescaled = resize(cy3, (round(cy3.shape[0] / scale_factor), round(cy3.shape[1] / scale_factor)), anti_aliasing= True)
+        
+    else : 
+        cy3_rescaled = resize(cy3, (round(cy3.shape[0] / scale_factor), round(cy3.shape[1] / scale_factor), round(cy3.shape[2] / scale_factor)), anti_aliasing= True)
+        
+
+    #Segmentation
+    min_objct_size = int(round((np.pi * (diameter/2)**2) /5)) # area in pixel
+    if cy3.ndim == 3 : cytoplasm_slices = unstack_slices(cy3_rescaled)
+    cytoplasm_model = models.Cellpose(gpu= use_gpu, model_type = "cyto")
+ 
+
+    if type(dapi) == type(None) : 
+        channels = [0,0]
+        if cy3.ndim == 3 : image = cytoplasm_slices 
+        else : image = cy3_rescaled
+    else :
+        check_sameshape(cy3, dapi)
+        channels = [1,2]
+        if dapi.ndim == 3 :
+            dapi_rescaled = resize(dapi, (round(dapi.shape[0] / scale_factor), round(dapi.shape[1] / scale_factor), round(dapi.shape[2] / scale_factor)), anti_aliasing= True)
+            nucleus_slices = unstack_slices(dapi_rescaled)
+            image = merge_channels_fromlists(cytoplasm_slices, nucleus_slices)
+        else :
+            dapi_rescaled = resize(dapi, (round(dapi.shape[0] / scale_factor), round(dapi.shape[1] / scale_factor)), anti_aliasing= True)
+            image = merge_channels(cy3_rescaled,dapi_rescaled)
+
+
+    cytoplasm_labels = cytoplasm_model.eval(image, diameter= 30, channels= channels, do_3D= False)[0]
+    cytoplasm_labels = resize(cytoplasm_labels, cy3.shape, preserve_range= True)
+    cytoplasm_labels = np.array(cytoplasm_labels, dtype= np.int64)
+
+
+    if cy3.ndim == 3 : 
+        for z in range(0,len(cytoplasm_labels)): cytoplasm_labels[z] = seg.clean_segmentation(cytoplasm_labels[z], small_object_size= min_objct_size, delimit_instance=True, smoothness= 3,  fill_holes= True)
+        cytoplasm_label = from2Dlabel_to3Dlabel(cytoplasm_labels, maximal_distance= maximal_distance)
+    else : 
+        cytoplasm_label = seg.clean_segmentation(cytoplasm_labels, small_object_size= min_objct_size, delimit_instance=True, fill_holes= True)
+
+    cytoplasm_label = seg.remove_disjoint(cytoplasm_label)
+    cytoplasm_label[cytoplasm_label < 1] = 0
+    cytoplasm_label[cytoplasm_label > 0] = 1
+    cytoplasm_label= seg.label_instances(np.array(cytoplasm_label, dtype = bool)) 
+
+    return cytoplasm_label
 
 
 
-def pbody_segmentation(egfp, sigma = 1, threshold = 300, small_obj_sz= 250, fill= True) :
+
+
+def pbody_segmentation(egfp, beta = 5) :
     """Performs Pbody segmentation on 2D or 3D egfp numpy array
     
     Parameters
     ----------
         egfp : np.ndarray(y,x) or (z,y,x)
-        sigma : scalar
-            Parameter applied to Gaussian filter
-        thresold : int
-            Parameter applied to thresholding
+        beta : scalar
+            Parameter representing the difficulty to cross region with high intensity gradient.
             
     Returns
     -------
         Pbody_label : np.ndarray(y,x) or (z,y,x)
     """
 
-    check_parameter(egfp = (np.ndarray), sigma = (int, float), threshold = (int))
+    check_parameter(egfp = (np.ndarray))
     check_array(egfp, ndim= [2,3])
     dim = egfp.ndim
 
-
-    egfp_gauss = stack.gaussian_filter(egfp,sigma)
-
     if dim == 2 :
-        egfp_label = _pbody_slice_seg(egfp_gauss, threshold=threshold, small_object_size=small_obj_sz, fill_holes=fill)
+        seed = np.zeros_like(egfp)
+        seed[egfp > np.percentile(egfp,99.6)] = 1
+        seed[egfp < np.percentile(egfp,99.4)] = 2
+
+
+        egfp_label = random_walker(egfp, seed, beta=beta)
 
     else :
         slices = unstack_slices(egfp_gauss)
         label_list = []
         for z in range(0,len(slices)):
-            label_list += [_pbody_slice_seg(slices[z], threshold=threshold, small_object_size=small_obj_sz, fill_holes=fill)]
+            seed = np.zeros_like(slices[z])
+            seed[slices[z] > np.percentile(slices[z],99.8)] = 1
+            seed[slices[z] < np.percentile(slices[z],99)] = 2
+            label_list += [random_walker(egfp, seed, beta=beta)]
+
         egfp_label = from2Dlabel_to3Dlabel(label_list, maximal_distance= 50)
 
     return egfp_label
+
+
+
+
+
 
 
 

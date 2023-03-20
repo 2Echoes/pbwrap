@@ -219,7 +219,7 @@ def get_Cell(acquisition_id, cell, voxel_size = (300,103,103)):
         new_Cell : pd.Dataframe
     """
     #Integrity checks
-    check_parameter(acquisition_id = (int), cell_id = (int), cell = (dict), voxel_size = (tuple, list))
+    check_parameter(acquisition_id = (int), cell = (dict), voxel_size = (tuple, list))
 
     voxel_size_yx = voxel_size[1] # la résolution dans le plan devrait être toujours x/y indep
     cell_mask = cell["cell_mask"]
