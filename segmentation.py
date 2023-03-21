@@ -3,11 +3,13 @@ import bigfish.stack as stack
 import bigfish.segmentation as seg
 import cellpose.models as models
 import pandas as pd
+import scipy.ndimage as ndi
 from bigfish.stack import check_array, check_parameter
 from pbwrap.integrity import check_sameshape
 from skimage.measure import regionprops_table
-from skimage.segmentation import random_walker 
-from skimage.transform import resize, resize_local_mean
+from skimage.segmentation import random_walker, watershed 
+from skimage.transform import resize
+from skimage.feature import peak_local_max
 
 
 ###### Image segmentation
@@ -54,13 +56,10 @@ def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False) :
 
     if ndim == 3 :
         nucleus_label = nucleus_model.eval(dapi_rescaled, diameter= 17, channels = channels, anisotropy= anisotropy, do_3D= True, stitch_threshold = 0.1)[0]
-        # for label_num in range(0,len(nucleus_label)) :
-            # nucleus_label[label_num] = seg.clean_segmentation(nucleus_label[label_num], small_object_size= min_objct_size_rescaled)
     
     else :
         nucleus_label = nucleus_model.eval(dapi_rescaled, diameter= 17, channels = channels)[0]
         nucleus_label = np.array(nucleus_label, dtype= np.int64)
-        # nucleus_label = seg.clean_segmentation(nucleus_label, small_object_size= min_objct_size_rescaled)
     
     #Image upscale
     nucleus_label = resize(nucleus_label, dapi.shape, preserve_range= True)
@@ -206,7 +205,7 @@ def Cytoplasm_segmentation_old(cy3, dapi= None, diameter= 250, maximal_distance=
 
 
 
-def pbody_segmentation(egfp, beta = 5) :
+def pbody_segmentation(egfp, beta = 5, peaks_min_distance= 4) :
     """Performs Pbody segmentation on 2D or 3D egfp numpy array
     
     Parameters
@@ -219,18 +218,35 @@ def pbody_segmentation(egfp, beta = 5) :
     -------
         Pbody_label : np.ndarray(y,x) or (z,y,x)
     """
-
+    import bigfish.plot as plot
     check_parameter(egfp = (np.ndarray))
     check_array(egfp, ndim= [2,3])
-    dim = egfp.ndim
 
-    if dim == 2 :
+    #1st Segmentation
+    mask = random_walker_segmentation(egfp, percentile_down= 99.4, percentile_up= 99.5, beta= beta) # 99.3 99.5
+
+    #Watershed and labelling
+    egfp_label = watershed_segmentation(mask, peaks_min_distance= peaks_min_distance)
+
+    return egfp_label
+
+    
+    
+    
+    #TODO old code
+    """if dim == 2 :
         seed = np.zeros_like(egfp)
-        seed[egfp > np.percentile(egfp,99.6)] = 1
-        seed[egfp < np.percentile(egfp,99.4)] = 2
+        seed[egfp > np.percentile(egfp,99.8)] = 1
+        seed[egfp < np.percentile(egfp,99.5)] = 2
+        mask = random_walker(egfp, seed, beta=beta)
+        mask[mask != 1] = 0
+        distance = ndi.distance_transform_edt(mask)
+        coords = peak_local_max(distance, footprint=np.ones((3, 3)), labels=mask, min_distance = 3)
+        mask_water = np.zeros(distance.shape, dtype=bool)
+        mask_water[tuple(coords.T)] = True
+        markers, _ = ndi.label(mask_water)
+        egfp_label = watershed(-distance, markers, mask=mask)
 
-
-        egfp_label = random_walker(egfp, seed, beta=beta)
 
     else :
         slices = unstack_slices(egfp_gauss)
@@ -239,14 +255,87 @@ def pbody_segmentation(egfp, beta = 5) :
             seed = np.zeros_like(slices[z])
             seed[slices[z] > np.percentile(slices[z],99.8)] = 1
             seed[slices[z] < np.percentile(slices[z],99)] = 2
-            label_list += [random_walker(egfp, seed, beta=beta)]
-
-        egfp_label = from2Dlabel_to3Dlabel(label_list, maximal_distance= 50)
+            
+            mask = random_walker(egfp, seed, beta= beta)
+            #labelling
+            mask[mask != 1] = 0
+            label = seg.label_instances(np.array(mask, dtype= bool))
+            label_list += [label]
+            egfp_label = from2Dlabel_to3Dlabel(label_list, maximal_distance= 50)"""
 
     return egfp_label
 
 
 
+
+def random_walker_segmentation(image, percentile_down = 99.5, percentile_up = 99.8, beta= 1):
+    """Performs random walker segmentation using scipy algorithm. The segmentation is performed by assigning seeds to element in the image.
+    In our algorithm we're trying to seperate background from one type of object (mainly pbodies). We assign the seed 2 to pixels we know are in the background and seed 1 to pixels we know are in p-bodies.
+    Pixel left at 0 are the pixels the random walker segment into group 1 (pbodies) or group 2 background.
+    Afterwards, background is set back to 0 so output is a classical binary mask.
+
+    Percentiles paremeters should be fine tuned to your image, default settings correspond to p-body seg using egfp channel.
+    
+    Parameters
+    ----------
+        image : np.ndarray
+            3D or 2D image to segment.
+        percentile_down : scalar (from 0 to 100)
+            Percentile of pixel set into background. (group 2)
+        percentile_up : scalar (from 0 to 100 and > percentile_down)
+            100 - x highest percentile of pixels set into p-bodies
+        beta : scalar
+            Defines how hard it is to break intensity gradient during segmentation.
+
+    Returns
+    -------
+        mask : np.ndarray(bool)
+
+    """
+    stack.check_parameter(image = (np.ndarray), percentile_down = (int, float), percentile_up= (int, float), beta= (int, float))
+    if percentile_down < 0 or percentile_down > 100 : raise Exception("Percentile_down parameter should be in range 0-100.")
+    if percentile_up < 0 or percentile_down > 100 : raise Exception("Percentile_up parameter should be in range 0-100.")
+    if percentile_up < percentile_down : raise Exception("Percentile_up parameter should be larger than percentile_down to avoid conflit when attributing seeds.")
+
+    seed = np.zeros_like(image)
+    seed[image > np.percentile(image, percentile_up)] = 1
+    seed[image < np.percentile(image, percentile_down)] = 2
+    mask = random_walker(image, seed, beta=beta)
+    mask[mask != 1] = 0
+    mask = np.array(mask, dtype= bool)
+    
+    return mask
+
+
+
+
+def watershed_segmentation(image, peaks_min_distance= 3 ):
+    """Performs watershed segmentation using scipy algorithm. 
+    In the usual regions flooding thought process this algorithm uses local maxima as sources for the flooding. 
+    
+    Parameters
+    ----------
+        image : np.ndarray
+            3D or 2D image. For optimal performance input image should be either a boolean image or a labelled image, for a grayscale image make sure to be restrictive enough on local maxima computation.
+        peaks_min_distance : int
+            Minimal distance (in  pixel) separating two maximum intensity peaks --> if d = 1 the maximum number of peaks is computed.
+            
+    Returns
+    -------
+        label : np.ndarray
+            labelled image.
+    """
+
+    stack.check_parameter(image = (np.ndarray), peaks_min_distance = (int))
+
+    distance = ndi.distance_transform_edt(image)
+    coords = peak_local_max(distance, footprint=np.ones((3, 3)), labels=image, min_distance = peaks_min_distance)
+    mask_water = np.zeros(distance.shape, dtype=bool)
+    mask_water[tuple(coords.T)] = True
+    markers, _ = ndi.label(mask_water)
+    label = watershed(-distance, markers, mask=image)
+
+    return label
 
 
 
