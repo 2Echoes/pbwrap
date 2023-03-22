@@ -1,7 +1,6 @@
 import bigfish.stack as stack
-import bigfish.multistack as multistack
-import bigfish.plot as plot
 import bigfish.detection as detection
+from bigfish.detection.spot_detection import local_maximum_detection
 import numpy as np
 
 def spot_decomposition_nobckgrndrmv(image, spots, spot_radius, voxel_size_nm, alpha= 0.5, beta= 1):
@@ -122,91 +121,94 @@ def spot_decomposition_nobckgrndrmv(image, spots, spot_radius, voxel_size_nm, al
 
     return spots_postdecomp
 
-"""
-
-## Testing
-image_input = "/Users/floric.slimani/Documents/Projets/1_PBodies/RNA-grouped_3D-z-stacked/input/"
-output = "/Users/floric.slimani/Documents/Projets/1_PBodies/RNA-grouped_3D-z-stacked/output/quantification/"
-segmentation_input = "/Users/floric.slimani/Documents/Projets/1_PBodies/RNA-grouped_3D-z-stacked/seg_res/"
-
-#Input
-dapi = stack.read_image(image_input + "r02c06-SPDL1f01-DAPI-sk1fk1fl1.tiff")
-cy3 = stack.read_image(image_input + "r02c06-SPDL1f01-Cy3-sk1fk1fl1.tiff")
-alexa647 = stack.read_image(image_input + "r02c06-SPDL1f01-Alexa 647-sk1fk1fl1.tiff")
-cell_label = stack.read_array(segmentation_input + "cytoplasm_2Dlabel.npy")
-nuc_label = stack.read_array(segmentation_input + "nucleus_3Dlabel.npy")
-rna_spots = stack.read_array(segmentation_input + "rnaspots.npy")
-malat1_spots = stack.read_array(segmentation_input + "malat1spots.npy")
-
-#Parameters
-ndim = 3
-voxel_sz = (350,103,103)
-#spot decomp
-alpha=0.8  # alpha impacts the number of spots per candidate region
-beta=5  # beta impacts the number of candidate regions to decompose
-gamma=2 # gamma the filtering step to denoise the image
-rna_spot_radius=(350, 150, 150)
-malat1_spot_radius = (350,100,100)
-
-#focus proj
-cy3_proj = stack.focus_projection(cy3)
-alexa647_proj = stack.focus_projection(alexa647)
-
-
-#spots decomp
-cy3_spots_postdecomp = spot_decomposition_nobckgrndrmv(cy3, spots= rna_spots, spot_radius= rna_spot_radius, voxel_size_nm= voxel_sz, alpha= alpha, beta= beta)
-alexa647_spots_postdecomp = spot_decomposition_nobckgrndrmv(alexa647, spots= malat1_spots, spot_radius= malat1_spot_radius, voxel_size_nm= voxel_sz, alpha= alpha, beta= beta)
-
-cy3_spots_postclustering, cy3_clusters = detection.detect_clusters(spots= cy3_spots_postdecomp, voxel_size= voxel_sz)
-alexa647_spots_postclustering, alexa647_clusters = detection.detect_clusters(spots= alexa647_spots_postdecomp, radius = 500, voxel_size= voxel_sz)
-
-print("detected spots after clustering")
-print("\r shape: {0}".format(alexa647_spots_postclustering.shape))
-print("\r dtype: {0}".format(alexa647_spots_postclustering.dtype), "\n")
-print("detected clusters")
-print("\r shape: {0}".format(alexa647_clusters.shape))
-print("\r dtype: {0}".format(alexa647_clusters.dtype))
 
 
 
-plot.plot_detection(alexa647_proj, 
-                    spots=[alexa647_spots_postdecomp, alexa647_clusters[:, :3]], 
-                    shape=["circle", "polygon"], 
-                    radius=[3, 6], 
-                    color=["red", "blue"],
-                    linewidth=[1, 2], 
-                    fill=[False, True], 
-                    contrast=True)
-
-
-
-
-spots_no_ts, foci, ts = multistack.remove_transcription_site(rna_spots, clusters, nuc_label, ndim=3)
-
-
-
-
-fov_results = multistack.extract_cell(cell_label=cell_label[5], ndim=ndim, nuc_label= nuc_label[5], rna_coord= rna_spots, others_coord= other_coords)
-for i, cell_results in enumerate(fov_results):
-    print("cell {0}".format(i))
+def detect_spots(image,
+        threshold=None,
+        remove_duplicate=True,
+        return_threshold=False,
+        voxel_size=None,
+        spot_radius=None,
+        log_kernel_size=None,
+        minimum_distance=None,
+        threshold_factor= None):
+    """
+    Pbwrap
+    ------
+    Uses bigfish.detection function
+    Can only take 1 image in input. 
+    Add threshold factor which is multiplied to the auto_threshold from bigfish.
+    For example to apply 20% penalty on automatic threshold threshold_factor should equal 1.20.
     
-    # get cell results
-    cell_mask = cell_results["cell_mask"]
-    cell_coord = cell_results["cell_coord"]
-    nuc_mask = cell_results["nuc_mask"]
-    nuc_coord = cell_results["nuc_coord"]
-    rna_coord = cell_results["rna_coord"]
-    #foci_coord = cell_results["foci"]
-    #ts_coord = cell_results["transcription_site"]
-    #image_contrasted = cell_results["image"]
-    print("\r number of rna {0}".format(len(rna_coord)))
-    #print("\r number of foci {0}".format(len(foci_coord)))
-    #print("\r number of transcription sites {0}".format(len(ts_coord)))
-    
-    # plot cell
-    plot.plot_cell(
-        ndim=3, cell_coord=cell_coord, nuc_coord=nuc_coord, 
-        rna_coord=rna_coord, cell_mask=cell_mask, nuc_mask=nuc_mask, 
-        title="Cell {0}".format(i))
+    Apply LoG filter followed by a Local Maximum algorithm to detect spots
+    in a 2-d or 3-d image.
 
- """
+    #. We smooth the image with a LoG filter.
+    #. We apply a multidimensional maximum filter.
+    #. A pixel which has the same value in the original and filtered images
+       is a local maximum.
+    #. We remove local peaks under a threshold.
+    #. We keep only one pixel coordinate per detected spot.
+
+    Parameters
+    ----------
+    images : List[np.ndarray] or np.ndarray
+        Image (or list of images) with shape (z, y, x) or (y, x). If several
+        images are provided, the same threshold is applied.
+    threshold : int, float or None
+        A threshold to discriminate relevant spots from noisy blobs. If None,
+        optimal threshold is selected automatically. If several images are
+        provided, one optimal threshold is selected for all the images.
+    remove_duplicate : bool
+        Remove potential duplicate coordinates for the same spots. Slow the
+        running.
+    return_threshold : bool
+        Return the threshold used to detect spots.
+    voxel_size : int, float, Tuple(int, float), List(int, float) or None
+        Size of a voxel, in nanometer. One value per spatial dimension (zyx or
+        yx dimensions). If it's a scalar, the same value is applied to every
+        dimensions. Not used if 'log_kernel_size' and 'minimum_distance' are
+        provided.
+    spot_radius : int, float, Tuple(int, float), List(int, float) or None
+        Radius of the spot, in nanometer. One value per spatial dimension (zyx
+        or yx dimensions). If it's a scalar, the same radius is applied to
+        every dimensions. Not used if 'log_kernel_size' and 'minimum_distance'
+        are provided.
+    log_kernel_size : int, float, Tuple(int, float), List(int, float) or None
+        Size of the LoG kernel. It equals the standard deviation (in pixels)
+        used for the gaussian kernel (one for each dimension). One value per
+        spatial dimension (zyx or yx dimensions). If it's a scalar, the same
+        standard deviation is applied to every dimensions. If None, we estimate
+        it with the voxel size and spot radius.
+    minimum_distance : int, float, Tuple(int, float), List(int, float) or None
+        Minimum distance (in pixels) between two spots we want to be able to
+        detect separately. One value per spatial dimension (zyx or yx
+        dimensions). If it's a scalar, the same distance is applied to every
+        dimensions. If None, we estimate it with the voxel size and spot
+        radius.
+
+    Returns
+    -------
+    spots : List[np.ndarray] or np.ndarray, np.int64
+        Coordinates (or list of coordinates) of the spots with shape
+        (nb_spots, 3) or (nb_spots, 2), for 3-d or 2-d images respectively.
+    threshold : int or float
+        Threshold used to discriminate spots from noisy blobs.
+
+    """
+    stack.check_parameter(image = (np.ndarray), threshold_factor= (int, float))
+
+    if  threshold_factor != None and threshold_factor != 1:
+        
+        if threshold == None:
+            image_filtered = stack.log_filter(image, log_kernel_size)
+            mask_local_max = local_maximum_detection(image_filtered, minimum_distance)
+            threshold = detection.automated_threshold_setting(image, mask_local_max)
+        
+        threshold *= threshold_factor
+    
+    spots,threshold = detection.detect_spots(images=image, threshold=threshold, remove_duplicate= remove_duplicate, return_threshold= True, voxel_size=voxel_size, spot_radius=spot_radius, log_kernel_size=log_kernel_size, minimum_distance=minimum_distance)
+    
+    if return_threshold : return spots, threshold
+    return spots

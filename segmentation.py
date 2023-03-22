@@ -218,15 +218,19 @@ def pbody_segmentation(egfp, beta = 5, peaks_min_distance= 4) :
     -------
         Pbody_label : np.ndarray(y,x) or (z,y,x)
     """
+
+
     import bigfish.plot as plot
     check_parameter(egfp = (np.ndarray))
     check_array(egfp, ndim= [2,3])
 
     #1st Segmentation
-    mask = random_walker_segmentation(egfp, percentile_down= 99.4, percentile_up= 99.5, beta= beta) # 99.3 99.5
+    mask = random_walker_segmentation(egfp, percentile_down= 99.7, percentile_up= 99.8, beta= beta) # 99.4 99.5
 
-    #Watershed and labelling
-    egfp_label = watershed_segmentation(mask, peaks_min_distance= peaks_min_distance)
+    #labelling
+    egfp_label = watershed_segmentation(egfp, mask, peaks_min_distance=peaks_min_distance)
+    #egfp_label = seg.label_instances(mask)
+    egfp_label = seg.clean_segmentation(mask, 10, True)
 
     return egfp_label
 
@@ -309,7 +313,8 @@ def random_walker_segmentation(image, percentile_down = 99.5, percentile_up = 99
 
 
 
-def watershed_segmentation(image, peaks_min_distance= 3 ):
+def watershed_segmentation(image, label, peaks_min_distance= 3 ):
+    #TODO : Add sampling [3,1,1] or [anisotropy, 1, 1] in case of 3D segmentation.
     """Performs watershed segmentation using scipy algorithm. 
     In the usual regions flooding thought process this algorithm uses local maxima as sources for the flooding. 
     
@@ -329,25 +334,37 @@ def watershed_segmentation(image, peaks_min_distance= 3 ):
     stack.check_parameter(image = (np.ndarray), peaks_min_distance = (int))
 
     distance = ndi.distance_transform_edt(image)
-    coords = peak_local_max(distance, footprint=np.ones((3, 3)), labels=image, min_distance = peaks_min_distance)
+    #distance = distance_transform(image, label)
+    coords = peak_local_max(distance, footprint=np.ones((3, 3)), labels=label, min_distance = peaks_min_distance)
     mask_water = np.zeros(distance.shape, dtype=bool)
     mask_water[tuple(coords.T)] = True
     markers, _ = ndi.label(mask_water)
-    label = watershed(-distance, markers, mask=image)
+    label = watershed(-distance, markers, mask=label)
 
     return label
 
 
+def distance_transform(image, label):
+    """Compute distance transform of label using scipy euclidian distance transform but add weight using image pixel values.
+    
+    Parameters
+    ----------
+        image : np.ndarray
+        label : np.ndarray
+            Must have the same shape as image.
 
+    Returns
+    -------
+    distance_transform_res : np.ndarray
+    """
+    stack.check_parameter(image = (np.ndarray), label = (np.ndarray))
+    check_sameshape(image, label)
+    distance = ndi.distance_transform_edt(label)
+    distance = distance/distance.max()
+    distance_transform = image * distance
 
+    return distance_transform
 
-def _pbody_slice_seg(image, threshold, small_object_size, fill_holes) : 
-        
-        egfp_mask = seg.thresholding(image, threshold)
-        #egfp_mask = seg.clean_segmentation(egfp_mask,small_object_size= small_object_size, fill_holes= fill_holes )
-        egfp_label = seg.label_instances(egfp_mask)
-
-        return egfp_label
 
 
 
