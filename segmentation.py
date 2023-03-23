@@ -205,8 +205,11 @@ def Cytoplasm_segmentation_old(cy3, dapi= None, diameter= 250, maximal_distance=
 
 
 
-def pbody_segmentation(egfp, beta = 5, peaks_min_distance= 4) :
-    """Performs Pbody segmentation on 2D or 3D egfp numpy array
+def pbody_segmentation(egfp, sigma = 2, threshold= None, small_object_size= None, fill_holes= True,  peaks_min_distance= 0) :
+    """Performs Pbody segmentation on 2D or 3D egfp numpy array.
+        Apply a log filter to the image which kernel is defined by sigma.
+        Then a threshold is applied, if none is given compute automatic threshold from highest variation point in array histogram.
+        if peaks_min_distance other than 0 is given, performs a watershed segmentation.
     
     Parameters
     ----------
@@ -219,60 +222,62 @@ def pbody_segmentation(egfp, beta = 5, peaks_min_distance= 4) :
         Pbody_label : np.ndarray(y,x) or (z,y,x)
     """
 
-
-    import bigfish.plot as plot
     check_parameter(egfp = (np.ndarray))
     check_array(egfp, ndim= [2,3])
 
-    #1st Segmentation
-    mask = random_walker_segmentation(egfp, percentile_down= 99.7, percentile_up= 99.8, beta= beta) # 99.4 99.5
-
+    #Segmentation
+    mask = stack.log_filter(egfp,sigma)
+    if threshold == None : threshold = get_histogramm_highest_varation_value(mask)
+    mask = seg.thresholding(mask, threshold)
+    mask = seg.clean_segmentation(mask, small_object_size=small_object_size, fill_holes=fill_holes)
     #labelling
-    egfp_label = watershed_segmentation(egfp, mask, peaks_min_distance=peaks_min_distance)
-    #egfp_label = seg.label_instances(mask)
-    egfp_label = seg.clean_segmentation(mask, 10, True)
+    if peaks_min_distance != 0 :
+        egfp_label = watershed_segmentation(egfp, mask, peaks_min_distance=peaks_min_distance)
+    else : 
+        egfp_label = seg.label_instances(mask)
+    egfp_label = np.array(egfp_label, dtype= np.int64)
+    egfp_label = seg.clean_segmentation(egfp_label, small_object_size=small_object_size, fill_holes=fill_holes)
 
     return egfp_label
 
-    
-    
-    
-    #TODO old code
-    """if dim == 2 :
-        seed = np.zeros_like(egfp)
-        seed[egfp > np.percentile(egfp,99.8)] = 1
-        seed[egfp < np.percentile(egfp,99.5)] = 2
-        mask = random_walker(egfp, seed, beta=beta)
-        mask[mask != 1] = 0
-        distance = ndi.distance_transform_edt(mask)
-        coords = peak_local_max(distance, footprint=np.ones((3, 3)), labels=mask, min_distance = 3)
-        mask_water = np.zeros(distance.shape, dtype=bool)
-        mask_water[tuple(coords.T)] = True
-        markers, _ = ndi.label(mask_water)
-        egfp_label = watershed(-distance, markers, mask=mask)
 
 
-    else :
-        slices = unstack_slices(egfp_gauss)
-        label_list = []
-        for z in range(0,len(slices)):
-            seed = np.zeros_like(slices[z])
-            seed[slices[z] > np.percentile(slices[z],99.8)] = 1
-            seed[slices[z] < np.percentile(slices[z],99)] = 2
+
+def get_histogramm_highest_varation_value(array, bins= None):
+    """Returns the value corresponding to the point where 1st derivative absolute value is the highest in array histogram.
+    Will never return 1st elmt of the hist.
+
+    Parameters
+    ----------
+        array : np.ndarray
+        
+    Returns
+    -------
+        res : int or float
+    """
+    stack.check_parameter(array = np.ndarray)
+
+    if bins == None:
+        if array.dtype == np.float :
+            bins = 100 #2 decimals precision
+
+        else:
+            bins = int(array.max() - array.min())
             
-            mask = random_walker(egfp, seed, beta= beta)
-            #labelling
-            mask[mask != 1] = 0
-            label = seg.label_instances(np.array(mask, dtype= bool))
-            label_list += [label]
-            egfp_label = from2Dlabel_to3Dlabel(label_list, maximal_distance= 50)"""
+    count,values = np.histogram(array, bins= bins)
+    import matplotlib.pyplot as plt
+    gradient = np.gradient(count)
+    gradient[gradient < 0] = 0
+    max_derivative_index = get_elmtindex(np.abs(gradient).max(), list(np.abs(gradient)))
+    res = values[max_derivative_index]
 
-    return egfp_label
+    return res
 
 
 
 
 def random_walker_segmentation(image, percentile_down = 99.5, percentile_up = 99.8, beta= 1):
+    #TODO Unused
     """Performs random walker segmentation using scipy algorithm. The segmentation is performed by assigning seeds to element in the image.
     In our algorithm we're trying to seperate background from one type of object (mainly pbodies). We assign the seed 2 to pixels we know are in the background and seed 1 to pixels we know are in p-bodies.
     Pixel left at 0 are the pixels the random walker segment into group 1 (pbodies) or group 2 background.
@@ -344,6 +349,10 @@ def watershed_segmentation(image, label, peaks_min_distance= 3 ):
     return label
 
 
+
+
+
+
 def distance_transform(image, label):
     """Compute distance transform of label using scipy euclidian distance transform but add weight using image pixel values.
     
@@ -370,7 +379,7 @@ def distance_transform(image, label):
 
 
 
-####### Image Operations
+####### utils
 def merge_channels(*channels) :
     """Merges 3D image (z,y,x) channels into a 4D image (channel,z,y,x) or 2D image channesl into a 3D image (channel,y,x).
     
@@ -706,3 +715,23 @@ def from2Dlabel_to3Dlabel(labels, maximal_distance= 20) :
         label3D[z,:,:] = relabelling(labels[z], label_giving)
 
     return label3D
+
+
+def get_elmtindex(elmt,List) :
+    """Returns index (position) of elmt in list
+    
+    Parameters
+    ----------
+        elmt : any
+        list : list
+    Returns
+    -------
+        res : int
+    """
+
+    check_parameter(List = (list))
+
+    for idx in range(0,len(List)) :
+        if List[idx] == elmt : return idx
+    
+    raise Exception("Could not find elmt in List")

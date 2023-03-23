@@ -43,7 +43,6 @@ def get_Input(input_path, channels_list) :
     #extension
     extensions = []
     ext_regex = "\.\w*$"
-    ext = re.compile(ext_regex)
     for file in Input.loc[:,"filename"] :
         extensions += re.findall(ext_regex, file)
     Input.loc[:, "file extension"] = extensions
@@ -58,7 +57,7 @@ def get_Input(input_path, channels_list) :
     ##Acquisition index
     #Integrity
     channel_num = len(channels_list)
-    Input_groupbyroot = Input.value_counts(subset= "root filename")
+    Input_groupbyroot = Input.sort_values(["filename"]).value_counts(subset= "root filename")
     if not all(Input_groupbyroot == channel_num) : raise Exception("Some acquisition are missing at least one channel. Please check the completeness of files placed in input.")
     
     #Computing acquisition index

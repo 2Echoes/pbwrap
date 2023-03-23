@@ -1,6 +1,6 @@
 import bigfish.stack as stack
 import bigfish.detection as detection
-from bigfish.detection.spot_detection import local_maximum_detection
+from bigfish.detection.spot_detection import local_maximum_detection, get_object_radius_pixel
 import numpy as np
 
 def spot_decomposition_nobckgrndrmv(image, spots, spot_radius, voxel_size_nm, alpha= 0.5, beta= 1):
@@ -198,13 +198,80 @@ def detect_spots(image,
 
     """
     stack.check_parameter(image = (np.ndarray), threshold_factor= (int, float))
+    ndim = image.ndim
+    # check consistency between parameters - detection with voxel size and
+    # spot radius
+    if (voxel_size is not None and spot_radius is not None
+            and log_kernel_size is None and minimum_distance is None):
+        if isinstance(voxel_size, (tuple, list)):
+            if len(voxel_size) != ndim:
+                raise ValueError("'voxel_size' must be a scalar or a sequence "
+                                 "with {0} elements.".format(ndim))
+        else:
+            voxel_size = (voxel_size,) * ndim
+        if isinstance(spot_radius, (tuple, list)):
+            if len(spot_radius) != ndim:
+                raise ValueError("'spot_radius' must be a scalar or a "
+                                 "sequence with {0} elements.".format(ndim))
+        else:
+            spot_radius = (spot_radius,) * ndim
+        log_kernel_size = get_object_radius_pixel(
+            voxel_size_nm=voxel_size,
+            object_radius_nm=spot_radius,
+            ndim=ndim)
+        minimum_distance = get_object_radius_pixel(
+            voxel_size_nm=voxel_size,
+            object_radius_nm=spot_radius,
+            ndim=ndim)
 
-    if  threshold_factor != None and threshold_factor != 1:
+    # check consistency between parameters - detection with kernel size and
+    # minimal distance
+    elif (voxel_size is None and spot_radius is None
+          and log_kernel_size is not None and minimum_distance is not None):
+        if isinstance(log_kernel_size, (tuple, list)):
+            if len(log_kernel_size) != ndim:
+                raise ValueError("'log_kernel_size' must be a scalar or a "
+                                 "sequence with {0} elements.".format(ndim))
+        else:
+            log_kernel_size = (log_kernel_size,) * ndim
+        if isinstance(minimum_distance, (tuple, list)):
+            if len(minimum_distance) != ndim:
+                raise ValueError("'minimum_distance' must be a scalar or a "
+                                 "sequence with {0} elements.".format(ndim))
+        else:
+            minimum_distance = (minimum_distance,) * ndim
+
+    # check consistency between parameters - detection in priority with kernel
+    # size and minimal distance
+    elif (voxel_size is not None and spot_radius is not None
+          and log_kernel_size is not None and minimum_distance is not None):
+        if isinstance(log_kernel_size, (tuple, list)):
+            if len(log_kernel_size) != ndim:
+                raise ValueError("'log_kernel_size' must be a scalar or a "
+                                 "sequence with {0} elements.".format(ndim))
+        else:
+            log_kernel_size = (log_kernel_size,) * ndim
+        if isinstance(minimum_distance, (tuple, list)):
+            if len(minimum_distance) != ndim:
+                raise ValueError("'minimum_distance' must be a scalar or a "
+                                 "sequence with {0} elements.".format(ndim))
+        else:
+            minimum_distance = (minimum_distance,) * ndim
+
+    # missing parameters
+    else:
+        raise ValueError("One of the two pairs of parameters ('voxel_size', "
+                         "'spot_radius') or ('log_kernel_size', "
+                         "'minimum_distance') should be provided.")
+
+    
+    #If needed compute bigfish auto threshold
+    if  threshold_factor != None:
         
         if threshold == None:
-            image_filtered = stack.log_filter(image, log_kernel_size)
+            image_filtered = stack.log_filter(image, log_kernel_size) #TODO should not stay None
             mask_local_max = local_maximum_detection(image_filtered, minimum_distance)
-            threshold = detection.automated_threshold_setting(image, mask_local_max)
+            threshold = detection.automated_threshold_setting(image_filtered, mask_local_max)
         
         threshold *= threshold_factor
     
