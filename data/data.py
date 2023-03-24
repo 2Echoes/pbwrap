@@ -1,77 +1,13 @@
 import pandas as pd
-import os
+import datetime as dt
 import re
 import numpy as np
-import CustomPandasFramework.DataFrames as DataFrame
+import CustomPandasFramework.PBody_project as DataFrame
 import CustomPandasFramework.operations as dataOp
 from bigfish.stack import check_parameter,read_image
 from bigfish.classification import compute_features
 
-def get_Input(input_path, channels_list) :
-    """ Returns a panda dataFrame filled with input folder info. To learn about expected data informations/shape see newFrame_Input.   
-     
-     Parameters
-    ----------
-    input_path : string.
-        full path to the input folder as a string.
-    channels_list : List[str].
-        List of strings indicating the different channels of an acquisition. Thoses strings MUST be contained in the filenames otherwise they will be filtered.
 
-    Returns
-    -------
-    Input : pd.Dataframe
-        Dataframe containing informations on files within the input folder. See newFrame_Input for more informations.
-        
-        """     
-     
-    #Integrity checks
-    check_parameter(input_path = (str), channels_list = (list))
-    for string in channels_list : check_parameter(string = (str))
-    
-    #filename
-    Input = newFrame_Input()
-    filenames = os.listdir(input_path)
-    Input["filename"] = filenames
-
-    #Channel labelling
-    for channel in channels_list :
-        Input.loc[
-        Input.filename.str.match(".*({0}).*".format(channel)), ["channel"]
-        ]= channel
-    Input = Input.dropna(subset=["channel"])
-
-    #extension
-    extensions = []
-    ext_regex = "\.\w*$"
-    for file in Input.loc[:,"filename"] :
-        extensions += re.findall(ext_regex, file)
-    Input.loc[:, "file extension"] = extensions
-
-    #root filename
-    root_filenames = []
-    for line in Input.loc[:,["filename","channel"]].itertuples(index= False) :
-        filename, channel = line
-        regex = "({0})|(\.\w*$)".format(channel)
-        root_filenames += [re.sub(regex, "", filename)]
-    Input.loc[:, "root filename"] = root_filenames
-    ##Acquisition index
-    #Integrity
-    channel_num = len(channels_list)
-    Input_groupbyroot = Input.sort_values(["filename"]).value_counts(subset= "root filename")
-    if not all(Input_groupbyroot == channel_num) : raise Exception("Some acquisition are missing at least one channel. Please check the completeness of files placed in input.")
-    
-    #Computing acquisition index
-    Input_acquisitionindex = Input_groupbyroot.reset_index(drop = False)
-    Input_acquisitionindex = Input_acquisitionindex.rename(columns={0 : "channel-complete"})
-    Input_acquisitionindex = Input_acquisitionindex.reset_index(drop = False)
-    Input_acquisitionindex = Input_acquisitionindex.rename(columns={"index" : "acquisition index"})
-    Input_acquisitionindex = Input_acquisitionindex.drop(["channel-complete"], axis= 1)
-    Input = Input.drop("acquisition index", axis= 1)
-    Input = pd.merge(Input, Input_acquisitionindex,
-            how= "left", left_on= "root filename", right_on= "root filename")
-    Input = Input.sort_values(["acquisition index","channel"]).reset_index(drop= True)
-
-    return Input
 
 
 
@@ -172,32 +108,6 @@ def get_rnaname(acquisition_index, Input_frame):
     res = re.findall(regex,root)[0]
     return res
 
-def newFrame_Input() :
-    """Returns an empty pandas DataFrame with expected input data shape. 
-    This frame is used for navigating through files put in the input folder during the segmentation process and isn't meant to be stored, therefor it does not contains any key.
-        
-    Returns
-    -------
-    
-        new_Input : pd.Dataframe
-            filename : full name of files within the input folder.
-            channel : name of the channel such as dapi or egfp.
-            root filename : filename without channel and extension, refering to the acquisition. In our project should be like : RNAspecies-wellID--sk1fk1fl1. It does NOT contains channel and extension informations.
-            file extension : extension of the file.
-            acquisition : Int. Computed, should be one per root filename, it aims at grouping different channels into the same acquisition.
-            
-    """
-    new_Input = pd.DataFrame({
-        "filename" : [],
-        "channel" : [],
-        "root filename" : [],
-        "file extension" : [],
-        "acquisition index" : []
-
-        })
-    
-    return(new_Input)
-
 
 
 
@@ -246,3 +156,45 @@ def get_Cell(acquisition_id, cell, voxel_size = (300,103,103)):
     dataOp.check_samedatashape(new_Cell, datashape_ref) # Ensure datashape stability along different runs
 
     return new_Cell
+
+
+
+def get_varname(var):
+    name = [i for i,j in locals().items() if j == var][0]
+    return name
+
+
+
+
+
+def print_parameters(path_out, *parameters, printDateTime= True):
+    #TODO : test
+    """Print parameters into a .txt file
+    
+    Parameters
+    ----------
+        path_out : str
+            full_path to saving location.
+        *parameters : args(int, float, str)
+            parameters to print into text file.
+    """
+
+    check_parameter(path_out = (str))
+    parameter_file = open(path_out, "w")
+
+    #Header
+    parameter_file.write("PARAMETERS\n")
+    parameter_file.write("############")
+
+    if printDateTime:
+        datetime = dt.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        parameter_file.write(datetime)
+        parameter_file.write("############")
+    
+    lines= []
+    for parameter in parameters :
+        name = get_varname(parameter)
+        lines += ["{0} : {1}".format(name, parameter)]
+    parameter_file.writelines(lines)
+
+    parameter_file.close()
