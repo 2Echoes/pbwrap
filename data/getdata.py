@@ -1,8 +1,8 @@
 import pandas as pd
 import datetime as dt
-import re
+import re, inspect
 import numpy as np
-import CustomPandasFramework.PBody_project as DataFrame
+import CustomPandasFramework.PBody_project.DataFrames as DataFrame
 import CustomPandasFramework.operations as dataOp
 from bigfish.stack import check_parameter,read_image
 from bigfish.classification import compute_features
@@ -39,6 +39,7 @@ def get_images(path_input, Input, acquisition_index, channels_list= None) :
 
     #Integrity checks
     check_parameter(path_input = (str), Input = (pd.DataFrame), acquisition_index = (int), channels_list = (list, type(None)))
+
     for string in channels_list : check_parameter(string = (str))
 
     if channels_list == None :
@@ -104,7 +105,7 @@ def get_rnaname(acquisition_index, Input_frame):
         res : str.
     """
     root = get_rootfilename(acquisition_index, Input_frame)
-    regex = "(\w*)--"
+    regex = "(\w*)f\d{2}--"
     res = re.findall(regex,root)[0]
     return res
 
@@ -159,17 +160,24 @@ def get_Cell(acquisition_id, cell, voxel_size = (300,103,103)):
 
 
 
-def get_varname(var):
-    name = [i for i,j in locals().items() if j == var][0]
-    return name
+def _get_varname(var):
+    #To be used  within a function.
+    callers_local_vars = inspect.currentframe().f_back.f_back.f_locals.items()
+    return [var_name for var_name, var_val in callers_local_vars if var_val is var][0]
+
+
+
+def get_datetime():
+    return dt.datetime.now().strftime("%Y%m%d %H-%M-%S \n")
 
 
 
 
 
+#TODO : Create output.py
 def print_parameters(path_out, *parameters, printDateTime= True):
-    #TODO : test
-    """Print parameters into a .txt file
+    """
+    Print parameters into a .txt file
     
     Parameters
     ----------
@@ -180,21 +188,39 @@ def print_parameters(path_out, *parameters, printDateTime= True):
     """
 
     check_parameter(path_out = (str))
+    if path_out[len(path_out)-1] == '/' : path_out += 'parameters.txt'
+    elif path_out[len(path_out)-4 : len(path_out)] != '.txt' : path_out += '.txt'
+
     parameter_file = open(path_out, "w")
 
     #Header
     parameter_file.write("PARAMETERS\n")
-    parameter_file.write("############")
+    parameter_file.write("\n############\n")
 
     if printDateTime:
-        datetime = dt.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        datetime = get_datetime()
         parameter_file.write(datetime)
-        parameter_file.write("############")
+        parameter_file.write("############\n\n")
     
     lines= []
     for parameter in parameters :
-        name = get_varname(parameter)
-        lines += ["{0} : {1}".format(name, parameter)]
+        name = _get_varname(parameter)
+        lines += ["{0} : {1}\n".format(name, parameter)]
     parameter_file.writelines(lines)
 
     parameter_file.close()
+
+
+def print_dict(dic, path_out):
+    check_parameter(path_out = (str), dic = (dict))
+    if path_out[len(path_out) -1] == '/' : path_out += 'dic.txt'
+    elif path_out[len(path_out)-4 : len(path_out)] != '.txt' : path_out += '.txt'
+
+    lines = []
+    for elmt in dic:
+        lines += "{0} : {1}\n".format(elmt, dic[elmt])
+
+
+    dict_file = open(path_out, "w")
+    dict_file.writelines(lines)
+    dict_file.close()
