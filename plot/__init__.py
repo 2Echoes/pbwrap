@@ -6,5 +6,5 @@
 This pbwrap subpackage groups custom plots tuned to our analysis pipelines.
 """
 
-from .plot import plot_labels, plot_detection_steps, plot_cell
-from .plot import save_plot
+from .customplot import plot_labels, plot_detection_steps, plot_cell
+from .customplot import save_plot
