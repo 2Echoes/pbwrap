@@ -32,3 +32,27 @@ def remove_mean_gaussian_background(image, sigma = 5):
     else : raise Exception("Incorrect image dimension. Dimension should be either 2 or 3.")   
 
     return image_no_background
+
+
+
+def get_first_infocus(image, score_threshold = 7):
+    """Return index of first in focus slice from a 3D image
+    
+    Parameters
+    ----------
+        image : np.ndarray(z,y,x)
+        
+    Returns
+    -------
+        res : int
+            returns index on z axis of the first in focus slice. returns -1 if score threshold is never reached
+    """
+
+    z = -1
+    score = 0
+    while score < score_threshold and z < image.shape[0] :
+        z +=1
+        score = stack.compute_focus(image[z])
+        score = score.max()
+    if z >= image.shape[0] : return -1
+    else : return z

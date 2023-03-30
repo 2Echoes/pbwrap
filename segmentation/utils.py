@@ -54,7 +54,7 @@ def get_histogramm_highest_varation_value(array, bins= None):
     stack.check_parameter(array = np.ndarray)
 
     if bins == None:
-        if array.dtype == np.float :
+        if array.dtype == float :
             bins = 100 #2 decimals precision
 
         else:
