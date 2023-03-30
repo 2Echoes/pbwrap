@@ -35,7 +35,7 @@ def remove_mean_gaussian_background(image, sigma = 5):
 
 
 
-def get_first_infocus(image, score_threshold = 7):
+def get_first_infocus(image, score_threshold = 9):
     """Return index of first in focus slice from a 3D image
     
     Parameters
@@ -50,9 +50,8 @@ def get_first_infocus(image, score_threshold = 7):
 
     z = -1
     score = 0
-    while score < score_threshold and z < image.shape[0] :
+    while score < score_threshold and z+1 < image.shape[0] :
         z +=1
-        score = stack.compute_focus(image[z])
-        score = score.max()
+        score = stack.compute_focus(image[z]).max()
     if z >= image.shape[0] : return -1
     else : return z

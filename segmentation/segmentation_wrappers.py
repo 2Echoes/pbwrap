@@ -82,7 +82,7 @@ def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False) :
 
 
 
-def Cytoplasm_segmentation(cy3, dapi= None, diameter= 250, maximal_distance= 100, use_gpu= False) :
+def Cytoplasm_segmentation(cy3, dapi= None, diameter= 250, maximal_distance= 100, use_gpu= False, model_type = "Hek_1.0") :
     
     """Due to bad performance using 3D cellpose with cy3 channel image. A 2D cell segmentation is performed for each slice and a 3D labelling is performed using a closest centroid method.
 
@@ -108,7 +108,7 @@ def Cytoplasm_segmentation(cy3, dapi= None, diameter= 250, maximal_distance= 100
 
     #Segmentation
     if cy3.ndim == 3 : cytoplasm_slices = unstack_slices(cy3)
-    cytoplasm_model = models.CellposeModel(gpu= use_gpu, model_type = "Hek_1.0")
+    cytoplasm_model = models.CellposeModel(gpu= use_gpu, model_type = model_type)
  
 
     if type(dapi) == type(None) : 
