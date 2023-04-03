@@ -16,8 +16,58 @@ from skimage.feature import peak_local_max
 
 
 ###### Image segmentation
+def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False, model_type= 'hek_nuc_1.0') :
+    """3D Nucleus segmentation using Cellpose from a dapi 3D grayscale image.
 
-def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False) :
+    Parameters
+    ----------
+
+        dapi :      np.ndarray, ndim = 3 (z,y,x). 
+            The dapi should only contains the data to be analysed, prepropressing and out of focus filtering should be done prior to this operation. 
+        diameter :  Int. 
+            Average diameter of a nucleus in pixel. Used to rescale cellpose trained model to incoming data.
+        anisotropy: Int. 
+            Define the ratio between the plane (xy) resolution to the height (z) resolution. For a voxel size (300,100,100) use 3.
+        use_gpu :   Bool. 
+            Enable Cellpose build-in option to use GPU.
+                
+    Returns
+    -------
+    
+        Nucleus_label : np.ndarray 
+            With same shape as dapi. Each object has a different pixel value and 0 is background.
+    """
+
+    #Integrity checks
+    check_array(dapi, ndim= [2,3], dtype= [np.uint8, np.uint16, np.int32, np.int64, np.float32, np.float64])
+    check_parameter(diameter= (int), anisotropy= (int), use_gpu= (bool))
+    ndim = dapi.ndim
+
+
+    #Segmentation
+    nucleus_model = models.CellposeModel(gpu= use_gpu, model_type = model_type)
+    min_objct_size = int(round((np.pi * (diameter/2)**2) /4)) # area in pixel
+    channels = [0,0]
+
+    if ndim == 3 :
+        nucleus_label = nucleus_model.eval(dapi, diameter= diameter, channels = channels, anisotropy= anisotropy, do_3D= True, stitch_threshold = 0.1)[0]
+    
+    else :
+        nucleus_label = nucleus_model.eval(dapi, diameter= diameter, channels = channels)[0]
+        nucleus_label = np.array(nucleus_label, dtype= np.int64)
+    
+    if ndim == 3 :
+        for z in range(0,len(nucleus_label)): nucleus_label[z] = seg.clean_segmentation(nucleus_label[z], small_object_size= min_objct_size, delimit_instance=True, fill_holes= True)
+    else : nucleus_label = seg.clean_segmentation(nucleus_label, small_object_size= min_objct_size, delimit_instance=True,  fill_holes= True)
+    nucleus_label = seg.remove_disjoint(nucleus_label)
+
+    return nucleus_label
+
+
+
+
+
+def Nucleus_segmentation_old(dapi, diameter= 150, anisotropy= 3, use_gpu= False) :
     """3D Nucleus segmentation using Cellpose from a dapi 3D grayscale image.
 
     Parameters
@@ -126,8 +176,12 @@ def Cytoplasm_segmentation(cy3, dapi= None, diameter= 250, maximal_distance= 100
 
 
     cytoplasm_labels = cytoplasm_model.eval(image, diameter= diameter, channels= channels, do_3D= False)[0]
-    if cy3.ndim == 3 : cytoplasm_label = from2Dlabel_to3Dlabel(cytoplasm_labels, maximal_distance= maximal_distance)
-    else : cytoplasm_label = cytoplasm_labels
+    if cy3.ndim == 3 :
+        for z in range(0,len(cytoplasm_labels)):
+            cytoplasm_labels[z] = seg.clean_segmentation(np.array(cytoplasm_labels,dtype = np.int64), small_object_size= round(np.pi*np.power(diameter,2)/8)) 
+        cytoplasm_label = from2Dlabel_to3Dlabel(cytoplasm_labels, maximal_distance= maximal_distance)
+    else : 
+        cytoplasm_label = seg.clean_segmentation(np.array(cytoplasm_labels,dtype = np.int64), small_object_size= round(np.pi*np.power(diameter,2)/8))  
 
 
     return cytoplasm_label

@@ -53,5 +53,6 @@ def get_first_infocus(image, score_threshold = 9):
     while score < score_threshold and z+1 < image.shape[0] :
         z +=1
         score = stack.compute_focus(image[z]).max()
-    if z >= image.shape[0] : return -1
+    if z >= image.shape[0] : 
+        raise Warning("No slice scored above the threshold (focus score)")
     else : return z
