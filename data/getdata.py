@@ -4,9 +4,9 @@ import re, inspect
 import numpy as np
 import CustomPandasFramework.PBody_project.DataFrames as DataFrame
 import CustomPandasFramework.operations as dataOp
-from bigfish.stack import check_parameter,read_image
+from bigfish.stack import check_parameter,read_image, check_array, mean_projection, maximum_projection
 from bigfish.classification import compute_features
-
+from ..quantification import mean_signal, count_spots_in_mask
 
 
 
@@ -112,7 +112,7 @@ def get_rnaname(acquisition_index, Input_frame):
 
 
 
-def get_Cell(acquisition_id, cell, voxel_size = (300,103,103)):
+def get_Cell(acquisition_id, cell, dapi, voxel_size = (300,103,103)):
     """Returns DataFrame with expected Cell datashape containing all cell level features. Features are computed using bigFish built in functions.
     
     Parameters
@@ -129,15 +129,18 @@ def get_Cell(acquisition_id, cell, voxel_size = (300,103,103)):
         new_Cell : pd.Dataframe
     """
     #Integrity checks
-    check_parameter(acquisition_id = (int), cell = (dict), voxel_size = (tuple, list))
+    check_parameter(acquisition_id = (int), cell = (dict), voxel_size = (tuple, list), dapi = (np.ndarray))
+    check_array(dapi, ndim=3)
 
     voxel_size_yx = voxel_size[1] # la résolution dans le plan devrait être toujours x/y indep
     cell_mask = cell["cell_mask"]
     nuc_mask = cell["nuc_mask"]
     rna_coord = cell["rna_coord"]
     foci_coord = cell["foci"]
+    malat1_coord = cell["malat1_coord"]
     smfish = cell["smfish"]
 
+    #BigFish built in features
     features, features_names = compute_features(cell_mask= cell_mask, nuc_mask= nuc_mask, ndim= 3, rna_coord= rna_coord, smfish= smfish, foci_coord= foci_coord, voxel_size_yx= voxel_size_yx,
         centrosome_coord=None,
         compute_distance=True,
@@ -149,6 +152,18 @@ def get_Cell(acquisition_id, cell, voxel_size = (300,103,103)):
         compute_area=True,
         return_names=True)
     
+    #Custom features
+    mip_mean_intensity = mean_signal(cell, channel= dapi, projtype= 'mip')
+    mean_mean_intensity = mean_signal(cell, channel= dapi, projtype= 'mean')
+    malat1_spot_in_nuc = count_spots_in_mask(malat1_coord, nuc_mask)
+    malat1_spot_in_cyto = count_spots_in_mask(malat1_coord, cell_mask) - malat1_spot_in_nuc
+
+    features = np.append(features, [mip_mean_intensity, mean_mean_intensity, malat1_spot_in_nuc, malat1_spot_in_cyto])
+    features_names += ['Mean Intensity (MIP)', 'Mean Intensity (MeanProj)', 'malat1 spots in nucleus', 'malat1 spots in cytoplasm']
+    
+    
+
+
     header = ["id", "AcquisitionId"] + features_names
     data = np.append([0, acquisition_id], features)
     data = data.reshape([1,-1])
@@ -169,58 +184,3 @@ def _get_varname(var):
 
 def get_datetime():
     return dt.datetime.now().strftime("%Y%m%d %H-%M-%S \n")
-
-
-
-
-
-#TODO : Create output.py
-def print_parameters(path_out, *parameters, printDateTime= True):
-    """
-    Print parameters into a .txt file
-    
-    Parameters
-    ----------
-        path_out : str
-            full_path to saving location.
-        *parameters : args(int, float, str)
-            parameters to print into text file.
-    """
-
-    check_parameter(path_out = (str))
-    if path_out[len(path_out)-1] == '/' : path_out += 'parameters.txt'
-    elif path_out[len(path_out)-4 : len(path_out)] != '.txt' : path_out += '.txt'
-
-    parameter_file = open(path_out, "w")
-
-    #Header
-    parameter_file.write("PARAMETERS\n")
-    parameter_file.write("\n############\n")
-
-    if printDateTime:
-        datetime = get_datetime()
-        parameter_file.write(datetime)
-        parameter_file.write("############\n\n")
-    
-    lines= []
-    for parameter in parameters :
-        name = _get_varname(parameter)
-        lines += ["{0} : {1}\n".format(name, parameter)]
-    parameter_file.writelines(lines)
-
-    parameter_file.close()
-
-
-def print_dict(dic, path_out):
-    check_parameter(path_out = (str), dic = (dict))
-    if path_out[len(path_out) -1] == '/' : path_out += 'dic.txt'
-    elif path_out[len(path_out)-4 : len(path_out)] != '.txt' : path_out += '.txt'
-
-    lines = []
-    for elmt in dic:
-        lines += "{0} : {1}\n".format(elmt, dic[elmt])
-
-
-    dict_file = open(path_out, "w")
-    dict_file.writelines(lines)
-    dict_file.close()

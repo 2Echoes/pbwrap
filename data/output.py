@@ -1,0 +1,52 @@
+from bigfish.stack import check_parameter
+from .getdata import get_datetime, _get_varname
+
+def print_parameters(path_out, *parameters, printDateTime= True):
+    """
+    Print parameters into a .txt file
+    
+    Parameters
+    ----------
+        path_out : str
+            full_path to saving location.
+        *parameters : args(int, float, str)
+            parameters to print into text file.
+    """
+
+    check_parameter(path_out = (str))
+    if path_out[len(path_out)-1] == '/' : path_out += 'parameters.txt'
+    elif path_out[len(path_out)-4 : len(path_out)] != '.txt' : path_out += '.txt'
+
+    parameter_file = open(path_out, "w")
+
+    #Header
+    parameter_file.write("PARAMETERS\n")
+    parameter_file.write("\n############\n")
+
+    if printDateTime:
+        datetime = get_datetime()
+        parameter_file.write(datetime)
+        parameter_file.write("############\n\n")
+    
+    lines= []
+    for parameter in parameters :
+        name = _get_varname(parameter)
+        lines += ["{0} : {1}\n".format(name, parameter)]
+    parameter_file.writelines(lines)
+
+    parameter_file.close()
+
+
+def print_dict(dic, path_out):
+    check_parameter(path_out = (str), dic = (dict))
+    if path_out[len(path_out) -1] == '/' : path_out += 'dic.txt'
+    elif path_out[len(path_out)-4 : len(path_out)] != '.txt' : path_out += '.txt'
+
+    lines = []
+    for elmt in dic:
+        lines += "{0} : {1}\n".format(elmt, dic[elmt])
+
+
+    dict_file = open(path_out, "w")
+    dict_file.writelines(lines)
+    dict_file.close()

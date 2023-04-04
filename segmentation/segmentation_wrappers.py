@@ -264,7 +264,7 @@ def Cytoplasm_segmentation_old(cy3, dapi= None, diameter= 250, maximal_distance=
 
 
 
-def pbody_segmentation(egfp, sigma = 2, threshold= None, small_object_size= None, fill_holes= True,  peaks_min_distance= 0) :
+def pbody_segmentation(egfp, sigma = 2, threshold= None, thresh_penalty= 1, small_object_size= None, fill_holes= True,  peaks_min_distance= 0) :
     """Performs Pbody segmentation on 2D or 3D egfp numpy array.
         Apply a log filter to the image which kernel is defined by sigma.
         Then a threshold is applied, if none is given compute automatic threshold from highest variation point in array histogram.
@@ -286,7 +286,9 @@ def pbody_segmentation(egfp, sigma = 2, threshold= None, small_object_size= None
 
     #Segmentation
     mask = stack.log_filter(egfp,sigma)
-    if threshold == None : threshold = get_histogramm_highest_varation_value(mask)
+    if threshold == None : 
+        threshold = get_histogramm_highest_varation_value(mask)
+        threshold *= thresh_penalty
     mask = seg.thresholding(mask, threshold)
     mask = seg.clean_segmentation(mask, small_object_size=small_object_size, fill_holes=fill_holes)
     #labelling
