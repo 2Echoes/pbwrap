@@ -56,3 +56,4 @@ def get_first_infocus(image, score_threshold = 9):
     if z >= image.shape[0] : 
         raise Warning("No slice scored above the threshold (focus score)")
     else : return z
+

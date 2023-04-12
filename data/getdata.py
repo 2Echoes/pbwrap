@@ -4,9 +4,10 @@ import re, inspect
 import numpy as np
 import CustomPandasFramework.PBody_project.DataFrames as DataFrame
 import CustomPandasFramework.operations as dataOp
-from bigfish.stack import check_parameter,read_image, check_array, mean_projection, maximum_projection
-from bigfish.classification import compute_features
+from bigfish.stack import check_parameter,read_image, check_array
+from bigfish.classification import compute_features, get_features_name
 from ..quantification import mean_signal, count_spots_in_mask
+from pbwrap.utils import from_label_get_centeroidscoords
 
 
 
@@ -112,7 +113,7 @@ def get_rnaname(acquisition_index, Input_frame):
 
 
 
-def get_Cell(acquisition_id, cell, dapi, voxel_size = (300,103,103)):
+def get_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,103)):
     """Returns DataFrame with expected Cell datashape containing all cell level features. Features are computed using bigFish built in functions.
     
     Parameters
@@ -129,9 +130,11 @@ def get_Cell(acquisition_id, cell, dapi, voxel_size = (300,103,103)):
         new_Cell : pd.Dataframe
     """
     #Integrity checks
-    check_parameter(acquisition_id = (int), cell = (dict), voxel_size = (tuple, list), dapi = (np.ndarray))
+    check_parameter(acquisition_id = (int), cell = (dict), voxel_size = (tuple, list), dapi = (np.ndarray), pbody_label = (np.ndarray))
     check_array(dapi, ndim=3)
+    check_array(pbody_label, ndim= 2) # TODO : code to update if 3D seg is performed for pbody_label.
 
+    #Extracting bigfish cell information
     voxel_size_yx = voxel_size[1] # la résolution dans le plan devrait être toujours x/y indep
     cell_mask = cell["cell_mask"]
     nuc_mask = cell["nuc_mask"]
@@ -139,10 +142,23 @@ def get_Cell(acquisition_id, cell, dapi, voxel_size = (300,103,103)):
     foci_coord = cell["foci"]
     malat1_coord = cell["malat1_coord"]
     smfish = cell["smfish"]
+    min_y, min_x, max_y, max_x = cell["bbox"]
+
+    #Computing pbody coords from masks
+    pbody_label = pbody_label[min_y : max_y, min_x : max_x]
+    pbody_mask = np.zeros_like(pbody_label)
+    pbody_mask[pbody_label > 0] = 1
+    pbody_mask = np.array(pbody_mask, dtype= bool)
+    centroids_dict = from_label_get_centeroidscoords(pbody_label)
+    pbody_centroids = np.array(list(zip(centroids_dict["centroid-0"], centroids_dict["centroid-1"])), dtype= int)
+    has_pbody = pbody_centroids.ndim > 1
+    del centroids_dict
+    
 
     #BigFish built in features
-    features, features_names = compute_features(cell_mask= cell_mask, nuc_mask= nuc_mask, ndim= 3, rna_coord= rna_coord, smfish= smfish, foci_coord= foci_coord, voxel_size_yx= voxel_size_yx,
-        centrosome_coord=None,
+    if not has_pbody:
+        features, features_names = compute_features(cell_mask= cell_mask, nuc_mask= nuc_mask, ndim= 3, rna_coord= rna_coord, smfish= smfish, foci_coord= foci_coord, voxel_size_yx= voxel_size_yx,
+        compute_centrosome=False,
         compute_distance=True,
         compute_intranuclear=True,
         compute_protrusion=True,
@@ -151,24 +167,45 @@ def get_Cell(acquisition_id, cell, dapi, voxel_size = (300,103,103)):
         compute_foci=True,
         compute_area=True,
         return_names=True)
+        
+    #if there is pbody
+    else:
+        features, features_names = compute_features(cell_mask= cell_mask, nuc_mask= nuc_mask, ndim= 3, rna_coord= rna_coord, smfish= smfish, centrosome_coord= pbody_centroids, foci_coord= foci_coord, voxel_size_yx= voxel_size_yx,
+            compute_centrosome=True,
+            compute_distance=True,
+            compute_intranuclear=True,
+            compute_protrusion=True,
+            compute_dispersion=True,
+            compute_topography=True,
+            compute_foci=True,
+            compute_area=True,
+            return_names=True)
     
     #Custom features
+    #signal features
     mip_mean_intensity = mean_signal(cell, channel= dapi, projtype= 'mip')
     mean_mean_intensity = mean_signal(cell, channel= dapi, projtype= 'mean')
+    #malat features
     malat1_spot_in_nuc = count_spots_in_mask(malat1_coord, nuc_mask)
     malat1_spot_in_cyto = count_spots_in_mask(malat1_coord, cell_mask) - malat1_spot_in_nuc
-
-    features = np.append(features, [mip_mean_intensity, mean_mean_intensity, malat1_spot_in_nuc, malat1_spot_in_cyto])
-    features_names += ['Mean Intensity (MIP)', 'Mean Intensity (MeanProj)', 'malat1 spots in nucleus', 'malat1 spots in cytoplasm']
-    
-    
+    #pbody features
+    rna_spot_in_pbody = count_spots_in_mask(rna_coord, pbody_mask)
+    pbody_num = len(pbody_centroids)
 
 
+    #Adding custom features to DataFrames
+    features = np.append(features, [mip_mean_intensity, mean_mean_intensity, malat1_spot_in_nuc, malat1_spot_in_cyto, rna_spot_in_pbody, pbody_num])
+    features_names += ['Mean Intensity (MIP)', 'Mean Intensity (MeanProj)', 'malat1 spots in nucleus', 'malat1 spots in cytoplasm', 'rna spots in body', 'pbody number']
     header = ["id", "AcquisitionId"] + features_names
     data = np.append([0, acquisition_id], features)
     data = data.reshape([1,-1])
+
+    #Ensuring correct datashape
     datashape_ref = DataFrame.newframe_Cell()
     new_Cell = pd.DataFrame(data= data, columns= header)
+    if not has_pbody :
+        for feature in get_features_name(names_features_centrosome= True) :
+            new_Cell[feature] = np.NaN
     dataOp.check_samedatashape(new_Cell, datashape_ref) # Ensure datashape stability along different runs
 
     return new_Cell
@@ -183,4 +220,4 @@ def _get_varname(var):
 
 
 def get_datetime():
-    return dt.datetime.now().strftime("%Y%m%d %H-%M-%S \n")
+    return dt.datetime.now().strftime("%Y%m%d %H-%M-%S")

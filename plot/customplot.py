@@ -3,19 +3,29 @@ import numpy as np
 import bigfish.stack as stack
 import bigfish.plot as plot 
 from skimage.measure import regionprops
+from .utils import from_label_get_centeroidscoords
 
 def plot_labels(labelled_image, path_output= None, show= True, axis= False, close= True):
-    plt.figure(figsize= (10,10))
+    #TODO : Comment
     stack.check_parameter(labelled_image = (np.ndarray), show = (bool))
-    rescaled_image = stack.rescale(labelled_image, channel_to_stretch= 0)
+    stack.check_array(labelled_image, ndim= 2)
+    plt.figure(figsize= (10,10))
+    rescaled_image = stack.rescale(np.array(labelled_image, dtype= np.int32), channel_to_stretch= 0)
     plot = plt.imshow(rescaled_image)
     plot.axes.get_xaxis().set_visible(axis)
     plot.axes.get_yaxis().set_visible(axis)
     plt.tight_layout()
 
-    regions = regionprops(label_image=labelled_image)
-    for props in regions :
-        an = plt.annotate(str(labelled_image[round(props.centroid[0]),round(props.centroid[1])]), [round(props.centroid[1]), round(props.centroid[0])])
+    centroid_dict = from_label_get_centeroidscoords(labelled_image)
+    labels = centroid_dict["label"]
+    Y = centroid_dict["centroid-0"]
+    X = centroid_dict["centroid-1"]
+    centroids = zip(Y,X)
+
+    for label in labels :
+        y,x = next(centroids)
+        y,x = round(y), round(x)
+        an = plt.annotate(str(label), [round(x), round(y)])
 
     if not axis : plt.cla
     if show : plt.show()

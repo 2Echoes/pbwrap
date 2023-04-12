@@ -264,7 +264,7 @@ def Cytoplasm_segmentation_old(cy3, dapi= None, diameter= 250, maximal_distance=
 
 
 
-def pbody_segmentation(egfp, sigma = 2, threshold= None, thresh_penalty= 1, small_object_size= None, fill_holes= True,  peaks_min_distance= 0) :
+def pbody_segmentation(egfp, sigma = 2, threshold= None, thresh_penalty= 1, small_object_size= None, fill_holes= True) :
     """Performs Pbody segmentation on 2D or 3D egfp numpy array.
         Apply a log filter to the image which kernel is defined by sigma.
         Then a threshold is applied, if none is given compute automatic threshold from highest variation point in array histogram.
@@ -283,21 +283,34 @@ def pbody_segmentation(egfp, sigma = 2, threshold= None, thresh_penalty= 1, smal
 
     check_parameter(egfp = (np.ndarray))
     check_array(egfp, ndim= [2,3])
-
+    dim = egfp.ndim
     #Segmentation
     mask = stack.log_filter(egfp,sigma)
-    if threshold == None : 
-        threshold = get_histogramm_highest_varation_value(mask)
-        threshold *= thresh_penalty
-    mask = seg.thresholding(mask, threshold)
-    mask = seg.clean_segmentation(mask, small_object_size=small_object_size, fill_holes=fill_holes)
-    #labelling
-    if peaks_min_distance != 0 :
-        egfp_label = watershed_segmentation(egfp, mask, peaks_min_distance=peaks_min_distance)
+    if dim == 2 :
+        if threshold == None : 
+            threshold = get_histogramm_highest_varation_value(mask)
+            threshold *= thresh_penalty
+        mask = seg.thresholding(mask, threshold)
+        mask = seg.clean_segmentation(mask, small_object_size=small_object_size, fill_holes=fill_holes)
     else : 
+        for z in range(0,egfp.shape[0]):
+            if threshold == None : 
+                threshold = get_histogramm_highest_varation_value(mask[z])
+                threshold *= thresh_penalty
+            mask[z] = seg.thresholding(mask[z], threshold)
+            mask[z] = seg.clean_segmentation(np.array(mask[z],dtype= bool), small_object_size=small_object_size, fill_holes=fill_holes)
+
+    #labelling
+    if dim == 2 : 
         egfp_label = seg.label_instances(mask)
-    egfp_label = np.array(egfp_label, dtype= np.int64)
-    egfp_label = seg.clean_segmentation(egfp_label, small_object_size=small_object_size, fill_holes=fill_holes)
+        egfp_label = np.array(egfp_label, dtype= np.int64)
+
+    else :
+        slice_list = unstack_slices(mask)
+        egfp_label = from2Dlabel_to3Dlabel(slice_list, maximal_distance= 10)
+
+
+
 
     return egfp_label
 

@@ -1,6 +1,10 @@
 import numpy as np
 from bigfish.stack import check_parameter
 
+def timeout_handler(signum, frame):
+    raise TimeoutError('Acquisition processing timeout.')
+
+
 def _is_sameshape(*arrays) :
     """Returns True if numpy *arrays have all the same shape or if al lists have the same length.
     
