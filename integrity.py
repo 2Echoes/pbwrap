@@ -1,8 +1,9 @@
 import numpy as np
 from bigfish.stack import check_parameter
+from pbwrap.errors_handling import DetectionTimeOutError*
 
-def timeout_handler(signum, frame):
-    raise TimeoutError('Acquisition processing timeout.')
+def detectiontimeout_handler(signum, frame):
+    raise DetectionTimeOutError('Acquisition processing timeout.')
 
 
 def _is_sameshape(*arrays) :

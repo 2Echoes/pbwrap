@@ -64,8 +64,16 @@ class parameter_log(log) :
 class run_log(log) :
     def __init__(self, name, path) -> None:
         super().__init__(name, path)
+        self.sucess_count = 0
+        self.error_count = 0
         with open(self.path + self.name, 'w') as logfile :
             logfile.write("Log : {0}\nCreated on : {1}\n\n".format(self.name, self.creationdate))
+
+    def sucess(self):
+        self.sucess_count += 1
+    
+    def failure(self):
+        self.error_count += 1
 
     def update(self, error_log: error_log, current_acquisition: int, filename: str, acquisition_start= 0) :
         """Updates the log file during analysis pipeline."""
@@ -82,9 +90,9 @@ class run_log(log) :
         with open(self.path + self.name, 'w') as logfile :
             lines = ["Log : {0}\nCreated on : {1}\n\n".format(self.name, self.creationdate),
                      "Log finished on : {0} after a process time of {1}s.\n\n".format(get_datetime(), log_report['run time']),
-                     "Total acquisition number : {0}\n".format(log_report['acquisition number'] + log_report['error number']),
-                     "Success : {0}".format(log_report['acquisition number']),
-                     "Error : {0}".format(log_report['error number']),
+                     "Total acquisition number : {0}\n".format(self.sucess_count + self.error_count),
+                     "Success : {0}".format(self.sucess_count),
+                     "Error : {0}".format(self.error_count),
                      "Total cell detected : {0}".format(log_report['cell number']),
                      "\n### Integrity Checks ###\n",
                      "Acquisition DataFrame is empty : {0}.".format(log_report['Acquisition is_empty']),
