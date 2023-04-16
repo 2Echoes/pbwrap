@@ -1,6 +1,7 @@
 import bigfish.stack as stack
 import bigfish.detection as detection
 from bigfish.detection.spot_detection import local_maximum_detection, get_object_radius_pixel
+from pbwrap.errors_handling import DetectionError, NoSpotError
 import numpy as np
 
 def spot_decomposition_nobckgrndrmv(image, spots, spot_radius, voxel_size_nm, alpha= 0.5, beta= 1):
@@ -277,5 +278,8 @@ def detect_spots(image,
     
     spots,threshold = detection.detect_spots(images=image, threshold=threshold, remove_duplicate= remove_duplicate, return_threshold= True, voxel_size=voxel_size, spot_radius=spot_radius, log_kernel_size=log_kernel_size, minimum_distance=minimum_distance)
     
+    if len(spots) == 0 :
+        raise NoSpotError("No spots were detected.")
+
     if return_threshold : return spots, threshold
     return spots

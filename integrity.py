@@ -1,6 +1,6 @@
 import numpy as np
 from bigfish.stack import check_parameter
-from pbwrap.errors_handling import DetectionTimeOutError*
+from pbwrap.errors_handling import DetectionTimeOutError
 
 def detectiontimeout_handler(signum, frame):
     raise DetectionTimeOutError('Acquisition processing timeout.')

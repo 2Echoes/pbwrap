@@ -10,13 +10,14 @@ import scipy.ndimage as ndi
 
 from bigfish.stack import check_array, check_parameter
 from pbwrap.integrity import check_sameshape
+from pbwrap.errors_handling import SegmentationError, PbodySegmentationError, CellnumberError
 from skimage.segmentation import random_walker, watershed 
 from skimage.transform import resize
 from skimage.feature import peak_local_max
 
 
 ###### Image segmentation
-def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False, model_type= 'hek_nuc_1.0') :
+def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False, model_type= 'hek_nuc_1.0', min_cell_number = 0) :
     """3D Nucleus segmentation using Cellpose from a dapi 3D grayscale image.
 
     Parameters
@@ -30,6 +31,8 @@ def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False, mod
             Define the ratio between the plane (xy) resolution to the height (z) resolution. For a voxel size (300,100,100) use 3.
         use_gpu :   Bool. 
             Enable Cellpose build-in option to use GPU.
+        min cell number : int.
+            Raises CellNumberError(SegmentattionError) if less than min_cellnumber cells are segmented
                 
     Returns
     -------
@@ -61,6 +64,7 @@ def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False, mod
     else : nucleus_label = seg.clean_segmentation(nucleus_label, small_object_size= min_objct_size, delimit_instance=True,  fill_holes= True)
     nucleus_label = seg.remove_disjoint(nucleus_label)
 
+    if len(nucleus_label) < min_cell_number : raise CellnumberError("{0} nucleus were segmented, minimum cells number was set at {1}".format(len(nucleus_label), min_cell_number))
     return nucleus_label
 
 
@@ -132,7 +136,7 @@ def Nucleus_segmentation_old(dapi, diameter= 150, anisotropy= 3, use_gpu= False)
 
 
 
-def Cytoplasm_segmentation(cy3, dapi= None, diameter= 250, maximal_distance= 100, use_gpu= False, model_type = "Hek_1.0") :
+def Cytoplasm_segmentation(cy3, dapi= None, diameter= 250, maximal_distance= 100, use_gpu= False, model_type = "Hek_2.0", min_cell_number= 0) :
     
     """Due to bad performance using 3D cellpose with cy3 channel image. A 2D cell segmentation is performed for each slice and a 3D labelling is performed using a closest centroid method.
 
@@ -183,7 +187,7 @@ def Cytoplasm_segmentation(cy3, dapi= None, diameter= 250, maximal_distance= 100
     else : 
         cytoplasm_label = seg.clean_segmentation(np.array(cytoplasm_labels,dtype = np.int64), small_object_size= round(np.pi*np.power(diameter,2)/8))  
 
-
+    if len(cytoplasm_label) < min_cell_number : raise CellnumberError("{0} cells were segmented, minimum cells number was set at {1}".format(len(cytoplasm_label), min_cell_number))
     return cytoplasm_label
 
 def Cytoplasm_segmentation_old(cy3, dapi= None, diameter= 250, maximal_distance= 100, use_gpu= False) :
@@ -311,7 +315,7 @@ def pbody_segmentation(egfp, sigma = 2, threshold= None, thresh_penalty= 1, smal
 
 
 
-
+    if len(egfp_label) == 0 : raise PbodySegmentationError("No pbody was segmentated.")
     return egfp_label
 
 
