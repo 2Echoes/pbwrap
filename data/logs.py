@@ -96,9 +96,9 @@ class run_log(log) :
                      "Total cell detected : {0}".format(log_report['cell number']),
                      "\n### Integrity Checks ###\n",
                      "Acquisition DataFrame is empty : {0}.".format(log_report['Acquisition is_empty']),
-                     "Acquisition DataFrame has valid id column : {0}.".format(log_report['AcquisitionId is_primarykey']),
+                     "Acquisition DataFrame has valid id column : {0}.".format(log_report['AcquisitionId is_primary']),
                      "Cell DataFrame is empty : {0}.".format(log_report['Cell is_empty']),
-                     "Cell DataFrame has valid id column : {0}.".format(log_report['CellId is_primarykey']),
+                     "Cell DataFrame has valid id column : {0}.".format(log_report['CellId is_primary']),
                      "Cell defines (N,1) relation with Acquisition : {0}".format(log_report['Cell defines (N,1) relation with Acquisition'])
                      ]
             logfile.writelines(lines)
