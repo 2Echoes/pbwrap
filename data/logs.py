@@ -36,7 +36,7 @@ class error_log(log) :
         self.write_error(filename= filename, error= msg)
 
     def output_errors(self) :
-        Errors = pd.DataFrame(columns= ['rootfilename', 'error'], data= [self.failingfiles, self.errors])
+        Errors = pd.DataFrame(columns= ['rootfilename', 'error'], data= zip(self.failingfiles, self.errors))
         Errors.to_feather(self.path + 'Errors')
 
 
@@ -91,14 +91,14 @@ class run_log(log) :
             lines = ["Log : {0}\nCreated on : {1}\n\n".format(self.name, self.creationdate),
                      "Log finished on : {0} after a process time of {1}s.\n\n".format(get_datetime(), log_report['run time']),
                      "Total acquisition number : {0}\n".format(self.sucess_count + self.error_count),
-                     "Success : {0}".format(self.sucess_count),
-                     "Error : {0}".format(self.error_count),
-                     "Total cell detected : {0}".format(log_report['cell number']),
+                     "Success : {0}\n".format(self.sucess_count),
+                     "Error : {0}\n".format(self.error_count),
+                     "Total cell detected : {0}\n".format(log_report['cell number']),
                      "\n### Integrity Checks ###\n",
-                     "Acquisition DataFrame is empty : {0}.".format(log_report['Acquisition is_empty']),
-                     "Acquisition DataFrame has valid id column : {0}.".format(log_report['AcquisitionId is_primary']),
-                     "Cell DataFrame is empty : {0}.".format(log_report['Cell is_empty']),
-                     "Cell DataFrame has valid id column : {0}.".format(log_report['CellId is_primary']),
-                     "Cell defines (N,1) relation with Acquisition : {0}".format(log_report['Cell defines (N,1) relation with Acquisition'])
+                     "Acquisition DataFrame is empty : {0}.\n".format(log_report['Acquisition is_empty']),
+                     "Acquisition DataFrame has valid id column : {0}.\n".format(log_report['AcquisitionId is_primary']),
+                     "Cell DataFrame is empty : {0}.\n".format(log_report['Cell is_empty']),
+                     "Cell DataFrame has valid id column : {0}.\n".format(log_report['CellId is_primary']),
+                     "Cell defines (N,1) relation with Acquisition : {0}\n".format(log_report['Cell defines (N,1) relation with Acquisition'])
                      ]
             logfile.writelines(lines)
