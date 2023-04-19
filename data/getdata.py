@@ -211,6 +211,29 @@ def get_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,103)
     return new_Cell
 
 
+def from_Acquisition_get_rna(Acquisition: pd.DataFrame) -> pd.Index :
+    return list(Acquisition.value_counts(subset= "rna name").index)
+
+
+
+def from_rna_get_Cells(rna: 'list[str]', Cell: pd.DataFrame, Acquisition: pd.DataFrame) -> pd.DataFrame :
+    """
+    Returns sub-table from Cell containing only cells which rna name (from Acquisition) matches one in 'rna'.
+    Also 'rna name' column is added to returned Cell sub-table.
+    """
+
+
+    if type(rna) == str : rna = [rna]
+
+    join_frame = dataOp.keep_columns(Dataframe= pd.merge(Cell, Acquisition, how= 'left', left_on= 'AcquisitionId', right_on= 'id'),
+                                     columns= ["rna name"] + list(Cell.columns))
+    print(join_frame)
+    drop_index = join_frame.query('`rna name` not in {0}'.format(rna)).index
+    join_frame = join_frame.drop(axis= 0, index= drop_index)
+
+    return join_frame
+
+
 
 def _get_varname(var):
     #To be used  within a function.
