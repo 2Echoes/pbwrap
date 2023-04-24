@@ -14,9 +14,13 @@ def from_label_get_centeroidscoords(label):
     return centroid
 
 
-def gene_bar_plot(rna_list: 'list[str]', values: 'list[float]', errors: 'list[float]') :
+def gene_bar_plot(rna_list: 'list[str]', values: 'list[float]', errors: 'list[float]', legend: 'list[str]'= None, width = 0.8, error_width = 3) :
     
+
+    #Exception thrower
     is_listoflist = False
+
+    #multi data set
     if type(values[0]) == list : 
         if type(errors[0]) != list : raise TypeError("When passing several bar sets to plot, it is expected that several errors sets be passed as well")
         is_listoflist = True
@@ -24,28 +28,45 @@ def gene_bar_plot(rna_list: 'list[str]', values: 'list[float]', errors: 'list[fl
         if type(values[0]) != list : raise TypeError("When passing several errors sets to plot, it is expected that several bar sets be passed as well")
         is_listoflist = True
 
+    #len list matches
+    if not is_listoflist :
+        if not(len(rna_list) == len(values) == len(errors)) : raise ValueError("rna, values and errors lengths must match")
+    else :
+        #Set lengths match
+        if not(len(values) == len(errors)) and legend == None : raise ValueError("value sets and errors sets lengths must match")
+        elif not(len(values) == len(errors) == len(legend)) : raise ValueError("value sets and errors sets and legend lengths must match")
+        #Data lengths match
+        for set in range(0,len(values)) :
+            if not(len(rna_list) == len(values[set]) == len(errors[set])) : raise ValueError("values and errors lengths must match")
+
+    
+    #Init plot
     color_list = ['red','blue','green','orange','purple','brown','cyan'] * (round(len(rna_list)/7) + 1)
     fig = plt.figure(figsize= (20,10))
     ax = fig.gca()
-    width = 1
 
+    #Case when several bars are plotted for each genes
     if is_listoflist :
         bar_number = len(values)
         length = width/bar_number
+        error_width /= bar_number
         abs = np.arange(0,len(values[0]))
         barshift = np.arange(-(width/2 - length/2),(width/2), step = length)
         color_list = color_list[:len(barshift)]
         assert len(barshift) == len(values), "barshift : {0} ; values : {1}".format(len(barshift), len(values))
-        for bar_set, error_set, shift, color in zip(values, errors, barshift, color_list) :
+        for bar_set, error_set, shift, color, label in zip(values, errors, barshift, color_list, legend) :
             X = abs - shift
-            ax.bar(X, bar_set, yerr= error_set, capsize= 3, color= color, width= length, align= 'center')
-
+            if legend != None : ax.bar(X, bar_set, yerr= error_set, capsize= error_width, color= color, width= length, align= 'center', label= label)
+            else : ax.bar(X, bar_set, yerr= error_set, capsize= error_width, color= color, width= length, align= 'center')
+        if legend != None : ax.legend()
+    
+    #Case one bar per gene
     else :
-        plt.bar(rna_list, values, yerr= errors, capsize= 3, color= color_list[:len(rna_list)], width= width, align= 'center')
+        plt.bar(rna_list, values, yerr= errors, capsize= error_width, color= color_list[:len(rna_list)], width= width, align= 'center')
     
     plt.axis(ymin= 0)
     
-    #
+    #Spacing
     plt.xticks(range(len(rna_list)))
     xticks = ax.get_xticks()
     ax.set_xticks(xticks, labels= rna_list, rotation= 90)

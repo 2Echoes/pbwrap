@@ -79,6 +79,7 @@ def cluster_per_cell() :
 def RNA_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list[str]' = None, path_output= None, show = True, ext= 'png', title = "RNA in pbody"):
 
     join_frame = pd.merge(Cell, Acquisition.loc[:,["id", "rna name"]], how= "left", left_on= "AcquisitionId", right_on= "id")
+    join_frame = join_frame.drop(axis= 0, index= join_frame[join_frame["pbody number"] == 0].index)
     if gene_list == None : gene_list = gdata.from_Acquisition_get_rna(Acquisition)
     
     std_list= []
@@ -95,7 +96,7 @@ def RNA_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list
     if show : plt.show()
     plt.close()
 
-def RNApercentage_in_out_nlucleus(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list[str]' = None, path_output= None, show = True, ext= 'png', title = "Proportion on RNA inside or outside nucleus") :
+def RNApercentage_in_out_nucleus(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list[str]' = None, path_output= None, show = True, ext= 'png', title = "Proportion of RNA inside and outside nucleus") :
 
     join_frame = pd.merge(Cell, Acquisition.loc[:,["id", "rna name"]], how= "left", left_on= "AcquisitionId", right_on= "id")
     if gene_list == None : gene_list = gdata.from_Acquisition_get_rna(Acquisition)
@@ -110,8 +111,30 @@ def RNApercentage_in_out_nlucleus(Acquisition: pd.DataFrame, Cell: pd.DataFrame,
         std_list += [gene_Cell.loc[:, "proportion_rna_in_nuc"].std() * 100]
 
     #plot
-    fig = gene_bar_plot(gene_list, [mean_value_inside, mean_value_outside], [std_list,std_list])
+    fig = gene_bar_plot(gene_list, [mean_value_inside, mean_value_outside], [std_list]*2, legend = ["inside nuc", "outside nuc"])
     plt.title(title)
+    if path_output != None : save_plot(path_output, ext)
+    if show : plt.show()
+    plt.close()
+
+
+def Malat_inNuc_asDapiIntensity(Cell: pd.DataFrame, projtype = 'MIP', out = False, path_output= None, show = True, ext= 'png', title = None) :
+
+    if projtype.upper() == 'MIP' : X = "Mean Intensity (MIP)"
+    elif projtype.upper() == 'MEAN' : X = "Mean Intensity (MeanProj)"
+    else : raise ValueError("projtype shoud either be 'mip' or 'mean', it is {0}.".format(projtype))
+
+    if out : Y = 'malat1 spots out nucleus'
+    else : Y = 'malat1 spots in nucleus'
+    Cell["SignalArea"] = Cell[X] * Cell["nuc_area"]
+    data = Cell.loc[:, ["SignalArea", Y]].sort_values("SignalArea")
+    fig = plt.figure(figsize=(20,10))
+    plt.plot(data.iloc[:,0], data.iloc[:,1], 'r.')
+    ax = fig.gca()
+    ax.axis(xmin= 0, ymin= 0)
+    if title != None : plt.title(title)
+    plt.xlabel(X)
+    plt.ylabel(Y)
     if path_output != None : save_plot(path_output, ext)
     if show : plt.show()
     plt.close()
