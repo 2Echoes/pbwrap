@@ -112,7 +112,12 @@ def save_plot(path_output, ext):
     ext : str or List[str]
         Extension used to save the plot. If it is a list of strings, the plot
         will be saved several times.
+    
+    Code from BigFish package.
+    BSD 3-Clause License
 
+    Copyright © 2020, Arthur Imbert
+    All rights reserved.
     """
     # add extension at the end of the filename
     if ext == None : ext ='png'

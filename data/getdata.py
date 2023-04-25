@@ -12,9 +12,9 @@ from pbwrap.utils import from_label_get_centeroidscoords
 
 
 
-def get_images(path_input, Input, acquisition_index, channels_list= None) :
+def get_images_as_gen(path_input: str, Input: pd.DataFrame, acquisition_list: 'list[int]', channels_list: 'list[str]'= None) :
     """ Open images from an acquisition within the Input DataFrame using bigfish open method. 
-        Outputs as a list of image which can be 2D or 3D depending on the file placed in the input folder.
+        Outputs as a generator of images ordered by rootfilename then by channel_name (A->Z) .
     
     Parameters
     ----------
@@ -38,19 +38,68 @@ def get_images(path_input, Input, acquisition_index, channels_list= None) :
         List of images open using bigfish.stack.read_image()
     """
 
-    #Integrity checks
-    check_parameter(path_input = (str), Input = (pd.DataFrame), acquisition_index = (int), channels_list = (list, type(None)))
+    #Integrity checks)
+    check_parameter(path_input = (str), Input = (pd.DataFrame), acquisition_list = (list, int), channels_list = (list, str, type(None)))
 
-    for string in channels_list : check_parameter(string = (str))
-
+    if type(channels_list) == str : channels_list = [channels_list]
+    if type(acquisition_list) == int : acquisition_list = [int]
     if channels_list == None :
          channels_list = Input.values_count(subset= "channel").index.tolist()
 
+
+    # images = []
+    for acquisition in acquisition_list :
+        index = Input.query("`acquisition index` == {0} and channel in {1}".format(acquisition, channels_list)).sort_values(["filename", "channel"]).index
+        for fileindex in index:
+            filename = Input.at[fileindex, "filename"]
+            images = read_image(path= path_input + filename)
+            yield images
+
+
+
+def get_images_as_list(path_input: str, Input: pd.DataFrame, acquisition_list: 'list[int]', channels_list: 'list[str]'= None) :
+    """ Open images from an acquisition within the Input DataFrame using bigfish open method. 
+        Outputs as a generator of images ordered by rootfilename then by channel_name (A->Z) .
+    
+    Parameters
+    ----------
+
+        path_input : str
+            Full path to the input folder.
+        Input : pd.DataFrame
+            Input DataFrame resulting from get_Input
+        acquisition_index : int
+            index refering to which acquisition in the Input frame is to get.
+        channels_list : List[str]
+            List of strings indicating which channels are to be opened. 
+            Note that the output list order will correspond to the order of channels_list.
+            if None all channels will be output and sorted in alphabetical order A -> Z.
+
+                
+    Returns
+    -------
+    
+        images : List[np.ndarray]
+        List of images open using bigfish.stack.read_image()
+    """
+
+    #Integrity checks)
+    check_parameter(path_input = (str), Input = (pd.DataFrame), acquisition_list = (list, int), channels_list = (list, str, type(None)))
+
+    if type(channels_list) == str : channels_list = [channels_list]
+    if type(acquisition_list) == int : acquisition_list = [int]
+    if channels_list == None :
+         channels_list = Input.values_count(subset= "channel").index.tolist()
+
+
+    # images = []
     images = []
-    for channel in channels_list :
-         filename = Input.loc[Input["channel"] == channel].reset_index(drop= True).at[acquisition_index, "filename"]
-         images += [read_image(path= path_input + filename)]
-    return images
+    for acquisition in acquisition_list :
+        index = Input.query("`acquisition index` == {0} and channel in {1}".format(acquisition, channels_list)).sort_values(["filename", "channel"]).index
+        for fileindex in index:
+            filename = Input.at[fileindex, "filename"]
+            images += [read_image(path= path_input + filename)]
+            return images
 
 def get_acquisition_num(Input) :
     """ Returns the number of acquistion that will be computed from data placed in the input folder.

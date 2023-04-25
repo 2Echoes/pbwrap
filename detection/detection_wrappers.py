@@ -1,7 +1,7 @@
 import bigfish.stack as stack
 import bigfish.detection as detection
-from bigfish.detection.spot_detection import local_maximum_detection, get_object_radius_pixel
-from pbwrap.errors_handling import DetectionError, NoSpotError
+from bigfish.detection.spot_detection import local_maximum_detection, get_object_radius_pixel, _get_candidate_thresholds, spots_thresholding, get_breaking_point, _get_spot_counts
+from pbwrap.errors_handling import NoSpotError
 import numpy as np
 
 def spot_decomposition_nobckgrndrmv(image, spots, spot_radius, voxel_size_nm, alpha= 0.5, beta= 1):
@@ -125,7 +125,7 @@ def spot_decomposition_nobckgrndrmv(image, spots, spot_radius, voxel_size_nm, al
 
 
 
-def detect_spots(image,
+def mono_threshold_detect_spots(image,
         threshold=None,
         remove_duplicate=True,
         return_threshold=False,
@@ -198,7 +198,7 @@ def detect_spots(image,
         Threshold used to discriminate spots from noisy blobs.
 
     """
-    stack.check_parameter(image = (np.ndarray), threshold_factor= (int, float))
+    stack.check_parameter(threshold_factor= (int, float))
     ndim = image.ndim
     # check consistency between parameters - detection with voxel size and
     # spot radius
@@ -283,3 +283,340 @@ def detect_spots(image,
 
     if return_threshold : return spots, threshold
     return spots
+
+
+
+##################################################################################################################
+"""
+Below code was directly modified from the bigfish package : https://github.com/fish-quant/big-fish
+
+BSD 3-Clause License
+Copyright © 2020, Arthur Imbert
+All rights reserved.
+"""
+
+def detect_spots(
+        images,
+        threshold=None,
+        threshold_penalty: float = None,
+        remove_duplicate=True,
+        return_threshold=False,
+        voxel_size=None,
+        spot_radius=None,
+        log_kernel_size=None,
+        minimum_distance=None):
+
+    """
+    Pbwrap : In addition to original code we added a parameter : threshold_penalty : float which is multiplied with the automatic threshold setting.
+
+    Apply LoG filter followed by a Local Maximum algorithm to detect spots
+    in a 2-d or 3-d image.
+
+    #. We smooth the image with a LoG filter.
+    #. We apply a multidimensional maximum filter.
+    #. A pixel which has the same value in the original and filtered images
+       is a local maximum.
+    #. We remove local peaks under a threshold.
+    #. We keep only one pixel coordinate per detected spot.
+
+    Parameters
+    ----------
+    images : List[np.ndarray] or np.ndarray
+        Image (or list of images) with shape (z, y, x) or (y, x). If several
+        images are provided, the same threshold is applied.
+    threshold : int, float or None
+        A threshold to discriminate relevant spots from noisy blobs. If None,
+        optimal threshold is selected automatically. If several images are
+        provided, one optimal threshold is selected for all the images.
+    threshold_penalty : float
+        When threshold is computed automatically this float is multiplied with 
+        the computed threshold before application on spot detection.
+    remove_duplicate : bool
+        Remove potential duplicate coordinates for the same spots. Slow the
+        running.
+    return_threshold : bool
+        Return the threshold used to detect spots.
+    voxel_size : int, float, Tuple(int, float), List(int, float) or None
+        Size of a voxel, in nanometer. One value per spatial dimension (zyx or
+        yx dimensions). If it's a scalar, the same value is applied to every
+        dimensions. Not used if 'log_kernel_size' and 'minimum_distance' are
+        provided.
+    spot_radius : int, float, Tuple(int, float), List(int, float) or None
+        Radius of the spot, in nanometer. One value per spatial dimension (zyx
+        or yx dimensions). If it's a scalar, the same radius is applied to
+        every dimensions. Not used if 'log_kernel_size' and 'minimum_distance'
+        are provided.
+    log_kernel_size : int, float, Tuple(int, float), List(int, float) or None
+        Size of the LoG kernel. It equals the standard deviation (in pixels)
+        used for the gaussian kernel (one for each dimension). One value per
+        spatial dimension (zyx or yx dimensions). If it's a scalar, the same
+        standard deviation is applied to every dimensions. If None, we estimate
+        it with the voxel size and spot radius.
+    minimum_distance : int, float, Tuple(int, float), List(int, float) or None
+        Minimum distance (in pixels) between two spots we want to be able to
+        detect separately. One value per spatial dimension (zyx or yx
+        dimensions). If it's a scalar, the same distance is applied to every
+        dimensions. If None, we estimate it with the voxel size and spot
+        radius.
+
+    Returns
+    -------
+    spots : List[np.ndarray] or np.ndarray, np.int64
+        Coordinates (or list of coordinates) of the spots with shape
+        (nb_spots, 3) or (nb_spots, 2), for 3-d or 2-d images respectively.
+    threshold : int or float
+        Threshold used to discriminate spots from noisy blobs.
+
+    """
+    # check parameters
+    stack.check_parameter(
+        threshold=(int, float, type(None)),
+        threshold_penalty= (int,float,type(None)),
+        remove_duplicate=bool,
+        return_threshold=bool,
+        voxel_size=(int, float, tuple, list, type(None)),
+        spot_radius=(int, float, tuple, list, type(None)),
+        log_kernel_size=(int, float, tuple, list, type(None)),
+        minimum_distance=(int, float, tuple, list, type(None)))
+
+    # if one image is provided we enlist it
+    if not isinstance(images, list):
+        stack.check_array(
+            images,
+            ndim=[2, 3],
+            dtype=[np.uint8, np.uint16, np.float32, np.float64])
+        ndim = images.ndim
+        images = [images]
+        is_list = False
+    else:
+        ndim = None
+        for i, image in enumerate(images):
+            stack.check_array(
+                image,
+                ndim=[2, 3],
+                dtype=[np.uint8, np.uint16, np.float32, np.float64])
+            if i == 0:
+                ndim = image.ndim
+            else:
+                if ndim != image.ndim:
+                    raise ValueError("Provided images should have the same "
+                                     "number of dimensions.")
+        is_list = True
+
+    # check consistency between parameters - detection with voxel size and
+    # spot radius
+    if (voxel_size is not None and spot_radius is not None
+            and log_kernel_size is None and minimum_distance is None):
+        if isinstance(voxel_size, (tuple, list)):
+            if len(voxel_size) != ndim:
+                raise ValueError("'voxel_size' must be a scalar or a sequence "
+                                 "with {0} elements.".format(ndim))
+        else:
+            voxel_size = (voxel_size,) * ndim
+        if isinstance(spot_radius, (tuple, list)):
+            if len(spot_radius) != ndim:
+                raise ValueError("'spot_radius' must be a scalar or a "
+                                 "sequence with {0} elements.".format(ndim))
+        else:
+            spot_radius = (spot_radius,) * ndim
+        log_kernel_size = get_object_radius_pixel(
+            voxel_size_nm=voxel_size,
+            object_radius_nm=spot_radius,
+            ndim=ndim)
+        minimum_distance = get_object_radius_pixel(
+            voxel_size_nm=voxel_size,
+            object_radius_nm=spot_radius,
+            ndim=ndim)
+
+    # check consistency between parameters - detection with kernel size and
+    # minimal distance
+    elif (voxel_size is None and spot_radius is None
+          and log_kernel_size is not None and minimum_distance is not None):
+        if isinstance(log_kernel_size, (tuple, list)):
+            if len(log_kernel_size) != ndim:
+                raise ValueError("'log_kernel_size' must be a scalar or a "
+                                 "sequence with {0} elements.".format(ndim))
+        else:
+            log_kernel_size = (log_kernel_size,) * ndim
+        if isinstance(minimum_distance, (tuple, list)):
+            if len(minimum_distance) != ndim:
+                raise ValueError("'minimum_distance' must be a scalar or a "
+                                 "sequence with {0} elements.".format(ndim))
+        else:
+            minimum_distance = (minimum_distance,) * ndim
+
+    # check consistency between parameters - detection in priority with kernel
+    # size and minimal distance
+    elif (voxel_size is not None and spot_radius is not None
+          and log_kernel_size is not None and minimum_distance is not None):
+        if isinstance(log_kernel_size, (tuple, list)):
+            if len(log_kernel_size) != ndim:
+                raise ValueError("'log_kernel_size' must be a scalar or a "
+                                 "sequence with {0} elements.".format(ndim))
+        else:
+            log_kernel_size = (log_kernel_size,) * ndim
+        if isinstance(minimum_distance, (tuple, list)):
+            if len(minimum_distance) != ndim:
+                raise ValueError("'minimum_distance' must be a scalar or a "
+                                 "sequence with {0} elements.".format(ndim))
+        else:
+            minimum_distance = (minimum_distance,) * ndim
+
+    # missing parameters
+    else:
+        raise ValueError("One of the two pairs of parameters ('voxel_size', "
+                         "'spot_radius') or ('log_kernel_size', "
+                         "'minimum_distance') should be provided.")
+
+    # detect spots
+    if return_threshold:
+        spots, threshold = _detect_spots_from_images(
+            images,
+            threshold=threshold,
+            threshold_penalty= threshold_penalty,
+            remove_duplicate=remove_duplicate,
+            return_threshold=return_threshold,
+            log_kernel_size=log_kernel_size,
+            min_distance=minimum_distance)
+    else:
+        spots = _detect_spots_from_images(
+            images,
+            threshold=threshold,
+            threshold_penalty= threshold_penalty,
+            remove_duplicate=remove_duplicate,
+            return_threshold=return_threshold,
+            log_kernel_size=log_kernel_size,
+            min_distance=minimum_distance)
+
+    # format results
+    if not is_list:
+        spots = spots[0]
+
+    # return threshold or not
+    if return_threshold:
+        return spots, threshold
+    else:
+        return spots
+
+
+
+
+
+def _detect_spots_from_images(
+        images,
+        threshold=None,
+        threshold_penalty:float = None,
+        remove_duplicate=True,
+        return_threshold=False,
+        log_kernel_size=None,
+        min_distance=None):
+    """Apply LoG filter followed by a Local Maximum algorithm to detect spots
+    in a 2-d or 3-d image.
+
+    #. We smooth the image with a LoG filter.
+    #. We apply a multidimensional maximum filter.
+    #. A pixel which has the same value in the original and filtered images
+       is a local maximum.
+    #. We remove local peaks under a threshold.
+    #. We keep only one pixel coordinate per detected spot.
+
+    Parameters
+    ----------
+    images : List[np.ndarray]
+        List of images with shape (z, y, x) or (y, x). The same threshold is
+        applied to every images.
+    threshold : float or int
+        A threshold to discriminate relevant spots from noisy blobs. If None,
+        optimal threshold is selected automatically. If several images are
+        provided, one optimal threshold is selected for all the images.
+    remove_duplicate : bool
+        Remove potential duplicate coordinates for the same spots. Slow the
+        running.
+    return_threshold : bool
+        Return the threshold used to detect spots.
+    log_kernel_size : int, float, Tuple(int, float), List(int, float) or None
+        Size of the LoG kernel. It equals the standard deviation (in pixels)
+        used for the gaussian kernel (one for each dimension). One value per
+        spatial dimension (zyx or yx dimensions). If it's a scalar, the same
+        standard deviation is applied to every dimensions. If None, we estimate
+        it with the voxel size and spot radius.
+    min_distance : int, float, Tuple(int, float), List(int, float) or None
+        Minimum distance (in pixels) between two spots we want to be able to
+        detect separately. One value per spatial dimension (zyx or yx
+        dimensions). If it's a scalar, the same distance is applied to every
+        dimensions. If None, we estimate it with the voxel size and spot
+        radius.
+
+    Returns
+    -------
+    all_spots : List[np.ndarray], np.int64
+        List of spot coordinates with shape (nb_spots, 3) or (nb_spots, 2),
+        for 3-d or 2-d images respectively.
+    threshold : int or float
+        Threshold used to discriminate spots from noisy blobs.
+
+    """
+    if threshold_penalty == None : threshold_penalty = 1
+    # initialization
+    n = len(images)
+
+    # apply LoG filter and find local maximum
+    images_filtered = []
+    pixel_values = []
+    masks = []
+    for image in images:
+        # filter image
+        image_filtered = stack.log_filter(image, log_kernel_size)
+        images_filtered.append(image_filtered)
+
+        # get pixels value
+        pixel_values += list(image_filtered.ravel())
+
+        # find local maximum
+        mask_local_max = local_maximum_detection(image_filtered, min_distance)
+        masks.append(mask_local_max)
+
+    # get optimal threshold if necessary based on all the images
+    if threshold is None:
+
+        # get threshold values we want to test
+        thresholds = _get_candidate_thresholds(pixel_values)
+
+        # get spots count and its logarithm
+        all_value_spots = []
+        minimum_threshold = float(thresholds[0])
+        for i in range(n):
+            image_filtered = images_filtered[i]
+            mask_local_max = masks[i]
+            spots, mask_spots = spots_thresholding(
+                image_filtered, mask_local_max,
+                threshold=minimum_threshold,
+                remove_duplicate=False)
+            value_spots = image_filtered[mask_spots]
+            all_value_spots.append(value_spots)
+        all_value_spots = np.concatenate(all_value_spots)
+        thresholds, count_spots = _get_spot_counts(thresholds, all_value_spots)
+
+        # select threshold where the kink of the distribution is located
+        if count_spots.size > 0:
+            threshold, _, _ = get_breaking_point(thresholds, count_spots)
+            threshold *= threshold_penalty
+
+    # detect spots
+    all_spots = []
+    for i in range(n):
+
+        # get images and masks
+        image_filtered = images_filtered[i]
+        mask_local_max = masks[i]
+
+        # detection
+        spots, _ = spots_thresholding(
+            image_filtered, mask_local_max, threshold, remove_duplicate)
+        all_spots.append(spots)
+
+    # return threshold or not
+    if return_threshold:
+        return all_spots, threshold
+    else:
+        return all_spots
