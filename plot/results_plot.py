@@ -1,7 +1,8 @@
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import pbwrap.data.getdata as gdata
-from .utils import save_plot, gene_bar_plot
+from .utils import save_plot, gene_bar_plot, get_simple_linear_regression
 
 def threshold(Acquisition: pd.DataFrame, rna_list:'list[str]' = None, path_output= None, show = True, ext= 'png', title = "threshold plot") :
     
@@ -118,23 +119,96 @@ def RNApercentage_in_out_nucleus(Acquisition: pd.DataFrame, Cell: pd.DataFrame, 
     plt.close()
 
 
-def Malat_inNuc_asDapiIntensity(Cell: pd.DataFrame, projtype = 'MIP', out = False, path_output= None, show = True, ext= 'png', title = None) :
+def Malat_inNuc_asDapiIntensity(Cell: pd.DataFrame, projtype = 'MIP', out = False, plot_linear_regression= False,
+                                path_output= None, show = True, ext= 'png', title = None) :
 
+    #Select right projection type from Cell Data
     if projtype.upper() == 'MIP' : X = "Mean Intensity (MIP)"
     elif projtype.upper() == 'MEAN' : X = "Mean Intensity (MeanProj)"
     else : raise ValueError("projtype shoud either be 'mip' or 'mean', it is {0}.".format(projtype))
 
+    #Select malat spots in nucleus or in cytoplasm
     if out : Y = 'malat1 spots out nucleus'
     else : Y = 'malat1 spots in nucleus'
+
+    #Fetching data
     Cell["SignalArea"] = Cell[X] * Cell["nuc_area"]
     data = Cell.loc[:, ["SignalArea", Y]].sort_values("SignalArea")
+
+    #Plot
     fig = plt.figure(figsize=(20,10))
-    plt.plot(data.iloc[:,0], data.iloc[:,1], 'r.')
+    X_values, Y_values = np.array(data.iloc[:,0]), np.array(data.iloc[:,1])
+    plt.plot(X_values, Y_values, 'r.', label= "Experimental Data")
+
+    if plot_linear_regression:
+        slope, intercept = get_simple_linear_regression(X_values,Y_values)
+        regression = slope* X_values + intercept
+        plt.plot(X_values, regression, 'b', label= "Linear regression \n{0}x + {1}".format(slope,intercept))
+        plt.legend()
+
     ax = fig.gca()
     ax.axis(xmin= 0, ymin= 0)
     if title != None : plt.title(title)
     plt.xlabel(X)
     plt.ylabel(Y)
+    if path_output != None : save_plot(path_output, ext)
+    if show : plt.show()
+    plt.close()
+
+
+def hist_dapi_signal(Cell, projtype= 'MIP', path_output= None, show = True, ext= 'png', title: str = None) :
+    """
+    projtype : "MIP" or "MEAN"
+    """
+    if projtype.upper() == 'MIP' : X = "Mean Intensity (MIP)"
+    elif projtype.upper() == 'MEAN' : X = "Mean Intensity (MeanProj)"
+    dapi_signal = Cell.loc[:,X] * Cell.loc[:,"nuc_area"]
+
+    fig = plt.figure(figsize= (20,10))
+    hist = plt.hist(dapi_signal, bins= 1000)
+    plt.xlabel("Dapi signal (Nucleus area * mean signal)")
+    plt.ylabel("Count")
+    if title != None : plt.title(title)
+    
+    
+    if path_output != None : save_plot(path_output, ext)
+    if show : plt.show()
+    plt.close()
+
+
+
+def hist_malat_count(Cell, out_nucleus= False, path_output= None, show = True, ext= 'png', title: str = None) :
+    """
+    projtype : "MIP" or "MEAN"
+    """
+    if out_nucleus : X = "malat1 spots in cytoplasm"
+    else : X = "malat1 spots in nucleus"
+    dapi_signal = Cell.loc[:, X]
+    fig = plt.figure(figsize= (20,10))
+    hist = plt.hist(dapi_signal, bins= 1000)
+    plt.xlabel(X)
+    plt.ylabel("Count")
+    if title != None : plt.title(title)
+    
+    
+    if path_output != None : save_plot(path_output, ext)
+    if show : plt.show()
+    plt.close()
+
+
+
+def hist_in_nuc_malat_proportion(Cell, path_output= None, show = True, ext= 'png', title: str = None) :
+    """
+    projtype : "MIP" or "MEAN"
+    """
+    proportion = Cell.loc[:, "malat1 spots in nucleus"] / (Cell.loc[:, "malat1 spots in nucleus"] + Cell.loc[:, "malat1 spots in cytoplasm"])
+    fig = plt.figure(figsize= (20,10))
+    hist = plt.hist(proportion * 100, bins= 1000)
+    plt.xlabel("malat spots proportion in nucleus")
+    plt.ylabel("Count")
+    if title != None : plt.title(title)
+    
+    
     if path_output != None : save_plot(path_output, ext)
     if show : plt.show()
     plt.close()

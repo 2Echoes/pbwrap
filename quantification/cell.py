@@ -1,4 +1,6 @@
 import numpy as np
+import warnings
+from scipy.ndimage import distance_transform_edt
 from bigfish.stack import mean_projection, maximum_projection, check_parameter
 from ..utils import rm_value_from_list
 from .utils import unzip
@@ -103,3 +105,76 @@ def count_spots_in_mask(spots, mask) :
     count = count_array.sum()
 
     return count
+
+
+
+def compute_pbody_area(pbody_mask: np.ndarray, unit: str = 'px', voxel_size: tuple= None)-> float:
+    """
+    Return the area of pbody within cell. 
+    
+    Parameters
+    ----------
+        pbody_mask: np.ndarray
+            mask computed for current cell.
+        unit : str
+            Unit parameter can be set to either 'px' or 'nm'. If nm is selected voxel_size (z,y,x) or (y,x) has to be given as well.
+        voxel_size : tuple
+    """
+    if unit.upper() in ["PX", "PIXEL"] : return_pixel = True
+    elif unit.upper() in ["NM", "NANOMETER"] and type(voxel_size) in [tuple, list] : return_pixel = False
+    elif unit.upper() in ["NM", "NANOMETER"] and voxel_size == None : raise TypeError("When scale is set to nanometer, voxel_size has to be given as a tuple or a list.")
+    else : raise ValueError("unit parameter incorrect should be either 'px' or 'nm'. {0} was given".format(unit))
+    if pbody_mask.ndim != 2 : raise ValueError("Only 2D masks are supported")
+
+    if len(voxel_size) == 2 :
+        y_dim = voxel_size[0]
+        x_dim = voxel_size[1]
+    elif len(voxel_size) == 3 :
+        y_dim = voxel_size[1]
+        x_dim = voxel_size[2]
+    else : raise ValueError("Inapropriate voxel_size length. Should be either 2 or 3, it is {0}".format(len(voxel_size)))
+
+    _, count = np.unique(pbody_mask, return_counts= True)
+    del _
+    assert len(count) == 2
+    pixel_number = count[1]
+
+    if return_pixel : res = pixel_number
+    else : res = pixel_number * y_dim * x_dim
+
+    return res
+
+
+
+def count_rna_close_pbody(pbody_mask: np.ndarray, spots_coords: 'list[tuple]', distance_nm: float, voxel_size: 'tuple[float]')-> int :
+    
+    check_parameter(pbody_mask = (np.ndarray), spots_coords = (list, np.ndarray), distance_nm = (int, float), voxel_size = (tuple, list))
+
+    if pbody_mask.ndim != 2: raise ValueError("Unsupported p_body mask dimension. Only 2D arrays are supported.")
+    if type(spots_coords) == np.ndarray : spots_coords = list(spots_coords)
+    if len(voxel_size) == 3 :
+        y_scale = voxel_size[1]
+        x_scale = voxel_size[2]
+    elif len(voxel_size) == 2 :
+        y_scale = voxel_size[0]
+        x_scale = voxel_size[1]
+    else : raise ValueError("Incorrect voxel_size length should be either 2 or 3. {0} was given".format(len(voxel_size)))
+
+
+    frompbody_distance_map = distance_transform_edt(np.logical_not(pbody_mask), sampling= [y_scale, x_scale])
+    rna_distance_map = np.ones_like(pbody_mask) * -999
+    z_coords, y_coords, x_coords = unzip(spots_coords)
+    del z_coords
+    rna_distance_map[x_coords, y_coords] = frompbody_distance_map[x_coords, y_coords] # This distance maps gives the distance of each RNA to the closest p-body
+    count_map = rna_distance_map[rna_distance_map >= 0] <= distance_nm
+    
+    values,count = np.unique(count_map, return_counts= True)
+    if not True in values : 
+        count = 0
+    else:
+        index = list(values).index(True)
+        count = count[index]
+    
+    return count
+
+        

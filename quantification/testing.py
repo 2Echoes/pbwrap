@@ -23,16 +23,17 @@ l4 = [1,1,25,3,1]
 l5 = [1,1,2,2,4]
 
 m1 = [0,0,0,0,0]
-m2 = [0,1,1,1,0]
+m2 = [0,1,0,1,0]
 m3 = [0,1,1,1,0]
-m4 = [0,1,1,1,0]
-m5 = [0,0,0,0,0]
+m4 = [0,0,0,1,0]
+m5 = [1,0,0,0,0]
 
 data = np.array([l1,l2,l3,l4,l5])
 mask = np.array([m1,m2,m3,m4,m5])
 
-print('data',data)
-print("mask", mask)
+count = quant.count_rna_close_pbody(mask, [(1,0), (4,4)], distance_nm= 200, voxel_size=(300, 103, 103))
 
-metrics = compute_signalmetrics(data,mask)
-print(metrics)
+print('data\n',data)
+print("mask\n", mask)
+
+print(count)

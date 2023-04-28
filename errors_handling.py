@@ -31,6 +31,11 @@ class NoSpotError(DetectionError):
     """'DetectionError' Subclass."""
     pass
 
+class TooManySpotsError(DetectionError):
+    """'DetectionError' Subclass."""
+    pass
+
+
 ##########################################################
 
 class PlotError(Exception) :

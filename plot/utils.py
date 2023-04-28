@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from skimage.measure import regionprops_table
 from bigfish.stack import check_parameter
+from sklearn import linear_model
+
 
 
 def from_label_get_centeroidscoords(label):
@@ -15,7 +17,6 @@ def from_label_get_centeroidscoords(label):
 
 
 def gene_bar_plot(rna_list: 'list[str]', values: 'list[float]', errors: 'list[float]', legend: 'list[str]'= None, width = 0.8, error_width = 3) :
-    
 
     #Exception thrower
     is_listoflist = False
@@ -142,3 +143,13 @@ def save_plot(path_output, ext):
     else:
         Warning("Plot is not saved because the extension is not valid: "
                 "{0}.".format(ext))
+        
+
+
+def get_simple_linear_regression(X: np.array, Y: np.array) :
+    X = np.array(X).reshape(-1,1)
+    Y = np.array(Y)
+    lin_model = linear_model.LinearRegression()
+    lin_model.fit(X,Y)
+
+    return lin_model.coef_[0], lin_model.intercept_

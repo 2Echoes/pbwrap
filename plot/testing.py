@@ -18,30 +18,20 @@ clean_Acquisition, clean_Cell = update.from_detectionthreshold_remove_acquisitio
 
 thresholds = list(Acquisition.loc[:, "RNA spot threshold"])
 gene_list = list(Acquisition.loc[:, "rna name"])
-
-#FetchData
-import numpy as np
-clean_Cell = clean_Cell.sort_values(["AcquisitionId","id"]).reset_index(drop= True)
-index = clean_Cell.sort_values('malat1 spots in nucleus').head(20).index
-index = np.array(index)
-select = clean_Cell.loc[index,["id","AcquisitionId","malat1 spots in nucleus"]]
-select = pd.merge(select, clean_Acquisition.loc[:,["id","rna name", "rootfilename"]], how= 'left', left_on='AcquisitionId', right_on='id')
-clean_Cell = pd.merge(clean_Cell, clean_Acquisition.loc[:,["id","rootfilename"]], how= 'left', left_on='AcquisitionId', right_on='id')
-groupbymin = clean_Cell.loc[:,["rootfilename", "id_x"]].groupby(["rootfilename"]).min()
-select = pd.merge(select, groupbymin, how= 'left', left_on= "rootfilename", right_on= "rootfilename")
-select.drop(axis= 1, columns= ["id_y"])
-select["plot index"] = select["id_x_x"] - select["id_x_y"]
-print(select.sort_values(["rna name", "plot index"]))
-
-
+Cell["total malat spots"] = Cell["malat1 spots in nucleus"] + Cell['malat1 spots in cytoplasm']
+malat_clean_Acquisition, malat_clean_Cell = update.from_malat_remove_acquisition(Acquisition, Cell, limit= 10)
 
 
 
 #Plots
-# rplot.RNA_in_pbody(Acquisition, Cell, path_output= output_path + "RNA in pbody", show= False)
-# rplot.RNA_in_pbody(clean_Acquisition, clean_Cell, path_output= output_path + " Clean RNA in pbody", show= False)
+# rplot.hist_in_nuc_malat_proportion(clean_Cell)
+# rplot.hist_dapi_signal(Cell, path_output= output_path + "Histogramme dapi signal", show= False)
+# rplot.hist_malat_count(Cell, out_nucleus= False, path_output= output_path + "Histogramme malat count in nucleus", show= False, title= "Sans filtre anti mauvais malat")
+# rplot.hist_malat_count(clean_Cell, out_nucleus= False, path_output= output_path + " cleaned Histogramme malat count in nucleus", show= False, title= "Avec filtre anti mauvais malat")
+# # rplot.RNA_in_pbody(Acquisition, Cell, path_output= output_path + "RNA in pbody", show= False)
+# rplot.RNA_in_pbody(clean_Acquisition, clean_Cell,show= True)
 # rplot.RNApercentage_in_out_nucleus(Acquisition, Cell, path_output= output_path + "RNA percentage in and out Nucleus", show= False)
 # rplot.RNApercentage_in_out_nucleus(clean_Acquisition, clean_Cell, path_output= output_path + "Clean RNA percentage in and out Nucleus", show= True)
 # rplot.threshold(Acquisition, path_output= output_path + "Auto threshold", show= False)
 # rplot.Malat_inNuc_asDapiIntensity(Cell, projtype= 'mean', path_output= output_path + "Clean Malat in fct dapi", show= False)
-rplot.Malat_inNuc_asDapiIntensity(clean_Cell, projtype= 'mip', path_output= output_path + "Malat in fct dapi", show= False)
+rplot.Malat_inNuc_asDapiIntensity(malat_clean_Cell, projtype= 'mip', path_output= output_path + "Malat in fct dapi", show= True, plot_linear_regression= True, title = "Avec filtre malat")

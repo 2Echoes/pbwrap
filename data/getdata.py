@@ -6,13 +6,13 @@ import CustomPandasFramework.PBody_project.DataFrames as DataFrame
 import CustomPandasFramework.operations as dataOp
 from bigfish.stack import check_parameter,read_image, check_array
 from bigfish.classification import compute_features, get_features_name
-from ..quantification import mean_signal, count_spots_in_mask
+from ..quantification import mean_signal, count_spots_in_mask, compute_pbody_area, count_rna_close_pbody
 from pbwrap.utils import from_label_get_centeroidscoords
 
 
 
 
-def get_images_as_gen(path_input: str, Input: pd.DataFrame, acquisition_list: 'list[int]', channels_list: 'list[str]'= None) :
+def get_images_as_gen(path_input: str, Input: pd.DataFrame, acquisition_list: 'list[int]', channels_list: 'list[str]'= None, z_min= None, z_max= None) :
     """ Open images from an acquisition within the Input DataFrame using bigfish open method. 
         Outputs as a generator of images ordered by rootfilename then by channel_name (A->Z) .
     
@@ -53,11 +53,15 @@ def get_images_as_gen(path_input: str, Input: pd.DataFrame, acquisition_list: 'l
         for fileindex in index:
             filename = Input.at[fileindex, "filename"]
             images = read_image(path= path_input + filename)
+            if images.ndim == 3 and (z_min != None or z_max != None):
+                if z_max == None : z_max = images.shape[0]
+                if z_min == None : z_min = 0
+                images = images[z_min: z_max,:,:]
             yield images
 
 
 
-def get_images_as_list(path_input: str, Input: pd.DataFrame, acquisition_list: 'list[int]', channels_list: 'list[str]'= None) :
+def get_images_as_list(path_input: str, Input: pd.DataFrame, acquisition_list: 'list[int]', channels_list: 'list[str]'= None, z_min= None, z_max = None) :
     """ Open images from an acquisition within the Input DataFrame using bigfish open method. 
         Outputs as a generator of images ordered by rootfilename then by channel_name (A->Z) .
     
@@ -98,8 +102,15 @@ def get_images_as_list(path_input: str, Input: pd.DataFrame, acquisition_list: '
         index = Input.query("`acquisition index` == {0} and channel in {1}".format(acquisition, channels_list)).sort_values(["filename", "channel"]).index
         for fileindex in index:
             filename = Input.at[fileindex, "filename"]
-            images += [read_image(path= path_input + filename)]
-            return images
+            image = read_image(path= path_input + filename)
+            if image.ndim == 3 and (z_min != None or z_max != None):
+                if z_max == None : z_max = image.shape[0]
+                if z_min == None : z_min = 0
+                image = image[z_min: z_max,:,:]
+
+            images += [image]
+
+    return images
 
 def get_acquisition_num(Input) :
     """ Returns the number of acquistion that will be computed from data placed in the input folder.
@@ -189,6 +200,7 @@ def get_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,103)
     nuc_mask = cell["nuc_mask"]
     rna_coord = cell["rna_coord"]
     foci_coord = cell["foci"]
+    ts_coord = cell["transcription_site"]
     malat1_coord = cell["malat1_coord"]
     smfish = cell["smfish"]
     min_y, min_x, max_y, max_x = cell["bbox"]
@@ -231,20 +243,38 @@ def get_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,103)
             return_names=True)
     
     #Custom features
+    cluster_number = len(ts_coord) + len(foci_coord)
     #signal features
     mip_mean_intensity = mean_signal(cell, channel= dapi, projtype= 'mip')
     mean_mean_intensity = mean_signal(cell, channel= dapi, projtype= 'mean')
+    
     #malat features
     malat1_spot_in_nuc = count_spots_in_mask(malat1_coord, nuc_mask)
     malat1_spot_in_cyto = count_spots_in_mask(malat1_coord, cell_mask) - malat1_spot_in_nuc
+    
     #pbody features
-    rna_spot_in_pbody = count_spots_in_mask(rna_coord, pbody_mask)
     pbody_num = len(pbody_centroids)
+    if has_pbody :
+        pbody_area_px = compute_pbody_area(pbody_mask, unit= 'px', voxel_size= voxel_size)
+        pbody_area_nm = compute_pbody_area(pbody_mask, unit= 'nm', voxel_size= voxel_size)
+        rna_spot_in_pbody = count_spots_in_mask(rna_coord, pbody_mask)
+        pbody_closer_than_1000_nm = count_rna_close_pbody(pbody_mask= pbody_mask, spots_coords= rna_coord, distance_nm= 1000, voxel_size= voxel_size)
+        pbody_closer_than_1500_nm = count_rna_close_pbody(pbody_mask= pbody_mask, spots_coords= rna_coord, distance_nm= 1500, voxel_size= voxel_size)
+        pbody_closer_than_2000_nm = count_rna_close_pbody(pbody_mask= pbody_mask, spots_coords= rna_coord, distance_nm= 2000, voxel_size= voxel_size)
+    else :
+        pbody_area_px = np.NaN
+        pbody_area_nm = np.NaN
+        rna_spot_in_pbody = np.NaN
+        pbody_closer_than_1000_nm = np.NaN
+        pbody_closer_than_1500_nm = np.NaN
+        pbody_closer_than_2000_nm = np.NaN
 
 
     #Adding custom features to DataFrames
-    features = np.append(features, [mip_mean_intensity, mean_mean_intensity, malat1_spot_in_nuc, malat1_spot_in_cyto, rna_spot_in_pbody, pbody_num])
-    features_names += ['Mean Intensity (MIP)', 'Mean Intensity (MeanProj)', 'malat1 spots in nucleus', 'malat1 spots in cytoplasm', 'rna spots in body', 'pbody number']
+    features = np.append(features, [mip_mean_intensity, mean_mean_intensity, malat1_spot_in_nuc, malat1_spot_in_cyto, cluster_number,
+                         rna_spot_in_pbody, pbody_num, pbody_area_px, pbody_area_nm, pbody_closer_than_1000_nm, pbody_closer_than_1500_nm, pbody_closer_than_2000_nm])
+    features_names += ['Mean Intensity (MIP)', 'Mean Intensity (MeanProj)','malat1 spots in nucleus', 'malat1 spots in cytoplasm', 'cluster number',
+               'rna spots in body', 'pbody number', 'pbody area (px)', 'pbody area (nm^2)', "pbody closer than 1000 nm", "pbody closer than 1500 nm", "pbody closer than 2000 nm"]
     header = ["id", "AcquisitionId"] + features_names
     data = np.append([0, acquisition_id], features)
     data = data.reshape([1,-1])
@@ -252,6 +282,7 @@ def get_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,103)
     #Ensuring correct datashape
     datashape_ref = DataFrame.newframe_Cell()
     new_Cell = pd.DataFrame(data= data, columns= header)
+    new_Cell["plot index"] = np.NaN
     if not has_pbody :
         for feature in get_features_name(names_features_centrosome= True) :
             new_Cell[feature] = np.NaN
