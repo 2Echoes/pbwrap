@@ -291,7 +291,7 @@ def get_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,103)
     return new_Cell
 
 
-def from_Acquisition_get_rna(Acquisition: pd.DataFrame) -> pd.Index :
+def from_Acquisition_get_rna(Acquisition: pd.DataFrame) :
     return list(Acquisition.value_counts(subset= "rna name").index)
 
 

@@ -4,13 +4,13 @@ import matplotlib.pyplot as plt
 import pbwrap.data.getdata as gdata
 from .utils import save_plot, gene_bar_plot, get_simple_linear_regression
 
-def threshold(Acquisition: pd.DataFrame, rna_list:'list[str]' = None, path_output= None, show = True, ext= 'png', title = "threshold plot") :
+def threshold(Acquisition: pd.DataFrame, rna_list:'list[str]' = None, path_output= None, show = True, ext= 'png', title = None) :
     
     #Computing RNA mean threshold and var :
     if rna_list == None : rna_list =  gdata.from_Acquisition_get_rna(Acquisition)
     elif type(rna_list) == str : rna_list = [rna_list]
 
-    threshold_list = []
+    threshold_list = [] 
     std_list = []
     for rna in rna_list :
         threshold_list += [Acquisition[Acquisition["rna name"] == rna].loc[:,"RNA spot threshold"].mean()]
@@ -18,22 +18,8 @@ def threshold(Acquisition: pd.DataFrame, rna_list:'list[str]' = None, path_outpu
 
     
     fig = gene_bar_plot(rna_list, threshold_list, errors= std_list)
-    plt.title(title)
-    """
-    #Plot
-    color_list = ['red','blue','green','orange','purple','brown','cyan'] * (round(len(rna_list)/7) + 1)
-    fig = plt.figure(figsize= (20,10))
-    plt.bar(rna_list, threshold_list, yerr= std_list, capsize= 3, color= color_list[:len(rna_list)], width= 1)
-    plt.axis(ymin= 0)
-    
-    
-    #
-    plt.xticks(range(len(rna_list)))
-    ax = fig.gca()
-    xticks = ax.get_xticks()
-    ax.set_xticks(xticks, labels= rna_list, rotation= 90)
-    ax.axis(xmin=-0.5, xmax= len(rna_list)+0.5, ymin= 0)
-    fig.subplots_adjust(bottom= 2/fig.get_size_inches()[1])"""
+    plt.ylabel("mean threshold")
+    if title!= None : plt.title(title)
     
     if path_output != None :
         save_plot(path_output= path_output, ext= ext)
@@ -97,7 +83,52 @@ def RNA_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list
     if show : plt.show()
     plt.close()
 
-def RNApercentage_in_out_nucleus(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list[str]' = None, path_output= None, show = True, ext= 'png', title = "Proportion of RNA inside and outside nucleus") :
+
+
+def cytoRNA_proportion_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list[str]' = None, path_output= None, show = True, ext= 'png', title = "RNA in pbody"):
+
+    join_frame = pd.merge(Cell, Acquisition.loc[:,["id", "rna name"]], how= "left", left_on= "AcquisitionId", right_on= "id")
+    join_frame = join_frame.drop(axis= 0, index= join_frame[join_frame["pbody number"] == 0].index)
+    if gene_list == None : gene_list = gdata.from_Acquisition_get_rna(Acquisition)
+    
+    std_list= []
+    mean_rna_per_pbody_list = []
+    for gene in gene_list : 
+        gene_Cell = join_frame [join_frame["rna name"] == gene]
+        mean_rna_per_pbody_list += [(gene_Cell.loc[:, "rna spots in body"] / gene_Cell.loc[:, "nb_rna_out_nuc"]).mean()]
+        std_list += [(gene_Cell.loc[:, "rna spots in body"] / gene_Cell.loc[:, "nb_rna_out_nuc"]).std()]
+
+    #plot
+    fig = gene_bar_plot(gene_list, mean_rna_per_pbody_list, std_list)
+    plt.title(title)
+    if path_output != None : save_plot(path_output, ext)
+    if show : plt.show()
+    plt.close()
+
+
+
+def RNA_proportion_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list[str]' = None, path_output= None, show = True, ext= 'png', title = "RNA in pbody"):
+
+    join_frame = pd.merge(Cell, Acquisition.loc[:,["id", "rna name"]], how= "left", left_on= "AcquisitionId", right_on= "id")
+    join_frame = join_frame.drop(axis= 0, index= join_frame[join_frame["pbody number"] == 0].index)
+    if gene_list == None : gene_list = gdata.from_Acquisition_get_rna(Acquisition)
+    
+    std_list= []
+    mean_rna_per_pbody_list = []
+    for gene in gene_list : 
+        gene_Cell = join_frame [join_frame["rna name"] == gene]
+        mean_rna_per_pbody_list += [(gene_Cell.loc[:, "rna spots in body"] / (gene_Cell.loc[:, "nb_rna_out_nuc"] + gene_Cell.loc[:, "nb_rna_in_nuc"])).mean()]
+        std_list += [(gene_Cell.loc[:, "rna spots in body"] / (gene_Cell.loc[:, "nb_rna_out_nuc"] + gene_Cell.loc[:, "nb_rna_in_nuc"])).std()]
+
+    #plot
+    fig = gene_bar_plot(gene_list, mean_rna_per_pbody_list, std_list)
+    plt.title(title)
+    if path_output != None : save_plot(path_output, ext)
+    if show : plt.show()
+    plt.close()
+
+
+def RNApercentage_in_out_nucleus(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list[str]' = None, plot_in_and_out_bars= True, path_output= None, show = True, ext= 'png', title = None) :
 
     join_frame = pd.merge(Cell, Acquisition.loc[:,["id", "rna name"]], how= "left", left_on= "AcquisitionId", right_on= "id")
     if gene_list == None : gene_list = gdata.from_Acquisition_get_rna(Acquisition)
@@ -112,8 +143,11 @@ def RNApercentage_in_out_nucleus(Acquisition: pd.DataFrame, Cell: pd.DataFrame, 
         std_list += [gene_Cell.loc[:, "proportion_rna_in_nuc"].std() * 100]
 
     #plot
-    fig = gene_bar_plot(gene_list, [mean_value_inside, mean_value_outside], [std_list]*2, legend = ["inside nuc", "outside nuc"])
-    plt.title(title)
+    if plot_in_and_out_bars : fig = gene_bar_plot(gene_list, [mean_value_inside, mean_value_outside], [std_list]*2, legend = ["inside nuc", "outside nuc"])
+    else : 
+        fig = gene_bar_plot(gene_list, mean_value_inside, std_list, legend = "inside nuc")
+        plt.ylabel("RNA proportion inside nucleus (%)")
+    if title != None : plt.title(title)
     if path_output != None : save_plot(path_output, ext)
     if show : plt.show()
     plt.close()
@@ -156,7 +190,7 @@ def Malat_inNuc_asDapiIntensity(Cell: pd.DataFrame, projtype = 'MIP', out = Fals
     plt.close()
 
 
-def hist_dapi_signal(Cell, projtype= 'MIP', path_output= None, show = True, ext= 'png', title: str = None) :
+def hist_dapi_signal(Cell, projtype= 'MIP', path_output= None, show = True, ext= 'png', title: str = None, bins= 500) :
     """
     projtype : "MIP" or "MEAN"
     """
@@ -165,7 +199,7 @@ def hist_dapi_signal(Cell, projtype= 'MIP', path_output= None, show = True, ext=
     dapi_signal = Cell.loc[:,X] * Cell.loc[:,"nuc_area"]
 
     fig = plt.figure(figsize= (20,10))
-    hist = plt.hist(dapi_signal, bins= 1000)
+    hist = plt.hist(dapi_signal, bins= bins)
     plt.xlabel("Dapi signal (Nucleus area * mean signal)")
     plt.ylabel("Count")
     if title != None : plt.title(title)
@@ -177,7 +211,7 @@ def hist_dapi_signal(Cell, projtype= 'MIP', path_output= None, show = True, ext=
 
 
 
-def hist_malat_count(Cell, out_nucleus= False, path_output= None, show = True, ext= 'png', title: str = None) :
+def hist_malat_count(Cell, out_nucleus= False, path_output= None, show = True, ext= 'png', title: str = None, bins= 500) :
     """
     projtype : "MIP" or "MEAN"
     """
@@ -185,7 +219,7 @@ def hist_malat_count(Cell, out_nucleus= False, path_output= None, show = True, e
     else : X = "malat1 spots in nucleus"
     dapi_signal = Cell.loc[:, X]
     fig = plt.figure(figsize= (20,10))
-    hist = plt.hist(dapi_signal, bins= 1000)
+    hist = plt.hist(dapi_signal, bins= bins)
     plt.xlabel(X)
     plt.ylabel("Count")
     if title != None : plt.title(title)
@@ -197,13 +231,13 @@ def hist_malat_count(Cell, out_nucleus= False, path_output= None, show = True, e
 
 
 
-def hist_in_nuc_malat_proportion(Cell, path_output= None, show = True, ext= 'png', title: str = None) :
+def hist_in_nuc_malat_proportion(Cell, path_output= None, show = True, ext= 'png', title: str = None, bins= 500) :
     """
-    projtype : "MIP" or "MEAN"
+
     """
     proportion = Cell.loc[:, "malat1 spots in nucleus"] / (Cell.loc[:, "malat1 spots in nucleus"] + Cell.loc[:, "malat1 spots in cytoplasm"])
     fig = plt.figure(figsize= (20,10))
-    hist = plt.hist(proportion * 100, bins= 1000)
+    hist = plt.hist(proportion * 100, bins= bins)
     plt.xlabel("malat spots proportion in nucleus")
     plt.ylabel("Count")
     if title != None : plt.title(title)
