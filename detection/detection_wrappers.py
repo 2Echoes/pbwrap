@@ -868,37 +868,15 @@ def iter_detect_spots_from_images(
     n = 0
 
     # apply LoG filter and find local maximum
-    images_filtered = []
     pixel_values = []
-    masks = []
-    """images_filtered = (stack.log_filter(image, log_kernel_size) for image in images)
-    gen_images_filtered = repeat(image_filtered)
-
-    for image_filtered in images_filtered:
-        n += 1
-
-        # get pixels value
+    images_filtered = [] 
+    for image in images : #Loading data into RAM
+        image_filtered = stack.log_filter(image,log_kernel_size)
+        images_filtered += [image_filtered]
         pixel_values += list(image_filtered.ravel())
-
-        # find local maximum
-        mask_local_max = local_maximum_detection(image_filtered, min_distance)
-        masks.append(mask_local_max)
-    
-    """
-    for image in images:
-        n += 1
-        # filter image
-        image_filtered = stack.log_filter(image, log_kernel_size)
-        images_filtered.append(image_filtered)
-
-
-
-        # get pixels value
-        pixel_values += list(image_filtered.ravel())
-
-        # find local maximum
-        mask_local_max = local_maximum_detection(image_filtered, min_distance)
-        masks.append(mask_local_max)
+    n = len(images_filtered)
+    masks = (local_maximum_detection(image_filtered, min_distance) for image_filtered in images_filtered)
+    #Re-generating images_filtered after masks computation
 
     # get optimal threshold if necessary based on all the images
     if threshold is None:
@@ -909,6 +887,24 @@ def iter_detect_spots_from_images(
         # get spots count and its logarithm
         minimum_threshold = float(thresholds[0])
         threshold_list = []
+        for image_filtered, mask_local_max in zip(images_filtered, masks) :
+            all_value_spots = []
+            spots, mask_spots = spots_thresholding(
+                image_filtered, mask_local_max,
+                threshold=minimum_threshold,
+                remove_duplicate=False)
+            value_spots = image_filtered[mask_spots]
+            all_value_spots.append(value_spots)
+            all_value_spots = np.concatenate(all_value_spots)
+            thresholds, count_spots = _get_spot_counts(thresholds, all_value_spots)
+
+        # select threshold where the kink of the distribution is located
+            if count_spots.size > 0:
+                threshold, _, _ = get_breaking_point(thresholds, count_spots)
+            threshold_list += [threshold]
+
+
+
         for i in range(n):
             all_value_spots = []
             image_filtered = images_filtered[i]
@@ -949,7 +945,22 @@ def iter_detect_spots_from_images(
         return all_spots, threshold
     else:
         return all_spots
-    
+
+
+
+def _compute_local_max_masks(images_filtered, min_distance) :
+    """Return iterator of local maximum masks computed from log filtered images"""
+
+    pixel_values = []
+    for image_filtered in images_filtered :
+        
+        # get pixels value
+        pixel_values += list(image_filtered.ravel())
+
+        # find local maximum
+        yield local_maximum_detection(image_filtered, min_distance)
+
+
 
 
 

@@ -6,8 +6,9 @@ from ..utils import rm_value_from_list
 from .utils import unzip
 
 
-def mean_signal(cell, channel, projtype = 'mip') :
-    """Returns mean signal from channel in computed cell. Mean signal is computed from 2D cell, so channel is projected z-wise according to projtype provided channel is 3D.
+def nucleus_signal_metrics(cell, channel, projtype = 'mip') :
+    """Returns dict containing signal related measures : 'min', 'max', '1 percentile', '9 percentile', 'mean' and 'median'.
+      Computed from channel signal in cell's nucleus mask. Signal measures are computed from 2D cell, so channel is projected z-wise according to projtype (provided channel is 3D).
     
         Parameters
         ----------
@@ -35,11 +36,40 @@ def mean_signal(cell, channel, projtype = 'mip') :
     
     nucleus_mask = cell["nuc_mask"]
     metrics = compute_signalmetrics(channel_crop_proj, nucleus_mask)
-    min = metrics["1 percentile"]
-    max = metrics["99 percentile"]
-    mean = metrics["mean"]
-    mean_sig = (mean)/(max-min)
-    return mean_sig
+    return metrics
+
+
+def OutOfNucleus_signal_metrics(cell, channel, projtype = 'mip') :
+    """Returns mean signal from channel in computed cell. Mean signal is computed from 2D cell, so channel is projected z-wise according to projtype provided channel is 3D.
+    
+        Parameters
+        ----------
+            cell : dict
+                Dictionary computed from bigFish.multistack.extract_cell
+            channel : np.ndarray
+                Channel from which intensity is computed
+            projtype : str
+                can either be 'mip' or 'mean'.
+
+        Returns
+        -------
+            mean_sig : float
+        
+    """
+    min_y, min_x, max_y, max_x = cell["bbox"]
+    channel_cropped = channel[:, min_y:max_y, min_x:max_x]
+ 
+
+    if channel.ndim == 3 :
+        if projtype == 'mip' : 
+            channel_crop_proj = maximum_projection(channel_cropped)
+        elif projtype == 'mean' :
+            channel_crop_proj = mean_projection(channel_cropped)
+    
+    OutOfNucleus_mask = np.logical_not(cell["nuc_mask"])
+    metrics = compute_signalmetrics(channel_crop_proj, OutOfNucleus_mask)
+    return metrics
+
 
 
 def compute_signalmetrics(signal, mask) :
@@ -147,6 +177,9 @@ def compute_pbody_area(pbody_mask: np.ndarray, unit: str = 'px', voxel_size: tup
 
 
 def count_rna_close_pbody(pbody_mask: np.ndarray, spots_coords: 'list[tuple]', distance_nm: float, voxel_size: 'tuple[float]')-> int :
+    """
+    Count number of RNA (spots) closer than 'distance_nm' from a p-body (mask).
+    """
     
     check_parameter(pbody_mask = (np.ndarray), spots_coords = (list, np.ndarray), distance_nm = (int, float), voxel_size = (tuple, list))
 

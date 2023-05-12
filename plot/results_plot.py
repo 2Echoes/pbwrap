@@ -95,12 +95,18 @@ def cytoRNA_proportion_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, g
     mean_rna_per_pbody_list = []
     for gene in gene_list : 
         gene_Cell = join_frame [join_frame["rna name"] == gene]
-        mean_rna_per_pbody_list += [(gene_Cell.loc[:, "rna spots in body"] / gene_Cell.loc[:, "nb_rna_out_nuc"]).mean()]
-        std_list += [(gene_Cell.loc[:, "rna spots in body"] / gene_Cell.loc[:, "nb_rna_out_nuc"]).std()]
+        mean_rna_in_pbody = gene_Cell.loc[:,"rna spots in body"].mean()
+        mean_cyto_rna_number = gene_Cell.loc[:,"nb_rna_out_nuc"].mean()
+        mean_rna_per_pbody_list += [mean_rna_in_pbody/mean_cyto_rna_number]        
+        std_rna_in_pbody = gene_Cell.loc[:,"rna spots in body"].std()
+        std_cyto_rna_number = gene_Cell.loc[:,"nb_rna_out_nuc"].std()
+        std_list += [std_rna_in_pbody/std_cyto_rna_number] # Comment calculer la std ?
+
 
     #plot
     fig = gene_bar_plot(gene_list, mean_rna_per_pbody_list, std_list)
     plt.title(title)
+    plt.ylabel("cytoplasmic RNA proportion detected inside p-bodies")
     if path_output != None : save_plot(path_output, ext)
     if show : plt.show()
     plt.close()
