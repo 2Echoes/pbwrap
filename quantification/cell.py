@@ -195,6 +195,7 @@ def count_rna_close_pbody(pbody_mask: np.ndarray, spots_coords: 'list[tuple]', d
 
     frompbody_distance_map = distance_transform_edt(np.logical_not(pbody_mask), sampling= [y_scale, x_scale])
     rna_distance_map = np.ones_like(pbody_mask) * -999
+    if len(spots_coords) == 0 : return 0
     if len(spots_coords[0]) == 2 :
         y_coords, x_coords = unzip(spots_coords)
     elif len(spots_coords[0]) == 3 :
