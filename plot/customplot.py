@@ -187,7 +187,7 @@ def plot_cell(cell, title= None, path_output= None, show= True):
 
     plot.plot_cell(
             ndim=3, cell_coord=cell_coord, nuc_coord=nuc_coord, 
-            rna_coord=rna_coord, foci_coord=foci_coord, other_coord=ts_coord, 
+            rna_coord=rna_coord, foci_coord=foci_coord, other_coord= ts_coord, 
             image=image_contrasted, cell_mask=cell_mask, nuc_mask=nuc_mask, 
             title= title, show= show, path_output= path_output)
     

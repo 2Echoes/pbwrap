@@ -36,8 +36,9 @@ class error_log(log) :
         self.write_error(filename= filename, error= msg)
 
     def output_errors(self) :
-        Errors = pd.DataFrame(columns= ['rootfilename', 'error'], data= zip(self.failingfiles, self.errors))
-        Errors.to_feather(self.path + 'Errors')
+        if len(self.errors) != 0 :
+            Errors = pd.DataFrame(columns= ['rootfilename', 'error'], data= zip(self.failingfiles, self.errors))
+            Errors.to_feather(self.path + 'Errors')
 
 
 

@@ -1,5 +1,6 @@
 import pbwrap.quantification as quant
 import numpy as np
+import pbwrap.utils as utils
 from pbwrap.quantification.cell import compute_signalmetrics
 """
 
@@ -31,9 +32,10 @@ m5 = [1,0,0,0,0]
 data = np.array([l1,l2,l3,l4,l5])
 mask = np.array([m1,m2,m3,m4,m5])
 
-count = quant.count_rna_close_pbody(mask, [(1,0), (4,4)], distance_nm= 200, voxel_size=(300, 103, 103))
 
 print('data\n',data)
 print("mask\n", mask)
 
-print(count)
+truth = utils.point_is_in_mask([2,1],mask)
+
+print(truth)

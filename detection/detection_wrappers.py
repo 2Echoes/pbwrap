@@ -2,8 +2,8 @@ import bigfish.stack as stack
 import bigfish.detection as detection
 from bigfish.detection.spot_detection import local_maximum_detection, get_object_radius_pixel, _get_candidate_thresholds, spots_thresholding, _get_spot_counts
 from pbwrap.errors_handling import NoSpotError
-from itertools import tee, repeat
 import numpy as np
+from types import GeneratorType
 
 
 def spot_decomposition_nobckgrndrmv(image, spots, spot_radius, voxel_size_nm, alpha= 0.5, beta= 1):
@@ -299,10 +299,12 @@ All rights reserved.
 
 def detect_spots(
         images,
+        ndim,
         threshold=None,
         threshold_penalty: float = None,
         remove_duplicate=True,
         return_threshold=False,
+        only_compute_threshold = False,
         voxel_size=None,
         spot_radius=None,
         log_kernel_size=None,
@@ -376,13 +378,14 @@ def detect_spots(
         threshold_penalty= (int,float,type(None)),
         remove_duplicate=bool,
         return_threshold=bool,
+        only_compute_threshold = bool,
         voxel_size=(int, float, tuple, list, type(None)),
         spot_radius=(int, float, tuple, list, type(None)),
         log_kernel_size=(int, float, tuple, list, type(None)),
         minimum_distance=(int, float, tuple, list, type(None)))
 
     # if one image is provided we enlist it
-    if not isinstance(images, list):
+    if not (isinstance(images, list) or isinstance(images, GeneratorType)):
         stack.check_array(
             images,
             ndim=[2, 3],
@@ -390,7 +393,7 @@ def detect_spots(
         ndim = images.ndim
         images = [images]
         is_list = False
-    else:
+    elif isinstance(images, list):
         ndim = None
         for i, image in enumerate(images):
             stack.check_array(
@@ -404,8 +407,12 @@ def detect_spots(
                     raise ValueError("Provided images should have the same "
                                      "number of dimensions.")
         is_list = True
+    else : is_list = True
 
     # check consistency between parameters - detection with voxel size and
+    #return threshold
+    if only_compute_threshold == True and return_threshold == False :
+        raise ValueError("if return_threshold is False, only_compute_threshold should not be set to True.")
     # spot radius
     if (voxel_size is not None and spot_radius is not None
             and log_kernel_size is None and minimum_distance is None):
@@ -472,14 +479,26 @@ def detect_spots(
 
     # detect spots
     if return_threshold:
-        spots, threshold = _detect_spots_from_images(
-            images,
-            threshold=threshold,
-            threshold_penalty= threshold_penalty,
-            remove_duplicate=remove_duplicate,
-            return_threshold=return_threshold,
-            log_kernel_size=log_kernel_size,
-            min_distance=minimum_distance)
+        if only_compute_threshold :
+            threshold = _detect_spots_from_images(
+                images,
+                threshold=threshold,
+                threshold_penalty= threshold_penalty,
+                remove_duplicate=remove_duplicate,
+                return_threshold=return_threshold,
+                only_compute_threshold = only_compute_threshold,
+                log_kernel_size=log_kernel_size,
+                min_distance=minimum_distance)
+        else :
+            spots, threshold = _detect_spots_from_images(
+                images,
+                threshold=threshold,
+                threshold_penalty= threshold_penalty,
+                remove_duplicate=remove_duplicate,
+                return_threshold=return_threshold,
+                only_compute_threshold = only_compute_threshold,
+                log_kernel_size=log_kernel_size,
+                min_distance=minimum_distance)
     else:
         spots = _detect_spots_from_images(
             images,
@@ -491,6 +510,8 @@ def detect_spots(
             min_distance=minimum_distance)
 
     # format results
+    if only_compute_threshold : return threshold
+
     if not is_list:
         spots = spots[0]
 
@@ -510,6 +531,7 @@ def _detect_spots_from_images(
         threshold_penalty:float = None,
         remove_duplicate=True,
         return_threshold=False,
+        only_compute_threshold= False,
         log_kernel_size=None,
         min_distance=None):
     """Apply LoG filter followed by a Local Maximum algorithm to detect spots
@@ -560,13 +582,14 @@ def _detect_spots_from_images(
     """
     if threshold_penalty == None : threshold_penalty = 1
     # initialization
-    n = len(images)
+    n = 0
 
     # apply LoG filter and find local maximum
     images_filtered = []
     pixel_values = []
     masks = []
     for image in images:
+        n += 1
         # filter image
         image_filtered = stack.log_filter(image, log_kernel_size)
         images_filtered.append(image_filtered)
@@ -603,6 +626,7 @@ def _detect_spots_from_images(
         if count_spots.size > 0:
             threshold, _, _ = get_breaking_point(thresholds, count_spots)
             threshold *= threshold_penalty
+            if only_compute_threshold : return threshold
 
     # detect spots
     all_spots = []

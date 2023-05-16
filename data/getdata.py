@@ -6,8 +6,8 @@ import CustomPandasFramework.PBody_project.DataFrames as DataFrame
 import CustomPandasFramework.operations as dataOp
 from bigfish.stack import check_parameter,read_image, check_array
 from bigfish.classification import compute_features, get_features_name
-from ..quantification import nucleus_signal_metrics, OutOfNucleus_signal_metrics, count_spots_in_mask, compute_pbody_area, count_rna_close_pbody
-from pbwrap.utils import from_label_get_centeroidscoords
+from ..quantification import nucleus_signal_metrics, OutOfNucleus_signal_metrics, count_spots_in_mask, compute_mask_area, count_rna_close_pbody
+from pbwrap.utils import from_label_get_centeroidscoords, point_is_in_mask
 
 
 
@@ -42,7 +42,7 @@ def get_images_as_gen(path_input: str, Input: pd.DataFrame, acquisition_list: 'l
     check_parameter(path_input = (str), Input = (pd.DataFrame), acquisition_list = (list, int), channels_list = (list, str, type(None)))
 
     if type(channels_list) == str : channels_list = [channels_list]
-    if type(acquisition_list) == int : acquisition_list = [int]
+    if type(acquisition_list) == int : acquisition_list = [acquisition_list]
     if channels_list == None :
          channels_list = Input.values_count(subset= "channel").index.tolist()
 
@@ -136,7 +136,7 @@ def get_acquisition_num(Input) :
     return acquisition_num
 
 
-def get_rootfilename(acquisition_index, Input_frame):
+def get_rootfilename(acquisition_index, Input_frame: pd.DataFrame):
     """Returns root filename of an acquisition from Input frame
     
     Parameters
@@ -150,7 +150,8 @@ def get_rootfilename(acquisition_index, Input_frame):
     """
     check_parameter(acquisition_index = (int), Input_frame = pd.DataFrame)
 
-    res = Input_frame.value_counts(subset=["root filename", "acquisition index"]).reset_index(drop= False).at[acquisition_index, "root filename"]
+    idx = Input_frame.query("`acquisition index` == {0}".format(acquisition_index)).index
+    res = Input_frame.at[idx[0], "root filename"]
     return res
 
 def get_rnaname(acquisition_index, Input_frame):
@@ -173,7 +174,7 @@ def get_rnaname(acquisition_index, Input_frame):
 
 
 
-def get_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,103)):
+def get_Cell(acquisition_id, cell,i, pbody_label, dapi, voxel_size = (300,103,103)):
     """Returns DataFrame with expected Cell datashape containing all cell level features. Features are computed using bigFish built in functions.
     
     Parameters
@@ -197,8 +198,7 @@ def get_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,103)
     #Extracting bigfish cell information
     voxel_size_yx = voxel_size[1]
     cell_mask = cell["cell_mask"]
-    nuc_mask = cell["nuc_mask"]
-    cytoplasm_mask = np.logical_and(cell_mask, np.logical_not(nuc_mask)) #Cytoplasm mask = Cell mask - Nuc_mask : Cell_mask AND NOT nuc_mask 
+    nuc_mask = cell["nuc_mask"] 
     rna_coord = cell["rna_coord"]
     foci_coord = cell["foci"]
     ts_coord = cell["transcription_site"]
@@ -208,14 +208,22 @@ def get_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,103)
 
     #Computing pbody coords from masks
     pbody_label = pbody_label[min_y : max_y, min_x : max_x]
+    pbody_label = pbody_label * np.logical_and(np.array(pbody_label, dtype= bool), cell_mask) # Excluding p-bodies in the neighborhood but not in the cell
     pbody_mask = np.zeros_like(pbody_label)
     pbody_mask[pbody_label > 0] = 1
     pbody_mask = np.array(pbody_mask, dtype= bool)
     centroids_dict = from_label_get_centeroidscoords(pbody_label)
-    pbody_centroids = np.array(list(zip(centroids_dict["centroid-0"], centroids_dict["centroid-1"])), dtype= int)
+    pbody_centroids = list(zip(centroids_dict["centroid-0"], centroids_dict["centroid-1"]))
+
+    #Removing p-bodies with centroids outside of the cell even though part of the mask is inside cell
+    for centroid in pbody_centroids :
+        y,x = int(centroid[0]), int(centroid[1]) #pbody centroid is determined with +- 0.5 px error
+        if not point_is_in_mask((y,x), cell_mask) :
+            pbody_centroids.remove(centroid)
+    pbody_centroids = np.array(pbody_centroids,  dtype= int)
+
     has_pbody = pbody_centroids.ndim > 1
-    del centroids_dict
-    
+    del centroids_dict 
 
     #BigFish built in features
     if not has_pbody:
@@ -245,6 +253,7 @@ def get_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,103)
     
     #Custom features
     cluster_number = len(ts_coord) + len(foci_coord)
+    nucleus_area_px = compute_mask_area(nuc_mask, unit= 'px', voxel_size= voxel_size)
     #signal features
     nucleus_mip_signal_metrics = nucleus_signal_metrics(cell, channel= dapi, projtype= 'mip')
     nucleus_mean_signal_metrics = nucleus_signal_metrics(cell, channel= dapi, projtype= 'mean')
@@ -264,16 +273,16 @@ def get_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,103)
 
     #malat features
     malat1_spot_in_nuc = count_spots_in_mask(malat1_coord, nuc_mask)
-    malat1_spot_in_cyto = count_spots_in_mask(malat1_coord, cytoplasm_mask)
+    malat1_spot_in_cyto = count_spots_in_mask(malat1_coord, cell_mask) - malat1_spot_in_nuc
     
     #pbody features
     pbody_num = len(pbody_centroids)
     if has_pbody :
-        pbody_area_px = compute_pbody_area(pbody_mask, unit= 'px', voxel_size= voxel_size)
-        pbody_area_nm = compute_pbody_area(pbody_mask, unit= 'nm', voxel_size= voxel_size)
+        pbody_area_px = compute_mask_area(pbody_mask, unit= 'px', voxel_size= voxel_size)
+        pbody_area_nm = compute_mask_area(pbody_mask, unit= 'nm', voxel_size= voxel_size)
         rna_spot_in_pbody = count_spots_in_mask(rna_coord, pbody_mask)
         count_pbody_nucleus = count_spots_in_mask(pbody_centroids, nuc_mask)
-        count_pbody_cytoplasm = count_spots_in_mask(pbody_centroids, cytoplasm_mask)
+        count_pbody_cytoplasm = count_spots_in_mask(pbody_centroids, cell_mask) - count_pbody_nucleus
         pbody_closer_than_1000_nm = count_rna_close_pbody(pbody_mask= pbody_mask, spots_coords= rna_coord, distance_nm= 1000, voxel_size= voxel_size)
         pbody_closer_than_1500_nm = count_rna_close_pbody(pbody_mask= pbody_mask, spots_coords= rna_coord, distance_nm= 1500, voxel_size= voxel_size)
         pbody_closer_than_2000_nm = count_rna_close_pbody(pbody_mask= pbody_mask, spots_coords= rna_coord, distance_nm= 2000, voxel_size= voxel_size)
@@ -289,10 +298,10 @@ def get_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,103)
 
 
     #Adding custom features to DataFrames
-    features = np.append(features, [malat1_spot_in_nuc, malat1_spot_in_cyto, cluster_number,
+    features = np.append(features, [malat1_spot_in_nuc, malat1_spot_in_cyto, cluster_number,nucleus_area_px,
                          rna_spot_in_pbody, pbody_num, pbody_area_px, pbody_area_nm, count_pbody_nucleus, count_pbody_cytoplasm, pbody_closer_than_1000_nm, pbody_closer_than_1500_nm, pbody_closer_than_2000_nm])
-    features_names += ['malat1 spots in nucleus', 'malat1 spots in cytoplasm', 'cluster number',
-               'rna spots in pbody', 'pbody number', 'pbody area (px)', 'pbody area (nm^2)', "count pbody in nucleus", "count pbody in cytoplasm", "pbody closer than 1000 nm", "pbody closer than 1500 nm", "pbody closer than 2000 nm"]
+    features_names += ['malat1 spots in nucleus', 'malat1 spots in cytoplasm', 'cluster number','nucleus area px',
+               'rna spots in pbody', 'pbody number', 'pbody area (px)', 'pbody area (nm^2)', "count pbody in nucleus", "count pbody in cytoplasm", "rna 1000 nm from pbody", "rna 1500 nm from pbody", "rna 2000 nm from pbody"]
     header = ["id", "AcquisitionId"] + features_names
     data = np.append([0, acquisition_id], features)
     data = data.reshape([1,-1])

@@ -3,7 +3,7 @@ from skimage.measure import regionprops_table
 from bigfish.stack import check_parameter
 
 
-def unzip(lis) :
+def unzip(lis:list)-> 'list[list]' :
     """from a list of coordinates return a list of list where each rows has all coordinate from an axis
     
     Parameters
@@ -44,3 +44,5 @@ def from_label_get_centeroidscoords(label):
     properties_dic = regionprops_table(label, properties= ["label","centroid"])
     Centroid = properties_dic
     return Centroid
+
+

@@ -116,7 +116,6 @@ def count_spots_in_mask(spots, mask) :
     dim = len(spots[0])
 
     if dim == 1 : raise Exception("1D spots are not supported")
-    #elif dim > 3 : raise Warning("spots are more than 3 dimensional, only first 3 axis will be computed.")
 
     
     if dim == 2 :
@@ -138,7 +137,7 @@ def count_spots_in_mask(spots, mask) :
 
 
 
-def compute_pbody_area(pbody_mask: np.ndarray, unit: str = 'px', voxel_size: tuple= None)-> float:
+def compute_mask_area(pbody_mask: np.ndarray, unit: str = 'px', voxel_size: tuple= None)-> float:
     """
     Return the area of pbody within cell. 
     
@@ -196,9 +195,15 @@ def count_rna_close_pbody(pbody_mask: np.ndarray, spots_coords: 'list[tuple]', d
 
     frompbody_distance_map = distance_transform_edt(np.logical_not(pbody_mask), sampling= [y_scale, x_scale])
     rna_distance_map = np.ones_like(pbody_mask) * -999
-    z_coords, y_coords, x_coords = unzip(spots_coords)
-    del z_coords
-    rna_distance_map[x_coords, y_coords] = frompbody_distance_map[x_coords, y_coords] # This distance maps gives the distance of each RNA to the closest p-body
+    if len(spots_coords[0]) == 2 :
+        y_coords, x_coords = unzip(spots_coords)
+    elif len(spots_coords[0]) == 3 :
+        z_coords, y_coords, x_coords = unzip(spots_coords)
+        del z_coords
+    else : 
+        z_coords, y_coords, x_coords,*_ = unzip(spots_coords)
+        del z_coords,_
+    rna_distance_map[y_coords, x_coords] = frompbody_distance_map[y_coords, x_coords] # This distance maps gives the distance of each RNA to the closest p-body
     count_map = rna_distance_map[rna_distance_map >= 0] <= distance_nm
     
     values,count = np.unique(count_map, return_counts= True)
