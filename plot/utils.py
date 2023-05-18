@@ -78,6 +78,17 @@ def gene_bar_plot(rna_list: 'list[str]', values: 'list[float]', errors: 'list[fl
 
 
 
+def gene_violin_plot(gene_list: 'list[str]', values: 'list[float]', errors: 'list[float]'):
+    """
+    
+    """
+    pass
+
+
+
+
+
+
 def threshold_scatter_plot(gene_list: 'list[str]', values: 'list[float]', thresholds: 'list[float]', gene_per_col = 10) :
     #TODO
     if len(gene_list) != len(values) : raise ValueError("length of gene_list, values and thresholds must match.")
@@ -95,9 +106,6 @@ def threshold_scatter_plot(gene_list: 'list[str]', values: 'list[float]', thresh
     print("gene number ", gene_number)
     print("col num ", col_num)
     legend = ax.legend(gene_list, loc='upper left', ncols= col_num)
-
-
-
 
     return fig
 

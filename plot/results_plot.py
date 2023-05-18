@@ -4,6 +4,12 @@ import matplotlib.pyplot as plt
 import pbwrap.data.getdata as gdata
 from .utils import save_plot, gene_bar_plot, get_simple_linear_regression
 
+
+
+
+
+
+
 def threshold(Acquisition: pd.DataFrame, rna_list:'list[str]' = None, path_output= None, show = True, ext= 'png', title = None) :
     
     #Computing RNA mean threshold and var :
@@ -28,6 +34,13 @@ def threshold(Acquisition: pd.DataFrame, rna_list:'list[str]' = None, path_outpu
     plt.close()
 
 
+#########################
+## RNA Detection plots ##
+#########################
+
+#############
+# Bar plots #
+#############
 
 def spots_per_cell(Acquisition: pd.DataFrame, Cell: pd.DataFrame, spot_type = 'rna', rna_list: 'list[str]' = None, path_output= None, show = True, ext= 'png', title = "RNA per cell") :
     
@@ -73,8 +86,8 @@ def RNA_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list
     mean_rna_per_pbody_list = []
     for gene in gene_list : 
         gene_Cell = join_frame [join_frame["rna name"] == gene]
-        mean_rna_per_pbody_list += [(gene_Cell.loc[:, "rna spots in body"] / gene_Cell.loc[:, "pbody number"]).mean()]
-        std_list += [(gene_Cell.loc[:, "rna spots in body"] / gene_Cell.loc[:, "pbody number"]).std()]
+        mean_rna_per_pbody_list += [(gene_Cell.loc[:, "rna spots in pbody"] / gene_Cell.loc[:, "pbody number"]).mean()]
+        std_list += [(gene_Cell.loc[:, "rna spots in pbody"] / gene_Cell.loc[:, "pbody number"]).std()]
 
     #plot
     fig = gene_bar_plot(gene_list, mean_rna_per_pbody_list, std_list)
@@ -95,10 +108,10 @@ def cytoRNA_proportion_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, g
     mean_rna_per_pbody_list = []
     for gene in gene_list : 
         gene_Cell = join_frame [join_frame["rna name"] == gene]
-        mean_rna_in_pbody = gene_Cell.loc[:,"rna spots in body"].mean()
+        mean_rna_in_pbody = gene_Cell.loc[:,"rna spots in pbody"].mean()
         mean_cyto_rna_number = gene_Cell.loc[:,"nb_rna_out_nuc"].mean()
         mean_rna_per_pbody_list += [mean_rna_in_pbody/mean_cyto_rna_number]        
-        std_rna_in_pbody = gene_Cell.loc[:,"rna spots in body"].std()
+        std_rna_in_pbody = gene_Cell.loc[:,"rna spots in pbody"].std()
         std_cyto_rna_number = gene_Cell.loc[:,"nb_rna_out_nuc"].std()
         std_list += [std_rna_in_pbody/std_cyto_rna_number] # Comment calculer la std ?
 
@@ -123,8 +136,8 @@ def RNA_proportion_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_
     mean_rna_per_pbody_list = []
     for gene in gene_list : 
         gene_Cell = join_frame [join_frame["rna name"] == gene]
-        mean_rna_per_pbody_list += [(gene_Cell.loc[:, "rna spots in body"] / (gene_Cell.loc[:, "nb_rna_out_nuc"] + gene_Cell.loc[:, "nb_rna_in_nuc"])).mean()]
-        std_list += [(gene_Cell.loc[:, "rna spots in body"] / (gene_Cell.loc[:, "nb_rna_out_nuc"] + gene_Cell.loc[:, "nb_rna_in_nuc"])).std()]
+        mean_rna_per_pbody_list += [(gene_Cell.loc[:, "rna spots in pbody"] / (gene_Cell.loc[:, "nb_rna_out_nuc"] + gene_Cell.loc[:, "nb_rna_in_nuc"])).mean()]
+        std_list += [(gene_Cell.loc[:, "rna spots in pbody"] / (gene_Cell.loc[:, "nb_rna_out_nuc"] + gene_Cell.loc[:, "nb_rna_in_nuc"])).std()]
 
     #plot
     fig = gene_bar_plot(gene_list, mean_rna_per_pbody_list, std_list)
@@ -159,13 +172,58 @@ def RNApercentage_in_out_nucleus(Acquisition: pd.DataFrame, Cell: pd.DataFrame, 
     plt.close()
 
 
-def Malat_inNuc_asDapiIntensity(Cell: pd.DataFrame, projtype = 'MIP', out = False, plot_linear_regression= False,
+################
+# Violin plots #
+################
+
+def violin_rna_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list[str]' = None, path_output= None, show = True, ext= 'png', title = None):
+    join_frame = pd.merge(Cell, Acquisition.loc[:,["id", "rna name"]], how= "left", left_on= "AcquisitionId", right_on= "id")
+    join_frame = join_frame.drop(axis= 0, index= join_frame[join_frame["pbody number"] == 0].index)
+    
+    if gene_list == None : 
+        gene_list = gdata.from_Acquisition_get_rna(Acquisition)
+    
+    #Sort gene alphabetically
+    gene_list = pd.DataFrame(columns = ["rna name"], data= gene_list).sort_values("rna name")
+    gene_list = list(gene_list["rna name"])
+
+    #Build array for plot
+    violin_array = []
+    for gene in gene_list:
+        gene_frame = join_frame.query("`rna name` == '{0}'".format(gene))
+        violin_array.append(gene_frame.loc[:, "rna spots in body"])
+    print(violin_array)
+    #plot
+    fig = plt.figure(figsize= (100,10))
+    ax = fig.gca()
+    plt.xticks(range(len(gene_list)))
+    xticks = ax.get_xticks()
+    ax.set_xticks(xticks, labels= gene_list, rotation= 90)
+    ax.axis(xmin=-0.5, xmax= len(gene_list)+0.5)
+    fig.subplots_adjust(bottom= 2/fig.get_size_inches()[1])
+
+    plt.violinplot(violin_array, positions= np.arange(len(gene_list)))
+    if show : plt.show()
+
+
+
+
+################################
+## Malat1 / Dapi Signal plots ##
+################################
+
+def Malat_inNuc_asDapiIntensity(Cell: pd.DataFrame, projtype = 'MIP', summarize_type= 'median', out = False, plot_linear_regression= False,
                                 path_output= None, show = True, ext= 'png', title = None) :
 
-    #Select right projection type from Cell Data
-    if projtype.upper() == 'MIP' : X = "Mean Intensity (MIP)"
-    elif projtype.upper() == 'MEAN' : X = "Mean Intensity (MeanProj)"
+    #Select projection type from Cell Data
+    if projtype.upper() == 'MIP' : X = "nucleus_mip_"
+    elif projtype.upper() == 'MEAN' : X = "nucleus_mean_"
     else : raise ValueError("projtype shoud either be 'mip' or 'mean', it is {0}.".format(projtype))
+
+    #Summarize type
+    if summarize_type.upper() == 'MEDIAN' : X += "median_signal"
+    elif summarize_type.upper() == 'MEAN' : X += "mean_signal"
+    else : raise ValueError("summarize_type should either be 'median' or 'mean'.")
 
     #Select malat spots in nucleus or in cytoplasm
     if out : Y = 'malat1 spots out nucleus'
@@ -196,17 +254,26 @@ def Malat_inNuc_asDapiIntensity(Cell: pd.DataFrame, projtype = 'MIP', out = Fals
     plt.close()
 
 
-def hist_dapi_signal(Cell, projtype= 'MIP', path_output= None, show = True, ext= 'png', title: str = None, bins= 500) :
+def hist_dapi_signal(Cell, projtype= 'MIP', summarize_type = 'median', path_output= None, show = True, ext= 'png', title: str = None, bins= 500) :
     """
     projtype : "MIP" or "MEAN"
+    summarize_type : "median" or "mean"
     """
-    if projtype.upper() == 'MIP' : X = "Mean Intensity (MIP)"
-    elif projtype.upper() == 'MEAN' : X = "Mean Intensity (MeanProj)"
+    #Projtype
+    if projtype.upper() == 'MIP' : X = "nucleus_mip_"
+    elif projtype.upper() == 'MEAN' : X = "nucleus_mean_"
+    else : raise ValueError("projtype should either be 'mip' or 'mean'.")
+
+    #Summarize type
+    if summarize_type.upper() == 'MEDIAN' : X += "median_signal"
+    elif summarize_type.upper() == 'MEAN' : X += "mean_signal"
+    else : raise ValueError("summarize_type should either be 'median' or 'mean'.")
+
     dapi_signal = Cell.loc[:,X] * Cell.loc[:,"nuc_area"]
 
     fig = plt.figure(figsize= (20,10))
     hist = plt.hist(dapi_signal, bins= bins)
-    plt.xlabel("Dapi signal (Nucleus area * mean signal)")
+    plt.xlabel("Dapi signal (Nucleus area * {0})".format(X))
     plt.ylabel("Count")
     if title != None : plt.title(title)
     

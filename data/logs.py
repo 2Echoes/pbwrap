@@ -76,16 +76,15 @@ class run_log(log) :
     def failure(self):
         self.error_count += 1
 
-    def update(self, error_log: error_log, current_acquisition: int, filename: str, acquisition_start= 0) :
+    def update(self, filename: str, rna_computed: list) :
         """Updates the log file during analysis pipeline."""
         with open(self.path + self.name, 'w') as logfile :
-            error_number = error_log.get_error_number()
-            acquisition_number = current_acquisition - error_number - acquisition_start
             logfile.write("Log : {0}\nCreated on : {1}\n\n".format(self.name, self.creationdate))
             logfile.write("Updated on : {0}\n".format(get_datetime()))
-            logfile.write("Number of acquisition that resulted in an error : {0}.\n".format(error_number))
-            logfile.write("Number of acquisition processed successfully : {0}.\n".format(acquisition_number))
-            logfile.write("Current acquistion : {0} - {1}.".format(acquisition_number, filename))
+            logfile.write("Number of acquisition that resulted in an error : {0}.\n".format(self.error_count))
+            logfile.write("Number of acquisition processed successfully : {0}.\n".format(self.sucess_count))
+            logfile.write("Current acquistion : - {1}.".format(filename))
+            logfile.write("So far {0} gene(s) have been analysed.\nList of analysed gens : {1}".format(len(rna_computed), rna_computed))
 
     def endrun(self, log_report: dict) :
         with open(self.path + self.name, 'w') as logfile :
