@@ -3,13 +3,15 @@ import matplotlib.pyplot as plt
 from skimage.measure import regionprops_table
 from bigfish.stack import check_parameter
 
-def from_label_get_centeroidscoords(label):
-    """Returns dict{"label", "centroid"}"""
+def from_label_get_centeroidscoords(label: np.ndarray):
+    """
+    Returns
+    --------
+      centroid : dict{"label": list, "centroid-n": list} 
+        n should be replace with 1,2.. according to the axe you wish to access."""
 
     check_parameter(label = (np.ndarray))
-    dim = label.ndim
-    properties_dic = regionprops_table(label, properties= ["label","centroid"])
-    centroid = properties_dic
+    centroid = regionprops_table(label, properties= ["label","centroid"])
     return centroid
 
 

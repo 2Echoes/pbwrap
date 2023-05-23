@@ -2,6 +2,8 @@ import pbwrap.quantification as quant
 import numpy as np
 import pbwrap.utils as utils
 import pbwrap.quantification.cell as cellquant
+import numpy as np
+from skimage.measure import regionprops_table
 import time as t
 """
 
@@ -37,14 +39,5 @@ mask = np.random.randint(0,2,[5000,5000], dtype= bool)
 print('data\n',data)
 print("mask\n", ~mask)
 
-timestamp = t.process_time()
-#nouvelle solution
-pixel_number = mask.sum()
-print("Solution1\npixel number = ",pixel_number,"\nProcess time = ",str(t.process_time() - timestamp))
-
-#solution en cours
-timestamp = t.process_time()
-_, count = np.unique(mask, return_counts= True)
-pixel_number = count[1]
-
-print("Solution2\npixel number = ",pixel_number,"\nProcess time = ",str(t.process_time() - timestamp))
+centroid = regionprops_table(mask.astype(int), properties= ["label","centroid"])
+print(centroid)

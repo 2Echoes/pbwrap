@@ -7,6 +7,7 @@ import pandas as pd
 import CustomPandasFramework.PBody_project.DataFrames as DataFrame
 import CustomPandasFramework.operations as dataOp
 from scipy.ndimage import distance_transform_edt
+from skimage.measure import regionprops_table
 from bigfish.stack import mean_projection, maximum_projection, check_parameter, check_array
 from .utils import unzip
 from bigfish.classification import compute_features, get_features_name
@@ -91,6 +92,9 @@ def compute_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,
             return_names=True)
     
     #Custom features
+    cell_props_table = regionprops_table(cell_mask, properties= ["centroid"])
+    cell_coordinates = [cell_props_table["centroid-0"] + min_y, cell_props_table["centroid-1"] + min_x]
+    del cell_props_table
     cluster_number = len(ts_coord) + len(foci_coord)
     nucleus_area_px = compute_mask_area(nuc_mask, unit= 'px', voxel_size= voxel_size)
     nucleus_area_nm = compute_mask_area(nuc_mask, unit= 'nm', voxel_size= voxel_size)
@@ -99,10 +103,13 @@ def compute_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,
     nucleus_mean_signal_metrics = nucleus_signal_metrics(cell, channel= dapi, projtype= 'mean')
 
     #Adding custom signal features to DataFrame
-    features = np.append(features, [nucleus_mip_signal_metrics["mean"], nucleus_mip_signal_metrics["max"], nucleus_mip_signal_metrics["min"], nucleus_mip_signal_metrics["median"],
-                                    nucleus_mean_signal_metrics["mean"], nucleus_mean_signal_metrics["max"], nucleus_mean_signal_metrics["min"], nucleus_mean_signal_metrics["median"]])
+    features = np.append(features,
+                         [cell_coordinates,
+                         nucleus_mip_signal_metrics["mean"], nucleus_mip_signal_metrics["max"], nucleus_mip_signal_metrics["min"], nucleus_mip_signal_metrics["median"],
+                         nucleus_mean_signal_metrics["mean"], nucleus_mean_signal_metrics["max"], nucleus_mean_signal_metrics["min"], nucleus_mean_signal_metrics["median"]])
     
-    features_names += ["nucleus_mip_mean_signal","nucleus_mip_max_signal","nucleus_mip_min_signal","nucleus_mip_median_signal",
+    features_names += [ "cell_coordinates",
+                        "nucleus_mip_mean_signal","nucleus_mip_max_signal","nucleus_mip_min_signal","nucleus_mip_median_signal",
                         "nucleus_mean_mean_signal","nucleus_mean_max_signal","nucleus_mean_min_signal","nucleus_mean_median_signal"]
 
     #malat features

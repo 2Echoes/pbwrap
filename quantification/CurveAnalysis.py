@@ -5,6 +5,7 @@ import numpy as np
 import cmath
 from sklearn.linear_model import LinearRegression
 from sklearn.mixture import GaussianMixture
+from pbwrap.errors_handling import SolutionNotRealError
 
 def simple_linear_regression(X: np.array, Y: np.array) :
     X = np.array(X).reshape(-1,1)
@@ -37,7 +38,7 @@ def _MultiGaussianfit(distribution:'list[float]', gaussian_number=2) :
     
     return res
 
-def _Guassians_intersect(mu1:float, mu2:float, sigma1:float, sigma2:float):
+def _Guassians_intersect(mu1:float, mu2:float, sigma1:float, sigma2:float) -> float :
     """
     Finds the x-axis coordinate where 2 gaussians intersect. This can be achieved by solving a 2nd degree equation ax² + bx + c = 0 where a,b and c are defined as below.
     """
@@ -45,20 +46,24 @@ def _Guassians_intersect(mu1:float, mu2:float, sigma1:float, sigma2:float):
     b = 2*(np.power(sigma1,2)*mu2 - np.power(sigma2,2)*mu1)
     c = np.power(sigma2,2)*np.power(mu1,2) - np.power(sigma1,2)*np.power(mu2,2) - 2*np.power(sigma1,2)*np.power(sigma2,2)*np.log(sigma2/sigma1)
 
-    pass
+    ans1, ans2 = solve_quadratic_equation(a,b,c)
+    return ans2
 
-def solve_quadratic_equation(a,b,c) :
+def solve_quadratic_equation(a,b,c, real= False) :
     """
     Solve a quadratic equation ax² + bx + c = 0
 
     Returns
     -------
-    res = (sol1,sol2) : Where sol1 < sol2 or abs(sol1) < abs(sol2)
+    res = (ans1,ans2) 
     """
 
     # calculating  the discriminant
     dis = (b**2) - (4 * a*c)
+    if real and dis < 0 : raise SolutionNotRealError('Equation is set to real set but discriminant was found < 0 which means there are no solutions. Try setting "real" parameter to False.')
     
     # find two results
     ans1 = (-b-cmath.sqrt(dis))/(2 * a)
     ans2 = (-b + cmath.sqrt(dis))/(2 * a)
+
+    return (ans1,ans2)
