@@ -83,8 +83,8 @@ class run_log(log) :
             logfile.write("Updated on : {0}\n".format(get_datetime()))
             logfile.write("Number of acquisition that resulted in an error : {0}.\n".format(self.error_count))
             logfile.write("Number of acquisition processed successfully : {0}.\n".format(self.sucess_count))
-            logfile.write("Current acquistion : - {0}.".format(filename))
-            logfile.write("So far {0} gene(s) have been analysed.\nList of analysed gens : {1}".format(len(rna_computed), rna_computed))
+            logfile.write("Current acquistion : - {0}.\n".format(filename))
+            logfile.write("So far {0} gene(s) have been analysed.\nList of analysed gens : {1}\n".format(len(rna_computed), rna_computed))
 
     def endrun(self, log_report: dict) :
         with open(self.path + self.name, 'w') as logfile :

@@ -2,9 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from skimage.measure import regionprops_table
 from bigfish.stack import check_parameter
-from sklearn import linear_model
-
-
 
 def from_label_get_centeroidscoords(label):
     """Returns dict{"label", "centroid"}"""
@@ -16,10 +13,13 @@ def from_label_get_centeroidscoords(label):
     return centroid
 
 
-def gene_bar_plot(rna_list: 'list[str]', values: 'list[float]', errors: 'list[float]', legend: 'list[str]'= None, width = 0.8, error_width = 3) :
+def gene_bar_plot(rna_list: 'list[str]', values: 'list[float]', errors: 'list[float]',
+                 title: str=None, xlabel:str= None, ylabel:str= None,
+                path_output= None, ext='png', show= True, close= True, legend: 'list[str]'= None, width = 0.8, error_width = 3) :
 
     #Exception thrower
     is_listoflist = False
+    if show and not close : raise ValueError("If show is True then close shoud not be False as closing the graph windows will close the plot.")
 
     #multi data set
     if type(values[0]) == list : 
@@ -73,6 +73,12 @@ def gene_bar_plot(rna_list: 'list[str]', values: 'list[float]', errors: 'list[fl
     ax.set_xticks(xticks, labels= rna_list, rotation= 90)
     ax.axis(xmin=-0.5, xmax= len(rna_list)+0.5, ymin= 0)
     fig.subplots_adjust(bottom= 2/fig.get_size_inches()[1])
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    if path_output != None : save_plot(path_output, ext)
+    if show : plt.show()
+    if close : plt.close()
 
     return fig
 
@@ -86,29 +92,51 @@ def gene_violin_plot(gene_list: 'list[str]', values: 'list[float]', errors: 'lis
 
 
 
-
-
-
-def threshold_scatter_plot(gene_list: 'list[str]', values: 'list[float]', thresholds: 'list[float]', gene_per_col = 10) :
-    #TODO
-    if len(gene_list) != len(values) : raise ValueError("length of gene_list, values and thresholds must match.")
+def histogram(data: 'list[float]', xlabel= 'distribution', ylabel= 'count', path_output= None, show = True, close= True, ext= 'png', title: str = None, bins= 500, **axis_boundaries) :
+    """Base function for histograms plotting.
     
-    fig = plt.figure(figsize=(15,15))
-    gene_number = len(gene_list)
-    colors = np.arange(1,1000,1000/gene_number)
+    Parameters
+    ----------
+        data : list
+            data distribution
+        xlabel : label to plot on x axis
+        ylabel : label to plot on y axis
+        title : title to plot on top of graph
+        axis_boundaries : boundaries for x and y axes. Expected None or at least one the following ('xmin'=x, 'xmax'=X, ymin='y',ymax='Y')
+    """
+    #Value errors
+    if not close and show :
+        raise ValueError("if you want to keep the graph open you must not show() during the call of this function")
+    for arg in axis_boundaries:
+        if arg not in ('xmin','xmax','ymin','ymax') : raise ValueError("Incorrect argument in axis_boundaries, expected arguments are 'xmin','xmax','ymin','ymax' not {0}.".format(arg))
+    if type(data) != np.ndarray:
+        data = np.array(data)
+    
+    #Plot
+    data = data[~np.logical_or(np.isnan(data),np.isinf(data))] # ~ = not
+    fig = plt.figure(figsize= (20,10))
+    hist = plt.hist(data, bins= bins)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
 
-    plt.scatter(thresholds, values, c= colors)
+    #Axis boundaries
     ax = fig.gca()
-    ax.axis(xmin= 0, ymin= 0)
+    if 'xmin' in axis_boundaries : xmin = axis_boundaries['xmin']
+    else : xmin = data.min()
+    if 'xmax' in axis_boundaries : xmax = axis_boundaries['xmax']
+    else : xmax = data.max()
+    if 'ymin' in axis_boundaries : ymin = axis_boundaries['ymin']
+    else : ymin = 0
+    if 'ymax' in axis_boundaries : ymax = axis_boundaries['ymax']
+    else : ymax = np.array(hist[0]).max()
+    axis = [xmin,xmax,ymin,ymax]
+    ax.axis(axis)
+        
 
-    #Legend
-    col_num = (gene_number // gene_per_col) + 1
-    print("gene number ", gene_number)
-    print("col num ", col_num)
-    legend = ax.legend(gene_list, loc='upper left', ncols= col_num)
-
-    return fig
-
+    if title != None : plt.title(title)
+    if path_output != None : save_plot(path_output, ext)
+    if show : plt.show()
+    if close : plt.close()
 
 
 def save_plot(path_output, ext):
@@ -151,13 +179,3 @@ def save_plot(path_output, ext):
     else:
         Warning("Plot is not saved because the extension is not valid: "
                 "{0}.".format(ext))
-        
-
-
-def get_simple_linear_regression(X: np.array, Y: np.array) :
-    X = np.array(X).reshape(-1,1)
-    Y = np.array(Y)
-    lin_model = linear_model.LinearRegression()
-    lin_model.fit(X,Y)
-
-    return lin_model.coef_[0], lin_model.intercept_

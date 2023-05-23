@@ -2,15 +2,11 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import pbwrap.data.getdata as gdata
-from .utils import save_plot, gene_bar_plot, get_simple_linear_regression
+from ..quantification.CurveAnalysis import simple_linear_regression
+from .utils import save_plot, gene_bar_plot, histogram
 
 
-
-
-
-
-
-def threshold(Acquisition: pd.DataFrame, rna_list:'list[str]' = None, path_output= None, show = True, ext= 'png', title = None) :
+def threshold(Acquisition: pd.DataFrame, rna_list:'list[str]' = None, path_output= None, show = True, close= True, ext= 'png', title = None) :
     
     #Computing RNA mean threshold and var :
     if rna_list == None : rna_list =  gdata.from_Acquisition_get_rna(Acquisition)
@@ -23,15 +19,14 @@ def threshold(Acquisition: pd.DataFrame, rna_list:'list[str]' = None, path_outpu
         std_list += [Acquisition[Acquisition["rna name"] == rna].loc[:,"RNA spot threshold"].std()]
 
     
-    fig = gene_bar_plot(rna_list, threshold_list, errors= std_list)
-    plt.ylabel("mean threshold")
-    if title!= None : plt.title(title)
-    
-    if path_output != None :
-        save_plot(path_output= path_output, ext= ext)
+    fig = gene_bar_plot(rna_list, threshold_list, errors= std_list, title= title, ylabel= "mean threshold", path_output= path_output, ext=ext, show=show, close= close)
 
-    if show : plt.show()
-    plt.close()
+
+def hist_RawData(DataFrame:pd.DataFrame, variable_name:str, path_output= None, show = True, close = True, ext= 'png', title: str = None, bins= 500, **axis_boundaries):
+    """Basic hist plot for graph requiring the distribution just as it appears in CellDataFrame"""
+
+    data = DataFrame.loc[:,variable_name]
+    histogram(data, xlabel= variable_name, ylabel= "count", path_output=path_output, show=show, close= close, ext=ext, title=title, bins=bins, **axis_boundaries)
 
 
 #########################
@@ -42,7 +37,7 @@ def threshold(Acquisition: pd.DataFrame, rna_list:'list[str]' = None, path_outpu
 # Bar plots #
 #############
 
-def spots_per_cell(Acquisition: pd.DataFrame, Cell: pd.DataFrame, spot_type = 'rna', rna_list: 'list[str]' = None, path_output= None, show = True, ext= 'png', title = "RNA per cell") :
+def spots_per_cell(Acquisition: pd.DataFrame, Cell: pd.DataFrame, spot_type = 'rna', rna_list: 'list[str]' = None, path_output= None, show = True, close=True, ext= 'png', title = "RNA per cell") :
     
     #Determining spot type
     if spot_type.upper() == 'RNA' : column = "rna number"
@@ -66,17 +61,13 @@ def spots_per_cell(Acquisition: pd.DataFrame, Cell: pd.DataFrame, spot_type = 'r
         std_list += [Cell[Cell["rna name"] == rna].loc[:, column].std()]
 
     #plot
-    fig = gene_bar_plot(rna_list, threshold_list, std_list)
-    plt.title(title)
-    if path_output != None : save_plot(path_output, ext)
-    if show : plt.show()
-    plt.close()
+    fig = gene_bar_plot(rna_list, threshold_list, std_list, title= title, path_output= path_output, ext=ext, show=show, close= close)
 
 
 def cluster_per_cell() :
     pass #no cluster data in frame
 
-def RNA_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list[str]' = None, path_output= None, show = True, ext= 'png', title = "RNA in pbody"):
+def RNA_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list[str]' = None, path_output= None, show = True, close= True, ext= 'png', title = "RNA in pbody"):
 
     join_frame = pd.merge(Cell, Acquisition.loc[:,["id", "rna name"]], how= "left", left_on= "AcquisitionId", right_on= "id")
     join_frame = join_frame.drop(axis= 0, index= join_frame[join_frame["pbody number"] == 0].index)
@@ -90,15 +81,11 @@ def RNA_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list
         std_list += [(gene_Cell.loc[:, "rna spots in pbody"] / gene_Cell.loc[:, "pbody number"]).std()]
 
     #plot
-    fig = gene_bar_plot(gene_list, mean_rna_per_pbody_list, std_list)
-    plt.title(title)
-    if path_output != None : save_plot(path_output, ext)
-    if show : plt.show()
-    plt.close()
+    fig = gene_bar_plot(gene_list, mean_rna_per_pbody_list, std_list, title= title, path_output= path_output, ext=ext, show=show, close= close)
 
 
 
-def cytoRNA_proportion_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list[str]' = None, path_output= None, show = True, ext= 'png', title = "RNA in pbody"):
+def cytoRNA_proportion_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list[str]' = None, path_output= None, show = True, close=True, ext= 'png', title = "Nucleus RNA proportion inside P-bodies"):
 
     join_frame = pd.merge(Cell, Acquisition.loc[:,["id", "rna name"]], how= "left", left_on= "AcquisitionId", right_on= "id")
     join_frame = join_frame.drop(axis= 0, index= join_frame[join_frame["pbody number"] == 0].index)
@@ -117,16 +104,12 @@ def cytoRNA_proportion_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, g
 
 
     #plot
-    fig = gene_bar_plot(gene_list, mean_rna_per_pbody_list, std_list)
-    plt.title(title)
-    plt.ylabel("cytoplasmic RNA proportion detected inside p-bodies")
-    if path_output != None : save_plot(path_output, ext)
-    if show : plt.show()
-    plt.close()
+    fig = gene_bar_plot(gene_list, mean_rna_per_pbody_list, std_list, title= title,ylabel="cytoplasmic RNA proportion detected inside p-bodies",
+                         path_output= path_output, ext=ext, show=show, close= close)
 
 
 
-def RNA_proportion_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list[str]' = None, path_output= None, show = True, ext= 'png', title = "RNA in pbody"):
+def RNA_proportion_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list[str]' = None, path_output= None, show = True, close= True, ext= 'png', title = "RNA proportion inside P-bodies"):
 
     join_frame = pd.merge(Cell, Acquisition.loc[:,["id", "rna name"]], how= "left", left_on= "AcquisitionId", right_on= "id")
     join_frame = join_frame.drop(axis= 0, index= join_frame[join_frame["pbody number"] == 0].index)
@@ -140,14 +123,10 @@ def RNA_proportion_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_
         std_list += [(gene_Cell.loc[:, "rna spots in pbody"] / (gene_Cell.loc[:, "nb_rna_out_nuc"] + gene_Cell.loc[:, "nb_rna_in_nuc"])).std()]
 
     #plot
-    fig = gene_bar_plot(gene_list, mean_rna_per_pbody_list, std_list)
-    plt.title(title)
-    if path_output != None : save_plot(path_output, ext)
-    if show : plt.show()
-    plt.close()
+    fig = gene_bar_plot(gene_list, mean_rna_per_pbody_list, std_list, title= title,path_output= path_output, ext=ext, show=show, close= close)
 
 
-def RNApercentage_in_out_nucleus(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list[str]' = None, plot_in_and_out_bars= True, path_output= None, show = True, ext= 'png', title = None) :
+def RNApercentage_in_out_nucleus(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list[str]' = None, plot_in_and_out_bars= True, path_output= None, show = True, close= True, ext= 'png', title = None) :
 
     join_frame = pd.merge(Cell, Acquisition.loc[:,["id", "rna name"]], how= "left", left_on= "AcquisitionId", right_on= "id")
     if gene_list == None : gene_list = gdata.from_Acquisition_get_rna(Acquisition)
@@ -164,12 +143,8 @@ def RNApercentage_in_out_nucleus(Acquisition: pd.DataFrame, Cell: pd.DataFrame, 
     #plot
     if plot_in_and_out_bars : fig = gene_bar_plot(gene_list, [mean_value_inside, mean_value_outside], [std_list]*2, legend = ["inside nuc", "outside nuc"])
     else : 
-        fig = gene_bar_plot(gene_list, mean_value_inside, std_list, legend = "inside nuc")
+        fig = gene_bar_plot(gene_list, mean_value_inside, std_list, legend = "inside nuc", title= title, path_output= path_output, ext=ext, show=show, close= close)
         plt.ylabel("RNA proportion inside nucleus (%)")
-    if title != None : plt.title(title)
-    if path_output != None : save_plot(path_output, ext)
-    if show : plt.show()
-    plt.close()
 
 
 ################
@@ -239,7 +214,7 @@ def Malat_inNuc_asDapiIntensity(Cell: pd.DataFrame, projtype = 'MIP', summarize_
     plt.plot(X_values, Y_values, 'r.', label= "Experimental Data")
 
     if plot_linear_regression:
-        slope, intercept = get_simple_linear_regression(X_values,Y_values)
+        slope, intercept = simple_linear_regression(X_values,Y_values)
         regression = slope* X_values + intercept
         plt.plot(X_values, regression, 'b', label= "Linear regression \n{0}x + {1}".format(slope,intercept))
         plt.legend()
@@ -254,7 +229,60 @@ def Malat_inNuc_asDapiIntensity(Cell: pd.DataFrame, projtype = 'MIP', summarize_
     plt.close()
 
 
-def hist_dapi_signal(Cell, projtype= 'MIP', summarize_type = 'median', path_output= None, show = True, ext= 'png', title: str = None, bins= 500) :
+def DapiSignal_InfValue(Acquisition:pd.DataFrame, Cell:pd.DataFrame, max_value: float, gene_list=None, projtype= 'mean', summarize_type = 'median', path_output= None, show = True, ext= 'png', title: str = None):
+    """
+    byGenes_barplot
+    projtype : "MIP" or "MEAN"
+    summarize_type : "median" or "mean"
+
+    Standard deviation is calculated from an Acquisition point of view
+
+    """
+
+    #Projtype
+    if projtype.upper() == 'MIP' : X = "nucleus_mip_"
+    elif projtype.upper() == 'MEAN' : X = "nucleus_mean_"
+    else : raise ValueError("projtype should either be 'mip' or 'mean'.")
+
+    #Summarize type
+    if summarize_type.upper() == 'MEDIAN' : X += "median_signal"
+    elif summarize_type.upper() == 'MEAN' : X += "mean_signal"
+    else : raise ValueError("summarize_type should either be 'median' or 'mean'.")
+
+    std_data= []
+    mean_data = []
+    join_frame = pd.merge(Cell, Acquisition.loc[:,["id", "rna name"]], how= "left", left_on= "AcquisitionId", right_on= "id")
+    join_frame = join_frame.drop(axis= 0, index= join_frame[join_frame["pbody number"] == 0].index)
+    if gene_list == None : gene_list = gdata.from_Acquisition_get_rna(Acquisition)
+    for gene in gene_list : 
+        gene_Cell = join_frame [join_frame["rna name"] == gene]
+        cell_proportion_under_value = np.array([])
+
+        for acquisition in gene_Cell.value_counts(subset= "AcquisitionId").index :
+            acquisition_Cell = gene_Cell.query("AcquisitionId == {0}".format(acquisition))
+            cell_under_value = (len(acquisition_Cell.query("{0} <= {1}".format(X,max_value))))
+            total_cell = (len(acquisition_Cell))
+            cell_proportion_under_value = np.append(cell_proportion_under_value, (cell_under_value / total_cell))
+
+        mean_data.append(cell_proportion_under_value.mean())
+        std_data.append(cell_proportion_under_value.std())
+
+
+    gene_bar_plot(gene_list, mean_data, std_data)
+    plt.ylabel("X")
+
+    #TODO : Encapsulate this code
+    if title != None : plt.title(title)
+    if path_output != None : save_plot(path_output, ext)
+    if show : plt.show()
+    plt.close()
+
+
+###############
+# Histogramms #
+###############
+
+def hist_dapi_signal(Cell, projtype= 'MIP', summarize_type = 'median', path_output= None, show = True, ext= 'png', title: str = None, bins= 500, **axis_boundaries) :
     """
     projtype : "MIP" or "MEAN"
     summarize_type : "median" or "mean"
@@ -270,52 +298,26 @@ def hist_dapi_signal(Cell, projtype= 'MIP', summarize_type = 'median', path_outp
     else : raise ValueError("summarize_type should either be 'median' or 'mean'.")
 
     dapi_signal = Cell.loc[:,X] * Cell.loc[:,"nuc_area"]
-
-    fig = plt.figure(figsize= (20,10))
-    hist = plt.hist(dapi_signal, bins= bins)
-    plt.xlabel("Dapi signal (Nucleus area * {0})".format(X))
-    plt.ylabel("Count")
-    if title != None : plt.title(title)
-    
-    
-    if path_output != None : save_plot(path_output, ext)
-    if show : plt.show()
-    plt.close()
+    histogram(dapi_signal, xlabel="Dapi signal (Nucleus area * {0})".format(X), ylabel= "count", path_output=path_output, show=show, ext=ext, title=title, bins=bins, **axis_boundaries)
 
 
-
-def hist_malat_count(Cell, out_nucleus= False, path_output= None, show = True, ext= 'png', title: str = None, bins= 500) :
+def hist_malat_count(Cell, location= 'nucleus', path_output= None, show = True, close = True, ext= 'png', title: str = None, bins= 500, **axis_boundaries) :
     """
+    location : 'nucleus', 'cytoplasm' or 'cell' (cell = nuc + cytoplasm)
     projtype : "MIP" or "MEAN"
     """
-    if out_nucleus : X = "malat1 spots in cytoplasm"
-    else : X = "malat1 spots in nucleus"
+
+    if location.upper() == "NUCLEUS" : X = "malat1 spots in nucleus"
+    elif location.upper() == "CYTOPLASM" or location.upper() == "CELL" : X = "malat1 spots in cytoplasm"
+    else : raise ValueError("Incorrect value for location parameter. Should be one of the following : 'nucleus', 'cytoplasm' or 'cell'.")
     dapi_signal = Cell.loc[:, X]
-    fig = plt.figure(figsize= (20,10))
-    hist = plt.hist(dapi_signal, bins= bins)
-    plt.xlabel(X)
-    plt.ylabel("Count")
-    if title != None : plt.title(title)
-    
-    
-    if path_output != None : save_plot(path_output, ext)
-    if show : plt.show()
-    plt.close()
+    if location.upper() == "CELL" : dapi_signal += Cell.loc[:, "malat1 spots in nucleus"]
+    histogram(dapi_signal, xlabel=X, ylabel= "count", path_output=path_output, show=show, ext=ext, title=title, bins=bins, **axis_boundaries)
 
 
-
-def hist_in_nuc_malat_proportion(Cell, path_output= None, show = True, ext= 'png', title: str = None, bins= 500) :
+def hist_in_nuc_malat_proportion(Cell, path_output= None, show = True, close = True, ext= 'png', title: str = None, bins= 500, **axis_boundaries) :
     """
 
     """
     proportion = Cell.loc[:, "malat1 spots in nucleus"] / (Cell.loc[:, "malat1 spots in nucleus"] + Cell.loc[:, "malat1 spots in cytoplasm"])
-    fig = plt.figure(figsize= (20,10))
-    hist = plt.hist(proportion * 100, bins= bins)
-    plt.xlabel("malat spots proportion in nucleus")
-    plt.ylabel("Count")
-    if title != None : plt.title(title)
-    
-    
-    if path_output != None : save_plot(path_output, ext)
-    if show : plt.show()
-    plt.close()
+    histogram(proportion, xlabel="malat spots proportion in nucleus", ylabel= "count", path_output=path_output, show=show, close=close, ext=ext, title=title, bins=bins, **axis_boundaries)
