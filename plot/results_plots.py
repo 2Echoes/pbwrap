@@ -229,7 +229,7 @@ def Malat_inNuc_asDapiIntensity(Cell: pd.DataFrame, projtype = 'MIP', summarize_
     plt.close()
 
 
-def DapiSignal_InfValue(Acquisition:pd.DataFrame, Cell:pd.DataFrame, max_value: float, gene_list=None, projtype= 'mean', summarize_type = 'median', path_output= None, show = True, ext= 'png', title: str = None):
+def DapiSignal_InfValue(Acquisition:pd.DataFrame, Cell:pd.DataFrame, max_value: float, gene_list=None, projtype= 'mean', summarize_type = 'median', path_output= None, show = True,close= True, ext= 'png', title: str = None):
     """
     byGenes_barplot
     projtype : "MIP" or "MEAN"
@@ -268,14 +268,7 @@ def DapiSignal_InfValue(Acquisition:pd.DataFrame, Cell:pd.DataFrame, max_value: 
         std_data.append(cell_proportion_under_value.std())
 
 
-    gene_bar_plot(gene_list, mean_data, std_data)
-    plt.ylabel("X")
-
-    #TODO : Encapsulate this code
-    if title != None : plt.title(title)
-    if path_output != None : save_plot(path_output, ext)
-    if show : plt.show()
-    plt.close()
+    gene_bar_plot(gene_list, mean_data, std_data, title=title, ylabel=X, path_output=path_output, ext=ext, show=show, close= close)
 
 
 ###############
@@ -284,8 +277,14 @@ def DapiSignal_InfValue(Acquisition:pd.DataFrame, Cell:pd.DataFrame, max_value: 
 
 def hist_dapi_signal(Cell, projtype= 'MIP', summarize_type = 'median', path_output= None, show = True, ext= 'png', title: str = None, bins= 500, **axis_boundaries) :
     """
-    projtype : "MIP" or "MEAN"
-    summarize_type : "median" or "mean"
+    Parameters
+    ----------
+
+        projtype : "MIP" or "MEAN"
+        summarize_type : "median" or "mean"
+        axis_boundaries : kwargs
+            boundaries for x and y axes. Expected None or at least one the following ('xmin'=x, 'xmax'=X, ymin='y',ymax='Y')
+
     """
     #Projtype
     if projtype.upper() == 'MIP' : X = "nucleus_mip_"
@@ -299,6 +298,35 @@ def hist_dapi_signal(Cell, projtype= 'MIP', summarize_type = 'median', path_outp
 
     dapi_signal = Cell.loc[:,X] * Cell.loc[:,"nuc_area"]
     histogram(dapi_signal, xlabel="Dapi signal (Nucleus area * {0})".format(X), ylabel= "count", path_output=path_output, show=show, ext=ext, title=title, bins=bins, **axis_boundaries)
+
+
+def hist_dapi_density(Cell, projtype= 'MIP', summarize_type = 'median', path_output= None, show = True, ext= 'png', title: str = None, bins= 500, **axis_boundaries) :
+    """
+    Parameters
+    ----------
+
+        projtype : "MIP" or "MEAN"
+        summarize_type : "median" or "mean"
+        axis_boundaries : kwargs
+            boundaries for x and y axes. Expected None or at least one the following ('xmin'=x, 'xmax'=X, ymin='y',ymax='Y')
+
+    """
+    #Projtype
+    if projtype.upper() == 'MIP' : X = "nucleus_mip_"
+    elif projtype.upper() == 'MEAN' : X = "nucleus_mean_"
+    else : raise ValueError("projtype should either be 'mip' or 'mean'.")
+
+    #Summarize type
+    if summarize_type.upper() == 'MEDIAN' : X += "median_signal"
+    elif summarize_type.upper() == 'MEAN' : X += "mean_signal"
+    else : raise ValueError("summarize_type should either be 'median' or 'mean'.")
+
+    dapi_signal = Cell.loc[:,X] / Cell.loc[:,"nuc_area"]
+    histogram(dapi_signal, xlabel="Dapi signal (Nucleus area / {0})".format(X), ylabel= "count", path_output=path_output, show=show, ext=ext, title=title, bins=bins, **axis_boundaries)
+
+
+
+
 
 
 def hist_malat_count(Cell, location= 'nucleus', path_output= None, show = True, close = True, ext= 'png', title: str = None, bins= 500, **axis_boundaries) :

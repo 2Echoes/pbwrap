@@ -1,7 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import ScalarFormatter
 from skimage.measure import regionprops_table
 from bigfish.stack import check_parameter
+from math import floor, ceil
+import functools
 
 def from_label_get_centeroidscoords(label: np.ndarray):
     """
@@ -94,16 +97,19 @@ def gene_violin_plot(gene_list: 'list[str]', values: 'list[float]', errors: 'lis
 
 
 
-def histogram(data: 'list[float]', xlabel= 'distribution', ylabel= 'count', path_output= None, show = True, close= True, ext= 'png', title: str = None, bins= 500, **axis_boundaries) :
+def histogram(data: 'list[float]', xlabel= 'distribution', ylabel= 'count', path_output= None, show = True, close= True, ext= 'png', title: str = None, bins= 500, ticks_number= 21, **axis_boundaries) :
     """Base function for histograms plotting.
     
     Parameters
     ----------
         data : list
             data distribution
-        xlabel : label to plot on x axis
-        ylabel : label to plot on y axis
-        title : title to plot on top of graph
+        xlabel : str
+            label to plot on x axis
+        ylabel : str
+            label to plot on y axis
+        title : str
+            title to plot on top of graph
         axis_boundaries : boundaries for x and y axes. Expected None or at least one the following ('xmin'=x, 'xmax'=X, ymin='y',ymax='Y')
     """
     #Value errors
@@ -123,8 +129,35 @@ def histogram(data: 'list[float]', xlabel= 'distribution', ylabel= 'count', path
 
     #Axis boundaries
     ax = fig.gca()
+    axis_bound = hist_set_axis_boundaries(ax, data, hist, **axis_boundaries)
+    #Axis ticks
+    set_axis_ticks(axis_bound, ticks_number)
+
+
+    if title != None : plt.title(title)
+    if path_output != None : save_plot(path_output, ext)
+    if show : plt.show()
+    if close : plt.close()
+
+
+def hist_set_axis_boundaries(ax, data=None, hist=None, **axis_boundaries) :
+    """
+    Auto or manual set of histogram boundaries.
+
+    Parameters
+    ----------
+        ax : figure ax can be get from figure.gca() -> get curret axis
+        axis_boundaries : boundaries for x and y axes. Expected None or at least one the following ('xmin'=x, 'xmax'=X, ymin='y',ymax='Y')
+        Data and Hist parameters should be given for auto set. (hist is get from hist = plt.hist(data))
+
+    Returns
+    -------
+        axis = [xmin,xmax,ymin,ymax]
+
+    """
+
     if 'xmin' in axis_boundaries : xmin = axis_boundaries['xmin']
-    else : xmin = data.min()
+    else : xmin = 0
     if 'xmax' in axis_boundaries : xmax = axis_boundaries['xmax']
     else : xmax = data.max()
     if 'ymin' in axis_boundaries : ymin = axis_boundaries['ymin']
@@ -133,12 +166,62 @@ def histogram(data: 'list[float]', xlabel= 'distribution', ylabel= 'count', path
     else : ymax = np.array(hist[0]).max()
     axis = [xmin,xmax,ymin,ymax]
     ax.axis(axis)
-        
+    return axis
 
-    if title != None : plt.title(title)
-    if path_output != None : save_plot(path_output, ext)
-    if show : plt.show()
-    if close : plt.close()
+
+
+
+
+
+def set_axis_ticks(axis:tuple, x_ticks_number:int = None, y_ticks_number: int= None) :
+    """
+    Set 'ticks_number' ticks on the plot, ticks are spaced regularly using min/max value from axis tuple.
+
+    Parameters
+    ----------
+        axis : tuple (xmin, xmax, ymin, ymax)
+        ticks_number : int
+    """
+    if not isinstance(axis, (tuple, list)) : raise TypeError("axis paremeter should be a tuple or list. It is a {0}".format(type(axis)))
+    if len(axis) != 4 : raise ValueError("axis parameter should be a list containing 4 float-like : xmin, xmax, ymin, ymax.")
+
+    xmin,xmax,ymin,ymax = axis
+
+    #X axis
+    if x_ticks_number != None :
+        if xmax > 0 : last_tick = ceil(xmax)
+        else : last_tick = 0
+        if xmin < 0 : first_tick = floor(xmin)
+        else : first_tick = 0   
+        x_ticks = np.linspace(first_tick,last_tick,x_ticks_number)
+        if all(np.abs(x_ticks) > 1) : x_ticks = np.round(x_ticks)
+        else : x_ticks = np.round(x_ticks, decimals= 3)
+        x_ticks[0] = xmin
+        x_ticks[x_ticks_number-1] = xmax
+        if any(x_ticks >= 10000) : x_label = format_array_scientific_notation(x_ticks)
+        elif all(x_ticks < 1) and all(x_ticks > -1) : x_label = format_array_scientific_notation(x_ticks)
+        else : x_label = x_ticks
+        xlocs, xlabels = plt.xticks(x_ticks,x_label)
+
+    else : xlocs, xlabels = None,None
+
+    #Y axis
+    if y_ticks_number != None :
+        last_tick = ceil(ymax) 
+        y_ticks = y_ticks = np.linspace(0,last_tick,y_ticks_number)
+        y_ticks[0] = floor(xmin)
+        y_ticks[y_ticks_number-1] = ymax
+        if any(y_ticks >= 10000) : x_label = format_array_scientific_notation(y_ticks)
+        elif all(y_ticks< 1) and all(y_ticks > -1) : y_label = format_array_scientific_notation(y_ticks)
+        else : y_label = y_ticks
+        ylocs, ylabels = plt.xticks(y_ticks, y_label)
+    else : ylocs, ylabels = None,None
+
+    return(xlocs,xlabels,ylocs,ylabels)
+
+    
+
+
 
 
 def save_plot(path_output, ext):
@@ -181,3 +264,25 @@ def save_plot(path_output, ext):
     else:
         Warning("Plot is not saved because the extension is not valid: "
                 "{0}.".format(ext))
+        
+
+def round_up(x) :
+    x = ((x // 10)+1)*10
+    return x
+
+
+def round_up_bis(x,digit) :
+    x = ceil(x/10**digit)*10**digit
+    return x
+
+
+def truncate(x, digit) :
+    x = x * 10**digit
+    x = ceil(x)
+    x = x/10**digit
+    return x
+    
+
+def format_array_scientific_notation(array) :
+    res = map(functools.partial(np.format_float_scientific, precision= 2), array)
+    return list(res)

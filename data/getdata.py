@@ -166,7 +166,8 @@ def get_rnaname(acquisition_index, Input_frame):
     res = re.findall(regex,root)[0]
     return res
 
-
+def from_rootfilename_get_Acquisitionid(Acquisition: pd.DataFrame, rootfilename:str):
+    return Acquisition.query("rootfilename == '{0}'".format(rootfilename)).reset_index(drop=True).at[0,"id"]
 
 
 def from_Acquisition_get_rna(Acquisition: pd.DataFrame) :

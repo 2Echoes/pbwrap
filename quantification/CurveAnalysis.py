@@ -5,7 +5,7 @@ import numpy as np
 import cmath
 from sklearn.linear_model import LinearRegression
 from sklearn.mixture import GaussianMixture
-from pbwrap.errors_handling import SolutionNotRealError
+from ..errors import SolutionNotRealError
 
 def simple_linear_regression(X: np.array, Y: np.array) :
     X = np.array(X).reshape(-1,1)

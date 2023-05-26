@@ -35,7 +35,7 @@ def compute_signalmetrics(signal:np.ndarray, mask: np.ndarray) :
     return signalmetrics
 
 
-def count_spots_in_mask(spots, mask) :
+def count_spots_in_mask(spots, mask)->int :
     """
     Parameters
     ----------

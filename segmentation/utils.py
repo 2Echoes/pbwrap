@@ -369,7 +369,22 @@ def relabelling(current_label, label_giving) :
 
  
 
-def from2Dlabel_to3Dlabel(labels, maximal_distance= 20) : 
+def from2Dlabel_to3Dlabel(labels, maximal_distance= 20) :
+    #TOPNOTE : 
+    # Hey again, so this is what you might be interested in. I'll try to sump up the algorithm from memory
+    # First of all the algorithm reconstruct the 3D image starting from z = 0. So first step is to label z=0, this label will then be used to computed z = z+1 label etc..
+    # Loop : 
+    #   1. Compute centroids coordinates for each label at z
+    #   2. Compute centroids coordinates for each label at z-1
+    #   3. Compute every euclidian distance (2D) from z = z labels to z = z-1 labels
+    #   4. Sort results in increasing order.
+    #   5. Going through this list label from z = z acquire label from z = z-1 :
+    #       Once a label (z=z) acquires a label(z=z-1) this label cannot be acquired again
+    #       A label cannot acquire a label (z=z-1) if the distance is > to 'maximal_distance' parameter in pixel
+    #   6. If a label(z = z-1) is not acquired by any label (z=z) its number is deleted and will not be given during the rest of the algorithm
+    #   7. If a label(z = z) finds no label(z = z -1) to acquire a new label is created.
+    #   Note : If i remember correctly 6 et 7 are achieved using a 'taken_label' liste
+
     """
     Labels and stitches together a list of 2D mask into a 3D label uniformising labels so that object segmentation is presevered z wise.
     This operation is performed by calculating the centroid position for each layer and assigning to each region the label from the previous plane region which is closest.  
@@ -378,6 +393,8 @@ def from2Dlabel_to3Dlabel(labels, maximal_distance= 20) :
     ----------
         labels : list[np.ndarray (y,x)]
             All labelled slices must have the same shape and bool/int dtypes.
+        maximal_distance : int
+            A label cannot acquire a label (z=z-1) if the distance is > to 'maximal_distance' parameter in pixel
         
         
     Returns

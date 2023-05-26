@@ -1,5 +1,5 @@
-from .utils import stack_slices, unstack_slices, merge_channels, merge_channels_fromlists
-from .utils import measure_Centroid, measure_Centroid2centroid, get_histogramm_highest_varation_value
+from .utils import unstack_slices, merge_channels, merge_channels_fromlists
+from .utils import get_histogramm_highest_varation_value
 from .utils import from2Dlabel_to3Dlabel
 
 import numpy as np
@@ -10,7 +10,7 @@ import scipy.ndimage as ndi
 
 from bigfish.stack import check_array, check_parameter
 from pbwrap.integrity import check_sameshape
-from pbwrap.errors_handling import SegmentationError, PbodySegmentationError, CellnumberError
+from errors.other import SegmentationError, PbodySegmentationError, CellnumberError
 from skimage.segmentation import random_walker, watershed 
 from skimage.transform import resize
 from skimage.feature import peak_local_max
@@ -72,7 +72,9 @@ def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False, mod
 
 
 def Nucleus_segmentation_old(dapi, diameter= 150, anisotropy= 3, use_gpu= False) :
-    """3D Nucleus segmentation using Cellpose from a dapi 3D grayscale image.
+    """
+    #TODO : Obsolete
+    3D Nucleus segmentation using Cellpose from a dapi 3D grayscale image.
 
     Parameters
     ----------
@@ -137,6 +139,13 @@ def Nucleus_segmentation_old(dapi, diameter= 150, anisotropy= 3, use_gpu= False)
 
 
 def Cytoplasm_segmentation(cy3, dapi= None, diameter= 250, maximal_distance= 100, use_gpu= False, model_type = "Hek_2.0", min_cell_number= 0) :
+    #TOPNOTE (͡ ͡° ͜ つ ͡͡°):  
+    # Hey, so this is the function i made to perform 3D segmentation which uses 2D segmentation from cellpose on each plane.
+    # Keep in mind that we decided to perform only 2D segmentation for now so i have not been asserting the good behavior of the 3D seg extensively.
+    # Basically what you might be interested in the 'from2Dlabel_to3Dlabel' from the utils.py file. I'll add a comment in this function as well.
+    # I haven't tried 3D segmentation with cellpose with a re-trained model so maybe this would work better than the centroid based reconstruction.
+    # If you try 3D seg with re-trained cellpose i would be interested to see the results as we think we'll end up trying 3D segmentation anyway.
+    # Also, i have now configured the GPU to work for cellpose on my computer so in my case (18x 2000px x 2000px) images cellpose 3D takes on average 5s to run on an image.
     
     """Due to bad performance using 3D cellpose with cy3 channel image. A 2D cell segmentation is performed for each slice and a 3D labelling is performed using a closest centroid method.
 
@@ -366,6 +375,7 @@ def random_walker_segmentation(image, percentile_down = 99.5, percentile_up = 99
 
 def watershed_segmentation(image, label, peaks_min_distance= 3 ):
     #TODO : Add sampling [3,1,1] or [anisotropy, 1, 1] in case of 3D segmentation.
+    #TODO : Unused
     """Performs watershed segmentation using scipy algorithm. 
     In the usual regions flooding thought process this algorithm uses local maxima as sources for the flooding. 
     

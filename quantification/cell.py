@@ -38,7 +38,7 @@ def compute_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,
 
     #Extracting bigfish cell information
     voxel_size_yx = voxel_size[1]
-    cell_mask = cell["cell_mask"]
+    cell_mask: np.ndarray = cell["cell_mask"]
     nuc_mask = cell["nuc_mask"] 
     rna_coord = cell["rna_coord"]
     foci_coord = cell["foci"]
@@ -90,10 +90,11 @@ def compute_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,
             compute_foci=True,
             compute_area=True,
             return_names=True)
+    features = list(features)
     
     #Custom features
-    cell_props_table = regionprops_table(cell_mask, properties= ["centroid"])
-    cell_coordinates = [cell_props_table["centroid-0"] + min_y, cell_props_table["centroid-1"] + min_x]
+    cell_props_table = regionprops_table(cell_mask.astype(int), properties= ["centroid"])
+    cell_coordinates = (float(cell_props_table["centroid-0"] + min_y), float(cell_props_table["centroid-1"] + min_x))
     del cell_props_table
     cluster_number = len(ts_coord) + len(foci_coord)
     nucleus_area_px = compute_mask_area(nuc_mask, unit= 'px', voxel_size= voxel_size)
@@ -103,8 +104,7 @@ def compute_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,
     nucleus_mean_signal_metrics = nucleus_signal_metrics(cell, channel= dapi, projtype= 'mean')
 
     #Adding custom signal features to DataFrame
-    features = np.append(features,
-                         [cell_coordinates,
+    features.extend(  [cell_coordinates,
                          nucleus_mip_signal_metrics["mean"], nucleus_mip_signal_metrics["max"], nucleus_mip_signal_metrics["min"], nucleus_mip_signal_metrics["median"],
                          nucleus_mean_signal_metrics["mean"], nucleus_mean_signal_metrics["max"], nucleus_mean_signal_metrics["min"], nucleus_mean_signal_metrics["median"]])
     
@@ -139,23 +139,22 @@ def compute_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,
 
 
     #Adding custom features to DataFrames
-    features = np.append(features, [malat1_spot_in_nuc, malat1_spot_in_cyto, cluster_number,nucleus_area_px,nucleus_area_nm,
+    features.extend([malat1_spot_in_nuc, malat1_spot_in_cyto, cluster_number,nucleus_area_px,nucleus_area_nm,
                          rna_spot_in_pbody, pbody_num, pbody_area_px, pbody_area_nm, count_pbody_nucleus, count_pbody_cytoplasm, pbody_closer_than_1000_nm, pbody_closer_than_1500_nm, pbody_closer_than_2000_nm])
     features_names += ['malat1 spots in nucleus', 'malat1 spots in cytoplasm', 'cluster number','nucleus area (px)','nucleus area (nm^2)',
                'rna spots in pbody', 'pbody number', 'pbody area (px)', 'pbody area (nm^2)', "count pbody in nucleus", "count pbody in cytoplasm", "rna 1000 nm from pbody", "rna 1500 nm from pbody", "rna 2000 nm from pbody"]
     header = ["id", "AcquisitionId"] + features_names
-    data = np.append([0, acquisition_id], features)
-    data = data.reshape([1,-1])
+    data = [0, acquisition_id] 
+    data.extend(features)
 
     #Ensuring correct datashape
     datashape_ref = DataFrame.newframe_Cell()
-    new_Cell = pd.DataFrame(data= data, columns= header)
+    new_Cell = pd.DataFrame(data= [data], columns= header)
     new_Cell["plot index"] = np.NaN
     if not has_pbody :
         for feature in get_features_name(names_features_centrosome= True) :
             new_Cell[feature] = np.NaN
     dataOp.check_samedatashape(new_Cell, datashape_ref) # Ensure datashape stability along different runs
-
     return new_Cell
 
 
