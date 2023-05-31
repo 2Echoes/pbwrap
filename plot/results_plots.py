@@ -67,7 +67,7 @@ def spots_per_cell(Acquisition: pd.DataFrame, Cell: pd.DataFrame, spot_type = 'r
 def cluster_per_cell() :
     pass #no cluster data in frame
 
-def RNA_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list[str]' = None, path_output= None, show = True, close= True, ext= 'png', title = "RNA in pbody"):
+def RNA_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list[str]' = None, path_output= None, show = True, close= True, ext= 'png', title = "Count of RNA in P-bodies"):
 
     join_frame = pd.merge(Cell, Acquisition.loc[:,["id", "rna name"]], how= "left", left_on= "AcquisitionId", right_on= "id")
     join_frame = join_frame.drop(axis= 0, index= join_frame[join_frame["pbody number"] == 0].index)
@@ -81,7 +81,7 @@ def RNA_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list
         std_list += [(gene_Cell.loc[:, "rna spots in pbody"] / gene_Cell.loc[:, "pbody number"]).std()]
 
     #plot
-    fig = gene_bar_plot(gene_list, mean_rna_per_pbody_list, std_list, title= title, path_output= path_output, ext=ext, show=show, close= close)
+    fig = gene_bar_plot(gene_list, mean_rna_per_pbody_list, std_list, title= title, xlabel="count", path_output= path_output, ext=ext, show=show, close= close)
 
 
 
@@ -141,10 +141,10 @@ def RNApercentage_in_out_nucleus(Acquisition: pd.DataFrame, Cell: pd.DataFrame, 
         std_list += [gene_Cell.loc[:, "proportion_rna_in_nuc"].std() * 100]
 
     #plot
+    ylabel = "Percentage of RNA found inside nucleus (%)"
     if plot_in_and_out_bars : fig = gene_bar_plot(gene_list, [mean_value_inside, mean_value_outside], [std_list]*2, legend = ["inside nuc", "outside nuc"])
     else : 
-        fig = gene_bar_plot(gene_list, mean_value_inside, std_list, legend = "inside nuc", title= title, path_output= path_output, ext=ext, show=show, close= close)
-        plt.ylabel("RNA proportion inside nucleus (%)")
+        fig = gene_bar_plot(gene_list, mean_value_inside, std_list, legend = "inside nuc", title= title, ylabel= ylabel, path_output= path_output, ext=ext, show=show, close= close)
 
 
 ################
@@ -152,6 +152,11 @@ def RNApercentage_in_out_nucleus(Acquisition: pd.DataFrame, Cell: pd.DataFrame, 
 ################
 
 def violin_rna_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list[str]' = None, path_output= None, show = True, ext= 'png', title = None):
+    """
+    Work in progress #TODO
+    """
+
+
     join_frame = pd.merge(Cell, Acquisition.loc[:,["id", "rna name"]], how= "left", left_on= "AcquisitionId", right_on= "id")
     join_frame = join_frame.drop(axis= 0, index= join_frame[join_frame["pbody number"] == 0].index)
     
@@ -189,6 +194,14 @@ def violin_rna_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list
 
 def Malat_inNuc_asDapiIntensity(Cell: pd.DataFrame, projtype = 'MIP', summarize_type= 'median', out = False, plot_linear_regression= False,
                                 path_output= None, show = True, ext= 'png', title = None) :
+    """
+    
+    Scatter plot computed as Signal from DAPI channel (X-axis) VS Malat spots count in nucleus.
+    Signal can be chosen from mean or median and computed from the Maximum Intensity Projection (MIP) or Mean projection.
+    
+    """
+
+
 
     #Select projection type from Cell Data
     if projtype.upper() == 'MIP' : X = "nucleus_mip_"
@@ -277,6 +290,9 @@ def DapiSignal_InfValue(Acquisition:pd.DataFrame, Cell:pd.DataFrame, max_value: 
 
 def hist_dapi_signal(Cell, projtype= 'MIP', summarize_type = 'median', path_output= None, show = True, ext= 'png', title: str = None, bins= 500, **axis_boundaries) :
     """
+    From the Maximum Intensity Projection (MIP) or Mean projection computes the histogram of integrated signal within cells (signal*nucleus area).
+    Signal can be chosen from mean or median.
+
     Parameters
     ----------
 
@@ -302,6 +318,9 @@ def hist_dapi_signal(Cell, projtype= 'MIP', summarize_type = 'median', path_outp
 
 def hist_dapi_density(Cell, projtype= 'MIP', summarize_type = 'median', path_output= None, show = True, ext= 'png', title: str = None, bins= 500, **axis_boundaries) :
     """
+    From the Maximum Intensity Projection (MIP) or Mean projection computes the histogram of dapi density within cells (signal/nucleus area).
+    Signal can be chosen from mean or median.
+
     Parameters
     ----------
 
@@ -322,15 +341,13 @@ def hist_dapi_density(Cell, projtype= 'MIP', summarize_type = 'median', path_out
     else : raise ValueError("summarize_type should either be 'median' or 'mean'.")
 
     dapi_signal = Cell.loc[:,X] / Cell.loc[:,"nuc_area"]
-    histogram(dapi_signal, xlabel="Dapi signal (Nucleus area / {0})".format(X), ylabel= "count", path_output=path_output, show=show, ext=ext, title=title, bins=bins, **axis_boundaries)
-
-
-
+    histogram(dapi_signal, xlabel="Dapi signal ({0}/ Nucleus area)".format(X), ylabel= "count", path_output=path_output, show=show, ext=ext, title=title, bins=bins, **axis_boundaries)
 
 
 
 def hist_malat_count(Cell, location= 'nucleus', path_output= None, show = True, close = True, ext= 'png', title: str = None, bins= 500, **axis_boundaries) :
     """
+    Histogram of malat spots detected in nucleus, cytoplasm or both.
     location : 'nucleus', 'cytoplasm' or 'cell' (cell = nuc + cytoplasm)
     projtype : "MIP" or "MEAN"
     """
@@ -345,7 +362,28 @@ def hist_malat_count(Cell, location= 'nucleus', path_output= None, show = True, 
 
 def hist_in_nuc_malat_proportion(Cell, path_output= None, show = True, close = True, ext= 'png', title: str = None, bins= 500, **axis_boundaries) :
     """
-
+    Histogram of malat proportion detected inside nucleus.
     """
     proportion = Cell.loc[:, "malat1 spots in nucleus"] / (Cell.loc[:, "malat1 spots in nucleus"] + Cell.loc[:, "malat1 spots in cytoplasm"])
     histogram(proportion, xlabel="malat spots proportion in nucleus", ylabel= "count", path_output=path_output, show=show, close=close, ext=ext, title=title, bins=bins, **axis_boundaries)
+
+
+
+
+################
+# P-Body plots #
+################
+
+def bar_P_body_detect_inside_nucleus(Cell, path_output= None, show = True, close = True, ext= 'png', title: str = None) :
+    """
+    Plot a 2 bar graphs : one bar for number of pbodies detected inside nucleus and one for number of pbodies detected in cytoplasm.
+    """
+
+    Number_in_cytoplasm = Cell.loc[:, "count pbody in cytoplasm"].sum()
+    std_in_cytoplasm = Cell.loc[:, "count pbody in cytoplasm"].std()
+    Number_in_nucleus = Cell.loc[:, "count pbody in nucleus"].sum()
+    std_in_nucleus = Cell.loc[:, "count pbody in nucleus"].std()
+
+    ylabel = "Count"
+
+    gene_bar_plot(["P-bodies in cytoplasm", "P-Bodies in nucleus"], [Number_in_cytoplasm, Number_in_nucleus], [std_in_cytoplasm, std_in_nucleus],ylabel= ylabel, path_output=path_output, show=show, close=close, ext=ext, title=title)

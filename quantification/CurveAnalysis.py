@@ -6,6 +6,7 @@ import cmath
 from sklearn.linear_model import LinearRegression
 from sklearn.mixture import GaussianMixture
 from ..errors import SolutionNotRealError
+from scipy.optimize import leastsq
 
 def simple_linear_regression(X: np.array, Y: np.array) :
     X = np.array(X).reshape(-1,1)
@@ -16,9 +17,9 @@ def simple_linear_regression(X: np.array, Y: np.array) :
     return lin_model.coef_[0], lin_model.intercept_
 
 
-def _MultiGaussianfit(distribution:'list[float]', gaussian_number=2) :
+def _MultiGaussianfit(distribution:'list[float]') :
     """
-    Fit a distribution with 'gaussian_number'-modal gaussian curve.
+    Fit a distribution with bi-modal gaussian curve.
 
     Returns
     -------
@@ -26,8 +27,8 @@ def _MultiGaussianfit(distribution:'list[float]', gaussian_number=2) :
             'mu1', 'mu2', 'sigma1', 'sigma2'
             mu is the expected value and sigma the variance of the individual gaussian distribution.
     """
-
-    Gaussian_fit = GaussianMixture(n_components= gaussian_number).fit(distribution)
+    distribution = np.array([[distribution],[distribution]], dtype= float).reshape(2,-1)
+    Gaussian_fit = GaussianMixture(n_components= 2).fit(distribution)
     mu1, mu2 = Gaussian_fit.means_[0], Gaussian_fit.means_[1]
     sigma1, sigma2 = np.sqrt(Gaussian_fit.covariances_[0], Gaussian_fit.covariances[1])
     res = {'mu1' : mu1,
@@ -67,3 +68,35 @@ def solve_quadratic_equation(a,b,c, real= False) :
     ans2 = (-b + cmath.sqrt(dis))/(2 * a)
 
     return (ans1,ans2)
+
+
+def gaussian(x,mu,sigma) -> float: 
+    res = (1/sigma*np.sqrt(2*np.pi))*np.exp(-np.power((x-mu),2)/(2*np.power(sigma,2)))
+    return res
+
+
+def multi_gaussian(x,mu_list:list, sigma_list:list) -> float :
+    
+    if isinstance(mu_list, (list, tuple, np.ndarray)) and isinstance(sigma_list, (list, tuple, np.ndarray)):
+        if len(mu_list) != len(sigma_list) : raise ValueError("mu and sigma list must have the same length.")
+        is_iterable = True
+    elif isinstance(mu_list, (int,float)) and isinstance(sigma_list, (int, float)) :
+        is_iterable = False
+    else :
+        raise TypeError("mu and sigma parameters should either be both float like, or iterables (list,tuple,np.ndarray).")
+
+    if is_iterable :
+        res = 0
+        for mu,sigma in zip(mu_list, sigma_list):
+            res += gaussian(x,mu,sigma)
+    else : 
+        mu, sigma = mu_list, sigma_list
+        res = gaussian(x,mu,sigma)
+    
+    return res
+
+
+def multi_gaussian_fit(x, mu_list, sigma_list, data_point) : 
+    res = multi_gaussian(x= x, mu_list=mu_list, sigma_list=sigma_list)
+    return res - data_point
+

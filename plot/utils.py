@@ -87,11 +87,9 @@ def gene_bar_plot(rna_list: 'list[str]', values: 'list[float]', errors: 'list[fl
 
     return fig
 
-
-
 def gene_violin_plot(gene_list: 'list[str]', values: 'list[float]', errors: 'list[float]'):
     """
-    
+    Not implemented yet
     """
     pass
 
@@ -189,9 +187,9 @@ def set_axis_ticks(axis:tuple, x_ticks_number:int = None, y_ticks_number: int= N
 
     #X axis
     if x_ticks_number != None :
-        if xmax > 0 : last_tick = ceil(xmax)
+        if xmax > 0 : last_tick = round(xmax)
         else : last_tick = 0
-        if xmin < 0 : first_tick = floor(xmin)
+        if xmin < 0 : first_tick = round(xmin)
         else : first_tick = 0   
         x_ticks = np.linspace(first_tick,last_tick,x_ticks_number)
         if all(np.abs(x_ticks) > 1) : x_ticks = np.round(x_ticks)
@@ -283,6 +281,27 @@ def truncate(x, digit) :
     return x
     
 
-def format_array_scientific_notation(array) :
-    res = map(functools.partial(np.format_float_scientific, precision= 2), array)
+
+def format_array_scientific_notation(array: np.ndarray, precision = 2) :
+    """
+    Format an iterable of float into scientific notation using numpy scientific notation.
+    """
+    res = map(functools.partial(auto_format_float_scientific, precision= precision), array)
     return list(res)
+
+
+
+def auto_format_float_scientific(number: float, precision: int):
+    """
+    Format each element from an iterable of float with more than 5 digits into scientific notation using numpy scientific notation.
+    Never formats 0.
+
+    """
+    
+    if number == 0 : res = 0
+    elif len(str(float)) < 5 :
+        res = number
+    else : res = np.format_float_scientific(number,precision=precision)
+    
+    return res
+

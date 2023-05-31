@@ -1,6 +1,6 @@
 import numpy as np
 from bigfish.stack import check_parameter
-from errors.other import DetectionTimeOutError
+from .errors import DetectionTimeOutError
 
 def detectiontimeout_handler(signum, frame):
     raise DetectionTimeOutError('Acquisition processing timeout.')

@@ -1,7 +1,7 @@
 import bigfish.stack as stack
 import bigfish.detection as detection
 from bigfish.detection.spot_detection import local_maximum_detection, get_object_radius_pixel, _get_candidate_thresholds, spots_thresholding, _get_spot_counts
-from errors.other import NoSpotError
+from ..errors import NoSpotError
 import numpy as np
 from types import GeneratorType
 

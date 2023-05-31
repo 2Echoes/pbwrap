@@ -10,7 +10,7 @@ import scipy.ndimage as ndi
 
 from bigfish.stack import check_array, check_parameter
 from pbwrap.integrity import check_sameshape
-from errors.other import SegmentationError, PbodySegmentationError, CellnumberError
+from ..errors import PbodySegmentationError, CellnumberError
 from skimage.segmentation import random_walker, watershed 
 from skimage.transform import resize
 from skimage.feature import peak_local_max
