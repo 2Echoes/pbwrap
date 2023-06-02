@@ -403,7 +403,7 @@ def from2Dlabel_to3Dlabel(labels, maximal_distance= 20) :
     
     """
     #Integrity checks
-    check_parameter(labels = (list), maximal_distance =(int, float))
+    check_parameter(labels = (list, np.ndarray), maximal_distance =(int, float))
     check_sameshape(*labels)
     for label in labels : check_array(label, ndim= 2, dtype= [np.int8, np.int16, np.uint8, np.uint16, np.int32, np.int64])
 

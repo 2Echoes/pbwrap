@@ -18,7 +18,5 @@ gene_list = list(Acquisition.loc[:, "rna name"])
 Cell["total malat spots"] = Cell["malat1 spots in nucleus"] + Cell['malat1 spots in cytoplasm']
 malat_clean_Acquisition, malat_clean_Cell = update.from_malat_remove_acquisition(Acquisition, Cell, limit= 10)
 
-label = stack.read_array("/home/floricslimani/Documents/Projets/1_P_body/Workshop/output/nucleus_label.npy")
-dapi = stack.read_array("/home/floricslimani/Documents/Projets/1_P_body/Workshop/output/nucleus_proj.npy")
-
-visu.nucleus_signal_control(dapi,label)
+new_Cell = update.from_nucleus_malat_proportion_compute_CellullarCycleGroup(Cell)
+print(new_Cell.loc[:,["malat1 spots in nucleus","malat1 spots in cytoplasm","malat proportion in nucleus","Cellular_cycle (malat proportion)"]])

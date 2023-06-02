@@ -18,7 +18,7 @@ def from_label_get_centeroidscoords(label: np.ndarray):
     return centroid
 
 
-def gene_bar_plot(rna_list: 'list[str]', values: 'list[float]', errors: 'list[float]',
+def gene_bar_plot(rna_list: 'list[str]', values: 'list[float]', errors: 'list[float]'=None,
                  title: str=None, xlabel:str= None, ylabel:str= None,
                 path_output= None, ext='png', show= True, close= True, legend: 'list[str]'= None, width = 0.8, error_width = 3) :
 
@@ -30,13 +30,18 @@ def gene_bar_plot(rna_list: 'list[str]', values: 'list[float]', errors: 'list[fl
     if type(values[0]) == list : 
         if type(errors[0]) != list : raise TypeError("When passing several bar sets to plot, it is expected that several errors sets be passed as well")
         is_listoflist = True
-    if type(errors[0]) == list : 
+    if type(errors) == type(None) : pass
+    elif type(errors[0]) == list : 
         if type(values[0]) != list : raise TypeError("When passing several errors sets to plot, it is expected that several bar sets be passed as well")
         is_listoflist = True
 
     #len list matches
     if not is_listoflist :
-        if not(len(rna_list) == len(values) == len(errors)) : raise ValueError("rna, values and errors lengths must match")
+        if type(errors) == type(None) :
+            if not(len(rna_list) == len(values)) : raise ValueError("rna and values lengths must match")
+
+        else:
+            if not(len(rna_list) == len(values) == len(errors)) : raise ValueError("rna, values and errors lengths must match")
     else :
         #Set lengths match
         if not(len(values) == len(errors)) and legend == None : raise ValueError("value sets and errors sets lengths must match")
@@ -95,7 +100,7 @@ def gene_violin_plot(gene_list: 'list[str]', values: 'list[float]', errors: 'lis
 
 
 
-def histogram(data: 'list[float]', xlabel= 'distribution', ylabel= 'count', path_output= None, show = True, close= True, ext= 'png', title: str = None, bins= 500, ticks_number= 21, **axis_boundaries) :
+def histogram(data: 'list[float]', color= 'blue', barlabel:str = None, xlabel= 'distribution', ylabel= 'count', path_output= None, show = True, close= True, reset= True, ext= 'png', title: str = None, bins= 500, ticks_number= 21, **axis_boundaries) :
     """Base function for histograms plotting.
     
     Parameters
@@ -120,10 +125,13 @@ def histogram(data: 'list[float]', xlabel= 'distribution', ylabel= 'count', path
     
     #Plot
     data = data[~np.logical_or(np.isnan(data),np.isinf(data))] # ~ = not
-    fig = plt.figure(figsize= (20,10))
-    hist = plt.hist(data, bins= bins)
+    if reset : fig = plt.figure(figsize= (20,10))
+    else : fig = plt.gcf()
+    
+    hist = plt.hist(data, bins= bins, color= color, label= barlabel, alpha= 0.5)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
+    if barlabel != None : plt.legend()
 
     #Axis boundaries
     ax = fig.gca()

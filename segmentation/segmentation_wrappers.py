@@ -17,7 +17,7 @@ from skimage.feature import peak_local_max
 
 
 ###### Image segmentation
-def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False, model_type= 'hek_nuc_1.0', min_cell_number = 0) :
+def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False, use_3D_cellpose= False, model_type= 'hek_nuc_1.0', min_cell_number = 0) :
     """3D Nucleus segmentation using Cellpose from a dapi 3D grayscale image.
 
     Parameters
@@ -44,7 +44,10 @@ def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False, mod
     #Integrity checks
     check_array(dapi, ndim= [2,3], dtype= [np.uint8, np.uint16, np.int32, np.int64, np.float32, np.float64])
     check_parameter(diameter= (int), anisotropy= (int), use_gpu= (bool))
+
     ndim = dapi.ndim
+
+
 
 
     #Segmentation
@@ -53,16 +56,24 @@ def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False, mod
     channels = [0,0]
 
     if ndim == 3 :
-        nucleus_label = nucleus_model.eval(dapi, diameter= diameter, channels = channels, anisotropy= anisotropy, do_3D= True, stitch_threshold = 0.1)[0]
+        if use_3D_cellpose : 
+            nucleus_label = nucleus_model.eval(dapi, diameter= diameter, channels = channels, anisotropy= anisotropy, do_3D= True)[0].astype(np.int64)
+        else :
+            list_dapi = unstack_slices(dapi)
+            nucleus_label = nucleus_model.eval(list_dapi, diameter= diameter, channels= channels)[0]
+            nucleus_label = np.array(nucleus_label, dtype = np.int64)
     
     else :
-        nucleus_label = nucleus_model.eval(dapi, diameter= diameter, channels = channels)[0]
-        nucleus_label = np.array(nucleus_label, dtype= np.int64)
-    
+        nucleus_label = nucleus_model.eval(dapi, diameter= diameter, channels = channels)[0].astype(np.int64)
+        nucleus_label = np.array(nucleus_label, dtype = np.int64)
+
     if ndim == 3 :
         for z in range(0,len(nucleus_label)): nucleus_label[z] = seg.clean_segmentation(nucleus_label[z], small_object_size= min_objct_size, delimit_instance=True, fill_holes= True)
     else : nucleus_label = seg.clean_segmentation(nucleus_label, small_object_size= min_objct_size, delimit_instance=True,  fill_holes= True)
     nucleus_label = seg.remove_disjoint(nucleus_label)
+
+    if ndim == 3 :
+        nucleus_label = from2Dlabel_to3Dlabel(nucleus_label, maximal_distance= 50)
 
     if len(nucleus_label) < min_cell_number : raise CellnumberError("{0} nucleus were segmented, minimum cells number was set at {1}".format(len(nucleus_label), min_cell_number))
     return nucleus_label
@@ -70,82 +81,7 @@ def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False, mod
 
 
 
-
-def Nucleus_segmentation_old(dapi, diameter= 150, anisotropy= 3, use_gpu= False) :
-    """
-    #TODO : Obsolete
-    3D Nucleus segmentation using Cellpose from a dapi 3D grayscale image.
-
-    Parameters
-    ----------
-
-        dapi :      np.ndarray, ndim = 3 (z,y,x). 
-            The dapi should only contains the data to be analysed, prepropressing and out of focus filtering should be done prior to this operation. 
-        diameter :  Int. 
-            Average diameter of a nucleus in pixel. Used to rescale cellpose trained model to incoming data.
-        anisotropy: Int. 
-            Define the ratio between the plane (xy) resolution to the height (z) resolution. For a voxel size (300,100,100) use 3.
-        use_gpu :   Bool. 
-            Enable Cellpose build-in option to use GPU.
-                
-    Returns
-    -------
-    
-        Nucleus_label : np.ndarray 
-            With same shape as dapi. Each object has a different pixel value and 0 is background.
-    """
-
-    #Integrity checks
-    check_array(dapi, ndim= [2,3], dtype= [np.uint8, np.uint16, np.int32, np.int64, np.float32, np.float64])
-    check_parameter(diameter= (int), anisotropy= (int), use_gpu= (bool))
-    ndim = dapi.ndim
-
-    #image downscale
-    scale_factor = diameter / 17
-    if ndim == 2 :
-        dapi_rescaled = resize(dapi, (round(dapi.shape[0] / scale_factor), round(dapi.shape[1] / scale_factor)), anti_aliasing= True)
-    else : 
-        dapi_rescaled = resize(dapi, (round(dapi.shape[0] / scale_factor), round(dapi.shape[1] / scale_factor), round(dapi.shape[2] / scale_factor)), anti_aliasing= True)
-
-    #Segmentation
-    nucleus_model = models.Cellpose(gpu= use_gpu, model_type = "nuclei")
-    min_objct_size = int(round((np.pi * (diameter/2)**2) /4)) # area in pixel
-    min_objct_size_rescaled = int(round((np.pi * (17/2)**2) /2))
-    channels = [0,0]
-
-    if ndim == 3 :
-        nucleus_label = nucleus_model.eval(dapi_rescaled, diameter= 17, channels = channels, anisotropy= anisotropy, do_3D= True, stitch_threshold = 0.1)[0]
-    
-    else :
-        nucleus_label = nucleus_model.eval(dapi_rescaled, diameter= 17, channels = channels)[0]
-        nucleus_label = np.array(nucleus_label, dtype= np.int64)
-    
-    #Image upscale
-    nucleus_label = resize(nucleus_label, dapi.shape, preserve_range= True)
-    nucleus_label = np.array(nucleus_label, dtype= np.int64)
-    if ndim == 3 :
-        for z in range(0,len(nucleus_label)): nucleus_label[z] = seg.clean_segmentation(nucleus_label[z], small_object_size= min_objct_size, delimit_instance=True, fill_holes= True)
-    else : nucleus_label = seg.clean_segmentation(nucleus_label, small_object_size= min_objct_size, delimit_instance=True,  fill_holes= True)
-    nucleus_label = seg.remove_disjoint(nucleus_label)
-    nucleus_label[nucleus_label < 1] = 0
-    nucleus_label[nucleus_label > 0] = 1
-    nucleus_label= seg.label_instances(np.array(nucleus_label, dtype = bool)) 
-
-
-
-    return nucleus_label
-
-
-
-
 def Cytoplasm_segmentation(cy3, dapi= None, diameter= 250, maximal_distance= 100, use_gpu= False, model_type = "Hek_2.0", min_cell_number= 0) :
-    #TOPNOTE (͡ ͡° ͜ つ ͡͡°):  
-    # Hey, so this is the function i made to perform 3D segmentation which uses 2D segmentation from cellpose on each plane.
-    # Keep in mind that we decided to perform only 2D segmentation for now so i have not been asserting the good behavior of the 3D seg extensively.
-    # Basically what you might be interested in the 'from2Dlabel_to3Dlabel' from the utils.py file. I'll add a comment in this function as well.
-    # I haven't tried 3D segmentation with cellpose with a re-trained model so maybe this would work better than the centroid based reconstruction.
-    # If you try 3D seg with re-trained cellpose i would be interested to see the results as we think we'll end up trying 3D segmentation anyway.
-    # Also, i have now configured the GPU to work for cellpose on my computer so in my case (18x 2000px x 2000px) images cellpose 3D takes on average 5s to run on an image.
     
     """Due to bad performance using 3D cellpose with cy3 channel image. A 2D cell segmentation is performed for each slice and a 3D labelling is performed using a closest centroid method.
 

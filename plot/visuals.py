@@ -52,9 +52,11 @@ def output_spot_tiffvisual(channel, spots, path_output, dot_size = 3, rescale = 
 
 
 def nucleus_signal_control(dapi: np.ndarray, nucleus_label: np.ndarray, measures: 'list[float]' ,cells_centroids: 'list[float]',spots_coords:list = None, boundary_size = 3, 
-                           use_scientific_notation= False, value_multiplicator = 1,
+                           use_scientific_notation= False, value_multiplicator = 1, output_spotless_copy= False,
                            title="None", path_output= None, show= True, axis= False, close= True):
-
+    
+    if path_output == None and output_spotless_copy :
+        raise ValueError("Cannot output a spotless copy if no output path is given.")
 
     #Figure
     fig = plt.figure(figsize=(20,20))
@@ -62,10 +64,8 @@ def nucleus_signal_control(dapi: np.ndarray, nucleus_label: np.ndarray, measures
     implot.axes.get_xaxis().set_visible(axis)
     implot.axes.get_yaxis().set_visible(axis)
     plt.tight_layout()
-    
+    plt.title(title)
     plot_label_boundaries(label= nucleus_label, boundary_size=boundary_size)
-    if type(spots_coords) != type(None) : plot_spots(spots_coords,1)
-
     measures = np.array(measures, dtype= float) * value_multiplicator
     if use_scientific_notation : measures = format_array_scientific_notation(measures)
     else : measures = np.round(measures, decimals= 1)
@@ -76,8 +76,13 @@ def nucleus_signal_control(dapi: np.ndarray, nucleus_label: np.ndarray, measures
         y,x = round(y), round(x)
         plt.annotate(str(measure), [round(x), round(y)],color='black')
 
+    if type(spots_coords) != type(None) :
+        if type(spots_coords) != type(None) : 
+            plt.savefig(path_output + "_spotless") 
+        plot_spots(spots_coords,1)
 
-    plt.title(title)
+
+
     if show : plt.show()
     if path_output != None :
         stack.check_parameter(path_output = (str))

@@ -5,7 +5,10 @@ import bigfish.plot as plot
 from skimage.measure import regionprops
 from .utils import from_label_get_centeroidscoords
 
-def plot_labels(labelled_image, path_output= None, show= True, axis= False, close= True):
+def plot_labels(labelled_image: np.ndarray, path_output:str = None, show= True, axis= False, close= True):
+    """
+    Plot a labelled image and indicate the label number at the center of each region.
+    """
     #TODO : Comment
     stack.check_parameter(labelled_image = (np.ndarray), show = (bool))
     stack.check_array(labelled_image, ndim= 2)
