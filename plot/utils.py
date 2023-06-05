@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.ticker import ScalarFormatter
+import matplotlib.colors as mcolors
 from skimage.measure import regionprops_table
 from bigfish.stack import check_parameter
 from math import floor, ceil
@@ -18,163 +18,15 @@ def from_label_get_centeroidscoords(label: np.ndarray):
     return centroid
 
 
-def gene_bar_plot(rna_list: 'list[str]', values: 'list[float]', errors: 'list[float]'=None,
-                 title: str=None, xlabel:str= None, ylabel:str= None,
-                path_output= None, ext='png', show= True, close= True, legend: 'list[str]'= None, width = 0.8, error_width = 3) :
+def get_colors_list(size) :
+    color_list  = list(mcolors.CSS4_COLORS.keys())
+    for color in ['white', 'snow', 'whitesmoke', 'ivory', 'floralwhite', 'ghostwhite', 'seashell', 'linen', 'honeydew', 'aliceblue', 'mintcream'] :
+        color_list.remove(color)
+    length = len(color_list) - 1
+    index = np.linspace(0,length,size).round().astype(int)
+    color_list = np.array(color_list)
 
-    #Exception thrower
-    is_listoflist = False
-    if show and not close : raise ValueError("If show is True then close shoud not be False as closing the graph windows will close the plot.")
-
-    #multi data set
-    if type(values[0]) == list : 
-        if type(errors[0]) != list : raise TypeError("When passing several bar sets to plot, it is expected that several errors sets be passed as well")
-        is_listoflist = True
-    if type(errors) == type(None) : pass
-    elif type(errors[0]) == list : 
-        if type(values[0]) != list : raise TypeError("When passing several errors sets to plot, it is expected that several bar sets be passed as well")
-        is_listoflist = True
-
-    #len list matches
-    if not is_listoflist :
-        if type(errors) == type(None) :
-            if not(len(rna_list) == len(values)) : raise ValueError("rna and values lengths must match")
-
-        else:
-            if not(len(rna_list) == len(values) == len(errors)) : raise ValueError("rna, values and errors lengths must match")
-    else :
-        #Set lengths match
-        if not(len(values) == len(errors)) and legend == None : raise ValueError("value sets and errors sets lengths must match")
-        elif not(len(values) == len(errors) == len(legend)) : raise ValueError("value sets and errors sets and legend lengths must match")
-        #Data lengths match
-        for set in range(0,len(values)) :
-            if not(len(rna_list) == len(values[set]) == len(errors[set])) : raise ValueError("values and errors lengths must match")
-
-    
-    #Init plot
-    color_list = ['red','blue','green','orange','purple','brown','cyan'] * (round(len(rna_list)/7) + 1)
-    fig = plt.figure(figsize= (20,10))
-    ax = fig.gca()
-
-    #Case when several bars are plotted for each genes
-    if is_listoflist :
-        bar_number = len(values)
-        length = width/bar_number
-        error_width /= bar_number
-        abs = np.arange(0,len(values[0]))
-        barshift = np.arange(-(width/2 - length/2),(width/2), step = length)
-        color_list = color_list[:len(barshift)]
-        assert len(barshift) == len(values), "barshift : {0} ; values : {1}".format(len(barshift), len(values))
-        for bar_set, error_set, shift, color, label in zip(values, errors, barshift, color_list, legend) :
-            X = abs - shift
-            if legend != None : ax.bar(X, bar_set, yerr= error_set, capsize= error_width, color= color, width= length, align= 'center', label= label)
-            else : ax.bar(X, bar_set, yerr= error_set, capsize= error_width, color= color, width= length, align= 'center')
-        if legend != None : ax.legend()
-    
-    #Case one bar per gene
-    else :
-        plt.bar(rna_list, values, yerr= errors, capsize= error_width, color= color_list[:len(rna_list)], width= width, align= 'center')
-    
-    plt.axis(ymin= 0)
-    
-    #Spacing
-    plt.xticks(range(len(rna_list)))
-    xticks = ax.get_xticks()
-    ax.set_xticks(xticks, labels= rna_list, rotation= 90)
-    ax.axis(xmin=-0.5, xmax= len(rna_list)+0.5, ymin= 0)
-    fig.subplots_adjust(bottom= 2/fig.get_size_inches()[1])
-    plt.title(title)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    if path_output != None : save_plot(path_output, ext)
-    if show : plt.show()
-    if close : plt.close()
-
-    return fig
-
-def gene_violin_plot(gene_list: 'list[str]', values: 'list[float]', errors: 'list[float]'):
-    """
-    Not implemented yet
-    """
-    pass
-
-
-
-def histogram(data: 'list[float]', color= 'blue', barlabel:str = None, xlabel= 'distribution', ylabel= 'count', path_output= None, show = True, close= True, reset= True, ext= 'png', title: str = None, bins= 500, ticks_number= 21, **axis_boundaries) :
-    """Base function for histograms plotting.
-    
-    Parameters
-    ----------
-        data : list
-            data distribution
-        xlabel : str
-            label to plot on x axis
-        ylabel : str
-            label to plot on y axis
-        title : str
-            title to plot on top of graph
-        axis_boundaries : boundaries for x and y axes. Expected None or at least one the following ('xmin'=x, 'xmax'=X, ymin='y',ymax='Y')
-    """
-    #Value errors
-    if not close and show :
-        raise ValueError("if you want to keep the graph open you must not show() during the call of this function")
-    for arg in axis_boundaries:
-        if arg not in ('xmin','xmax','ymin','ymax') : raise ValueError("Incorrect argument in axis_boundaries, expected arguments are 'xmin','xmax','ymin','ymax' not {0}.".format(arg))
-    if type(data) != np.ndarray:
-        data = np.array(data)
-    
-    #Plot
-    data = data[~np.logical_or(np.isnan(data),np.isinf(data))] # ~ = not
-    if reset : fig = plt.figure(figsize= (20,10))
-    else : fig = plt.gcf()
-    
-    hist = plt.hist(data, bins= bins, color= color, label= barlabel, alpha= 0.5)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    if barlabel != None : plt.legend()
-
-    #Axis boundaries
-    ax = fig.gca()
-    axis_bound = hist_set_axis_boundaries(ax, data, hist, **axis_boundaries)
-    #Axis ticks
-    set_axis_ticks(axis_bound, ticks_number)
-
-
-    if title != None : plt.title(title)
-    if path_output != None : save_plot(path_output, ext)
-    if show : plt.show()
-    if close : plt.close()
-
-
-def hist_set_axis_boundaries(ax, data=None, hist=None, **axis_boundaries) :
-    """
-    Auto or manual set of histogram boundaries.
-
-    Parameters
-    ----------
-        ax : figure ax can be get from figure.gca() -> get curret axis
-        axis_boundaries : boundaries for x and y axes. Expected None or at least one the following ('xmin'=x, 'xmax'=X, ymin='y',ymax='Y')
-        Data and Hist parameters should be given for auto set. (hist is get from hist = plt.hist(data))
-
-    Returns
-    -------
-        axis = [xmin,xmax,ymin,ymax]
-
-    """
-
-    if 'xmin' in axis_boundaries : xmin = axis_boundaries['xmin']
-    else : xmin = 0
-    if 'xmax' in axis_boundaries : xmax = axis_boundaries['xmax']
-    else : xmax = data.max()
-    if 'ymin' in axis_boundaries : ymin = axis_boundaries['ymin']
-    else : ymin = 0
-    if 'ymax' in axis_boundaries : ymax = axis_boundaries['ymax']
-    else : ymax = np.array(hist[0]).max()
-    axis = [xmin,xmax,ymin,ymax]
-    ax.axis(axis)
-    return axis
-
-
+    return color_list[index]
 
 
 

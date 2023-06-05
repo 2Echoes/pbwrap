@@ -15,9 +15,10 @@ def compute_fov(rootfilename:str, rna_name:str, cell_number: int, rna_threshold:
     elif dapi.ndim == 2 :
         pass
     else: raise ValueError("dapi signal should either be a 2D or 3D np.ndarray.")
+    if nucleus_mask.dtype != bool : raise TypeError("nucleus mask should be of dtype bool.")
     
     
-    dapi_backgrnd_metrics = compute_signalmetrics(dapi, nucleus_mask)
+    dapi_backgrnd_metrics = compute_signalmetrics(dapi, ~nucleus_mask)
 
     new_Acquisition = DataFrame.newframe_Acquisitions()
     new_Acquisition["id"] = [0]
