@@ -8,7 +8,7 @@ import CustomPandasFramework.PBody_project.update as update
 from .utils import save_plot
 
 
-def count_pbody_per_Cell(Cell: pd.DataFrame, Acquisition: pd.DataFrame, xlabel= None, ylabel= "pbodies per cell", title= None, reset= False, close= False, show= True, path_output= None, ext ='png', **kargs) :
+def count_pbody_per_Cell(Cell: pd.DataFrame, Acquisition: pd.DataFrame, xlabel= None, ylabel= "pbodies per cell", title= None, reset= True, close= True, show= True, path_output= None, ext ='png', **kargs) :
     """
     1 box per gene
     """
@@ -24,7 +24,7 @@ def count_pbody_per_Cell(Cell: pd.DataFrame, Acquisition: pd.DataFrame, xlabel= 
 
 
 
-def count_rna_per_Cell(Cell: pd.DataFrame, Acquisition: pd.DataFrame, xlabel= None, ylabel= "rna spot per cell", title= None, reset= False, close= False, show= True, path_output= None, ext ='png', **kargs) :
+def count_rna_per_Cell(Cell: pd.DataFrame, Acquisition: pd.DataFrame, xlabel= None, ylabel= "rna spot per cell", title= None, reset= True, close= True, show= True, path_output= None, ext ='png', **kargs) :
     """
     1 box per gene
     """
@@ -40,7 +40,7 @@ def count_rna_per_Cell(Cell: pd.DataFrame, Acquisition: pd.DataFrame, xlabel= No
     box_plot(data= data_mean, ylabel= ylabel, labels= data_mean.index, xlabel=xlabel, title= title, reset= reset, close=close, show= show, path_output=path_output, ext=ext, **kargs)
 
 
-def count_Malat_per_Cell(Cell: pd.DataFrame, Acquisition: pd.DataFrame, xlabel= None, ylabel= "malat spot per cell", title= None, reset= False, close= False, show= True, path_output= None, ext ='png', **kargs) :
+def count_Malat_per_Cell(Cell: pd.DataFrame, Acquisition: pd.DataFrame, xlabel= None, ylabel= "malat spot per cell", title= None, reset= True, close= False, show= True, path_output= None, ext ='png', **kargs) :
     """
     1 box per gene
     """
@@ -61,7 +61,7 @@ def count_Malat_per_Cell(Cell: pd.DataFrame, Acquisition: pd.DataFrame, xlabel= 
 
 
 def dapi_signal(Cell: pd.DataFrame, Acquisition: pd.DataFrame, projtype= 'mean', summarize_type= 'mean', integrated_signal = False,
-                 xlabel= None, ylabel= None, title= None, reset= False, close= False, show= True, path_output= None, ext ='png', **kargs) :
+                 xlabel= None, ylabel= None, title= None, reset= True, close= True, show= True, path_output= None, ext ='png', **kargs) :
     """
     1 box per gene.
     Integrated signal --> True : multiply value by nucleus area.
@@ -94,7 +94,7 @@ def dapi_signal(Cell: pd.DataFrame, Acquisition: pd.DataFrame, projtype= 'mean',
 
 ## Base plot ##
 
-def raw_data(Cell: pd.DataFrame, Acquisition: pd.DataFrame, column_name, xlabel= None, ylabel= None, title= None, reset= False, close= False, show= True, path_output= None, ext ='png', **kargs) :
+def raw_data(Cell: pd.DataFrame, Acquisition: pd.DataFrame, column_name, xlabel= None, ylabel= None, title= None, reset= False, close= True, show= True, path_output= None, ext ='png', **kargs) :
     """
     1 box per gene
     """
@@ -110,7 +110,7 @@ def raw_data(Cell: pd.DataFrame, Acquisition: pd.DataFrame, column_name, xlabel=
 
 
 
-def box_plot(data: np.ndarray, xlabel= None, ylabel= None, title= None, reset= True, close= False, show= True, path_output= None, ext ='png', **kargs) :
+def box_plot(data: np.ndarray, xlabel= None, ylabel= None, title= None, reset= True, close= True, show= True, path_output= None, ext ='png', **kargs) :
     """
     Default plot for box plots.
 
@@ -131,9 +131,10 @@ def box_plot(data: np.ndarray, xlabel= None, ylabel= None, title= None, reset= T
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
+
+    if path_output != None : save_plot(path_output=path_output, ext=ext)
     
     if show : plt.show()
     if close : plt.close()
-    if path_output != None : save_plot(path_output=path_output, ext=ext)
 
     return fig
