@@ -110,7 +110,7 @@ def raw_data(Cell: pd.DataFrame, Acquisition: pd.DataFrame, column_name, xlabel=
 
 
 
-def box_plot(data: np.ndarray, xlabel= None, ylabel= None, title= None, reset= False, close= False, show= True, path_output= None, ext ='png', **kargs) :
+def box_plot(data: np.ndarray, xlabel= None, ylabel= None, title= None, reset= True, close= False, show= True, path_output= None, ext ='png', **kargs) :
     """
     Default plot for box plots.
 
