@@ -73,19 +73,99 @@ def count_Malat_per_Cell(Cell: pd.DataFrame, Acquisition: pd.DataFrame, xlabel= 
                               ,left_on= ('rna name',"AcquisitionId"), right_on= ('rna name', "AcquisitionId")
                               ).rename(columns={'count_malat_per_cell_x' : 'mean', 'count_malat_per_cell_y' : 'std'})
     Df_Acquisition = Df_Acquisition.reset_index(drop= False).sort_values("rna name")
+    gene_frame = Join_Cell.value_counts(subset="rna name").reset_index(drop= False)
     gene_number = len(Join_Cell.value_counts(subset="rna name"))
-    
-    color_list = ( )
+    color_list = pd.DataFrame(columns = ["color"], data = get_colors_list(gene_number))
+    gene_frame = pd.concat([gene_frame, color_list], axis= 1).drop(0, axis= 1)
+    Df_Acquisition = pd.merge(left= Df_Acquisition, right= gene_frame, how= 'left', left_on= "rna name", right_on= "rna name")
+    print(gene_frame)
+    print(Df_Acquisition)
+
+    plot(X= Df_Acquisition["mean"], Y = Df_Acquisition["std"], xlabel= "mean number of rna per cell", ylabel= "standard deviation", color= Df_Acquisition["color"], label= list(Df_Acquisition["rna name"]))
 
 
 
 
 
 
-## Base plot ## 
-def scatter_plot(X: np.ndarray, Y: np.ndarray, xlabel= None, ylabel= None, title= None, reset= False, close= False, show= True, path_output= None, ext ='png', **kargs) :
+## Base plot ##
+
+def plot(X: np.ndarray, Y: np.ndarray, xlabel= None, ylabel= None, title= None, reset= False, close= False, show= True, path_output= None, ext ='png', **kargs) :
     """
-    Default plot for box plots.
+    Default plot for points plots.
+
+    Parameters
+    ----------
+        data : sequence[float]
+        
+        **kargs :
+            color
+
+    """
+
+
+    if hasattr(X[0], '__iter__') and hasattr(Y[0],'__iter__') :
+        if len(X) != len(Y) : raise ValueError("X and Y iterables must have the same length")
+        is_list = True
+    elif not hasattr(X[0], '__iter__') and not hasattr(Y[0],'__iter__') :
+        is_list = False
+    else : raise TypeError("Either both X-elements and Y-elements should be iterables or none")
+
+    print(is_list)
+
+    if reset : fig = plt.figure(figsize=(20,10))
+    else : fig = plt.gcf()
+
+    if is_list :
+        if "color" in kargs :
+            color = kargs["color"]
+            if len(color) != len(X) : raise ValueError("length of color array must match length of data-set array")
+            del kargs["color"]
+
+        else : color = get_colors_list(len(X))
+
+        if "label" in kargs :
+            label = kargs["label"]
+            if len(label) != len(X) : raise ValueError("length of label array must match length of data-set array")
+            del kargs["label"]
+        else : label = [None] * len(X)
+        
+        
+        if "ls" in kargs :
+            ls = kargs["label"]
+            if len(ls) != len(X) : raise ValueError("length of LineStyle (ls) array must match length of data-set array")
+            del kargs["ls"]
+        else : ls = [None] * len(X)
+
+
+        plt.plot(*zip(X,Y))
+
+        # for set_number, (x,y) in enumerate(zip(X,Y)) :
+        #     plt.plot(x,y, color= color[set_number], ls= ls[set_number], label= label[set_number], **kargs)
+
+
+
+    else :
+        plt.plot(X,Y, **kargs)
+        if "label" in kargs :
+            plt.legend()
+
+
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    
+    if show : plt.show()
+    if close : plt.close()
+    if path_output != None : save_plot(path_output=path_output, ext=ext)
+
+    return fig
+
+
+
+def scatter(X: np.ndarray, Y: np.ndarray, xlabel= None, ylabel= None, title= None, reset= False, close= False, show= True, path_output= None, ext ='png', **kargs) :
+    """
+    Default plot for scatter plots.
 
     Parameters
     ----------
@@ -98,9 +178,10 @@ def scatter_plot(X: np.ndarray, Y: np.ndarray, xlabel= None, ylabel= None, title
 
     if reset : fig = plt.figure(figsize=(20,10))
     else : fig = plt.gcf()
-
-
     plt.scatter(X,Y, **kargs)
+
+    if "label" in kargs :
+        plt.legend()
 
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
@@ -111,3 +192,10 @@ def scatter_plot(X: np.ndarray, Y: np.ndarray, xlabel= None, ylabel= None, title
     if path_output != None : save_plot(path_output=path_output, ext=ext)
 
     return fig
+
+
+def set_legend(labels, colors) :
+    df = pd.DataFrame(data = {"label" : labels, "color" : colors})
+    df = df.value_counts(subset=["label", "color"]).reset_index(drop= False)
+    print(df)
+    plt.legend(labels = df["label"], labelcolor= df["color"])

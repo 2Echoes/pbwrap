@@ -21,9 +21,10 @@ gene_list = list(Acquisition.loc[:, "rna name"])
 malat_clean_Acquisition, malat_clean_Cell = update.from_malat_remove_acquisition(Acquisition, Cell, limit= 10)
 new_Cell = update.from_nucleus_malat_proportion_compute_CellullarCycleGroup(malat_clean_Cell)
 
-print(plot.get_colors_list(15))
 
-# scatter.count_Malat_per_Cell(new_Cell, malat_clean_Acquisition)
+
+scatter.count_Malat_per_Cell(new_Cell, malat_clean_Acquisition)
 
 
 # box.box_plot(new_Cell.loc[:, "malat1 spots in nucleus"])
+

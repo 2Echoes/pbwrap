@@ -18,7 +18,10 @@ def from_label_get_centeroidscoords(label: np.ndarray):
     return centroid
 
 
-def get_colors_list(size) :
+def get_colors_list(size:int) -> np.ndarray:
+    """
+    Get a list of color from matplotlib.colors of length 'size'.
+    """
     color_list  = list(mcolors.CSS4_COLORS.keys())
     for color in ['white', 'snow', 'whitesmoke', 'ivory', 'floralwhite', 'ghostwhite', 'seashell', 'linen', 'honeydew', 'aliceblue', 'mintcream'] :
         color_list.remove(color)
