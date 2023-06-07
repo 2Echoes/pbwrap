@@ -9,6 +9,9 @@ from ..errors import SolutionNotRealError
 from scipy.optimize import leastsq
 
 def simple_linear_regression(X: np.array, Y: np.array) :
+    """
+    from X, Y distribution returns (slope, intercep) from linear regression curve.
+    """
     X = np.array(X).reshape(-1,1)
     Y = np.array(Y)
     lin_model = LinearRegression()

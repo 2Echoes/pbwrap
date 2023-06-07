@@ -11,8 +11,8 @@ from .decorators import plot_curve
 
 
 
-def Malat_inNuc_asDapiIntensity(Cell: pd.DataFrame, projtype = 'MIP', summarize_type= 'median', out = False, plot_linear_regression= False,
-                                path_output= None, show = True, ext= 'png', title = None) :
+def Malat_inNuc_asDapiIntensity(Acquisition: pd.DataFrame, Cell: pd.DataFrame, projtype = 'MIP', summarize_type= 'median', integrated_signal=True, plot_linear_regression= False,
+                                path_output= None, show = True, close= True, reset= True, ext= 'png', title = None, xlabel=None, ylabel= 'malat1 spots in nucleus', **kargs) :
     """
     
     Scatter plot computed as Signal from DAPI channel (X-axis) VS Malat spots count in nucleus.
@@ -20,48 +20,49 @@ def Malat_inNuc_asDapiIntensity(Cell: pd.DataFrame, projtype = 'MIP', summarize_
     
     """
 
-
-
-    #Select projection type from Cell Data
+    #Projtype
     if projtype.upper() == 'MIP' : X = "nucleus_mip_"
     elif projtype.upper() == 'MEAN' : X = "nucleus_mean_"
-    else : raise ValueError("projtype shoud either be 'mip' or 'mean', it is {0}.".format(projtype))
+    else : raise ValueError("projtype should either be 'mip' or 'mean'.")
 
     #Summarize type
     if summarize_type.upper() == 'MEDIAN' : X += "median_signal"
     elif summarize_type.upper() == 'MEAN' : X += "mean_signal"
     else : raise ValueError("summarize_type should either be 'median' or 'mean'.")
 
-    #Select malat spots in nucleus or in cytoplasm
-    if out : Y = 'malat1 spots out nucleus'
-    else : Y = 'malat1 spots in nucleus'
+    Join_Cell = update.JoinCellAcquisition(Acquisition, Cell, Acquisition_columns= ["rna name"])
+    
+    if integrated_signal:
+        Join_Cell["integrated signal"] = (Join_Cell[X] )#* Join_Cell["nucleus area (nm^2)"])
+        X = "integrated signal"
+    
+    if xlabel == None : xlabel = X
 
-    #Fetching data
-    Cell["SignalArea"] = Cell[X] * Cell["nuc_area"]
-    data = Cell.loc[:, ["SignalArea", Y]].sort_values("SignalArea")
+    rna_list = Join_Cell.value_counts("rna name")
 
-    #Plot
-    fig = plt.figure(figsize=(20,10))
-    X_values, Y_values = np.array(data.iloc[:,0]), np.array(data.iloc[:,1])
-    plt.plot(X_values, Y_values, 'r.', label= "Experimental Data")
+    if not "color" in kargs : 
+        color_df = pd.DataFrame({'rna name' : rna_list.index , 'color' : get_colors_list(len(rna_list))})
+        Join_Cell = pd.merge(left= Join_Cell, right= color_df, how= 'left', on= 'rna name')
+        kargs["color"] = Join_Cell["color"]
 
-    if plot_linear_regression:
-        slope, intercept = simple_linear_regression(X_values,Y_values)
-        regression = slope* X_values + intercept
-        plt.plot(X_values, regression, 'b', label= "Linear regression \n{0}x + {1}".format(slope,intercept))
-        plt.legend()
+    
+    kargs["label"] = Join_Cell["rna name"]
 
-    ax = fig.gca()
-    ax.axis(xmin= 0, ymin= 0)
-    if title != None : plt.title(title)
-    plt.xlabel(X)
-    plt.ylabel(Y)
-    if path_output != None : save_plot(path_output, ext)
-    if show : plt.show()
-    plt.close()
+    if plot_linear_regression :
+        
+        if reset : 
+            plt.figure(figsize=(20,10))
+            reset = False
+
+        slope, intercept = simple_linear_regression(X = Join_Cell[X], Y= Join_Cell['malat1 spots in nucleus'])
+        xmin = Join_Cell[X].min()
+        xmax = Join_Cell[X].max()
+        xrange = np.linspace(xmin,xmax, 100)
+        plt.plot(xrange, slope*xrange + intercept, label= 'Linear regression : {0}x + {1}'.format(round(slope,10), round(intercept,2)))
 
 
-@plot_curve(identity, label = 'y = x', ls= '-', color= 'black')
+    scatter(X= Join_Cell[X], Y= Join_Cell['malat1 spots in nucleus'], xlabel=xlabel, ylabel=ylabel, show=show, close=close, reset=reset, path_output=path_output, ext=ext, title=title, **kargs)
+
 def count_Malat_per_Cell(Cell: pd.DataFrame, Acquisition: pd.DataFrame, xlabel= "Mean", ylabel= "Standard deviation", title= "Malat spots detected per Fov", reset= True, close= True, show= True, path_output= None, ext ='png', **kargs) :
     """
     1 box per gene
@@ -83,7 +84,6 @@ def count_Malat_per_Cell(Cell: pd.DataFrame, Acquisition: pd.DataFrame, xlabel= 
     scatter(X= Df_Acquisition["mean"], Y = Df_Acquisition["std"], xlabel= xlabel, ylabel= ylabel, color= Df_Acquisition["color"], label= list(Df_Acquisition["rna name"]), title=title, reset=reset, close=close, show=show, path_output=path_output, ext=ext, **kargs)
 
 
-@plot_curve(identity, label = 'y = x', ls= '-', color= 'black')
 def count_rna_per_Cell(Cell: pd.DataFrame, Acquisition: pd.DataFrame, xlabel= "Mean", ylabel= "Standard deviation", title= "Rna spots detected per Fov", reset= True, close= True, show= True, path_output= None, ext ='png', **kargs) :
     """
     1 box per gene
@@ -164,6 +164,30 @@ def dapi_signal(Cell: pd.DataFrame, Acquisition: pd.DataFrame, projtype= 'mean',
 
     scatter(X= Df_Acquisition["mean"], Y = Df_Acquisition["std"], xlabel= xlabel, ylabel= ylabel, color= Df_Acquisition["color"], label= list(Df_Acquisition["rna name"]), title=title, reset=reset, close=close, show=show, path_output=path_output, ext=ext, **kargs)
 
+def DapiSignal_vs_CellNumber(Cell: pd.DataFrame, projtype= 'mean', summarize_type= 'mean', integrated_signal = False,
+                             xlabel= "Cell Number", ylabel= None, title= None, reset= True, close= True, show= True, path_output= None, ext ='png', **kargs) :
+    
+    #Projtype
+    if projtype.upper() == 'MIP' : Y = "nucleus_mip_"
+    elif projtype.upper() == 'MEAN' : Y = "nucleus_mean_"
+    else : raise ValueError("projtype should either be 'mip' or 'mean'.")
+
+    #Summarize type
+    if summarize_type.upper() == 'MEDIAN' : Y += "median_signal"
+    elif summarize_type.upper() == 'MEAN' : Y += "mean_signal"
+    else : raise ValueError("summarize_type should either be 'median' or 'mean'.")
+
+    if integrated_signal:
+        Cell["Integrated signal ({0})".format(Y)] = (Cell[Y] * Cell["nucleus area (nm^2)"])
+        Y = "Integrated signal ({0})".format(Y)
+
+    if ylabel == None : ylabel = Y
+
+    mean_df = Cell.groupby("AcquisitionId")[Y].mean()
+    count_df = Cell.value_counts(subset= "AcquisitionId").reset_index(drop=False).rename(columns={0 : 'cell number'})
+    df = pd.merge(mean_df, count_df, on= "AcquisitionId").sort_values(Y)
+    
+    plot(df["cell number"], df[Y], xlabel= xlabel, ylabel= ylabel, title= title, reset= reset, close= close, show= show, path_output= path_output, ext =ext, **kargs)
 
 
 ## Base plot ##
@@ -171,7 +195,7 @@ def dapi_signal(Cell: pd.DataFrame, Acquisition: pd.DataFrame, projtype= 'mean',
 def plot(X: np.ndarray, Y: np.ndarray, xlabel= None, ylabel= None, title= None, reset= False, close= False, show= True, path_output= None, ext ='png', **kargs) :
     #TODO does not function bc of label handling.
     """
-    Default plot for points plots.
+    Default plot for points plots..query("`rna name` in ['NF1', 'PABPC1']")
 
     Parameters
     ----------
@@ -181,57 +205,29 @@ def plot(X: np.ndarray, Y: np.ndarray, xlabel= None, ylabel= None, title= None, 
             color
 
     """
-
-    if hasattr(X[0], '__iter__') and hasattr(Y[0],'__iter__') :
-        if len(X) != len(Y) : raise ValueError("X and Y iterables must have the same length")
-        is_list = True
-    elif not hasattr(X[0], '__iter__') and not hasattr(Y[0],'__iter__') :
-        is_list = False
-    else : raise TypeError("Either both X-elements and Y-elements should be iterables or none")
+    #auto kargs
+    if "marker" not in kargs :
+        kargs["marker"] = '.'
+    if "ls" not in kargs :
+        kargs['ls'] = ''
 
 
     if reset : fig = plt.figure(figsize=(20,10))
     else : fig = plt.gcf()
 
-    if is_list :
-        if "color" in kargs :
-            color = kargs["color"]
-            if len(color) != len(X) : raise ValueError("length of color array must match length of data-set array")
-            del kargs["color"]
-
-        else : color = get_colors_list(len(X))
-
-        if "label" in kargs :
-            label = kargs["label"]
-            if len(label) != len(X) : raise ValueError("length of label array must match length of data-set array")
-            del kargs["label"]
-        else : label = [None] * len(X)
-        
-        
-        if "ls" in kargs :
-            ls = kargs["label"]
-            if len(ls) != len(X) : raise ValueError("length of LineStyle (ls) array must match length of data-set array")
-            del kargs["ls"]
-        else : ls = [None] * len(X)
-
-        for set_number, (x,y) in enumerate(zip(X,Y)) :
-            plt.plot(x,y, color= color[set_number], ls= ls[set_number], label= label[set_number], **kargs)
+    plt.plot(X,Y, **kargs)
+    if "label" in kargs :
         plt.legend()
-
-
-    else :
-        plt.plot(X,Y, **kargs)
-        if "label" in kargs :
-            plt.legend()
 
 
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
     
+    if path_output != None : save_plot(path_output=path_output, ext=ext)
     if show : plt.show()
     if close : plt.close()
-    if path_output != None : save_plot(path_output=path_output, ext=ext)
+
 
     return fig
 
@@ -253,11 +249,21 @@ def scatter(X: np.ndarray, Y: np.ndarray, xlabel= None, ylabel= None, title= Non
     if reset : fig = plt.figure(figsize=(20,10))
     else : fig = plt.gcf()
 
+
+    #Auto kargs :
+    if not 'edgecolors' in kargs :
+        kargs['edgecolors'] = 'black'
+    
     if "label" in kargs and "color" in kargs :
-        set_legend(kargs["label"], kargs["color"])
-        del kargs["label"]
+        label,color = kargs["label"], kargs["color"]
+        del kargs["label"], kargs["color"]
+        set_legend(labels= label, colors= color, **kargs)
+        kargs["label"], kargs["color"] = label,color
+        del label,color
+
 
     plt.scatter(X,Y, **kargs)
+    
     plt.axis('tight')
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
@@ -271,11 +277,11 @@ def scatter(X: np.ndarray, Y: np.ndarray, xlabel= None, ylabel= None, title= Non
     return fig
 
 
-def set_legend(labels, colors, column_number = 3, loc = 'upper left') :
+def set_legend(labels, colors, column_number = 3, loc = None, **kargs) :
     df = pd.DataFrame(data = {"label" : labels, "color" : colors})
     df = df.value_counts(subset=["label", "color"]).reset_index(drop= False)
     for label, color in zip(df["label"], df["color"]) :
-        plt.scatter([],[],label = label, color = color)
+        plt.scatter([],[],label = label, color = color, **kargs)
     
 
     plt.legend(ncol= column_number, loc=loc,)
