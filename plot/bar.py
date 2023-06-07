@@ -200,7 +200,13 @@ def RNApercentage_in_out_nucleus(Acquisition: pd.DataFrame, Cell: pd.DataFrame, 
     else : 
         fig = gene_bar_plot(gene_list, mean_value_inside, std_list, legend = "inside nuc", title= title, ylabel= ylabel, path_output= path_output, ext=ext, show=show, close= close)
 
+def total_cell_number(Acquisition: pd.DataFrame,xlabel=None, ylabel= "Cell number", path_output= None, show = True, close= True, ext= 'png', title = "Computed cell number") :
+    """
+    1 bar per gene
+    """
 
+    Df = Acquisition.groupby(["rna name"])["cell number"].sum()
+    gene_bar_plot(Df.index, Df, title= title, ylabel= ylabel, xlabel=xlabel, show=show, close=close, path_output=path_output, ext=ext )
 
 
 #######################

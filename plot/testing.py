@@ -4,6 +4,7 @@ import bigfish.stack as stack
 import pbwrap.plot.visuals as visu
 import pbwrap.plot.box as box
 import pbwrap.plot.scatter as scatter
+import pbwrap.plot.bar as bar
 import pbwrap.plot as plot
 
 in_path = "/home/floricslimani/Documents/Projets/1_P_body/stack_O8_p21/output/20230531 17-01-21/result_tables"
@@ -23,7 +24,7 @@ new_Cell = update.from_nucleus_malat_proportion_compute_CellullarCycleGroup(mala
 
 
 
-scatter.count_Malat_per_Cell(new_Cell, malat_clean_Acquisition)
+scatter.count_rna_per_Cell(Cell, Acquisition)
 
 
 # box.box_plot(new_Cell.loc[:, "malat1 spots in nucleus"])

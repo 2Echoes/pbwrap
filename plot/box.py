@@ -6,8 +6,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import CustomPandasFramework.PBody_project.update as update
 from .utils import save_plot
+from .decorators import rotate_xAxis_label
 
-
+@rotate_xAxis_label
 def count_pbody_per_Cell(Cell: pd.DataFrame, Acquisition: pd.DataFrame, xlabel= None, ylabel= "pbodies per cell", title= None, reset= True, close= True, show= True, path_output= None, ext ='png', **kargs) :
     """
     1 box per gene
@@ -23,7 +24,7 @@ def count_pbody_per_Cell(Cell: pd.DataFrame, Acquisition: pd.DataFrame, xlabel= 
     box_plot(data= data_mean, ylabel= ylabel, labels= data_mean.index, xlabel=xlabel, title= title, reset= reset, close=close, show= show, path_output=path_output, ext=ext, **kargs)
 
 
-
+@rotate_xAxis_label
 def count_rna_per_Cell(Cell: pd.DataFrame, Acquisition: pd.DataFrame, xlabel= None, ylabel= "rna spot per cell", title= None, reset= True, close= True, show= True, path_output= None, ext ='png', **kargs) :
     """
     1 box per gene
@@ -39,7 +40,17 @@ def count_rna_per_Cell(Cell: pd.DataFrame, Acquisition: pd.DataFrame, xlabel= No
     
     box_plot(data= data_mean, ylabel= ylabel, labels= data_mean.index, xlabel=xlabel, title= title, reset= reset, close=close, show= show, path_output=path_output, ext=ext, **kargs)
 
+@rotate_xAxis_label
+def cell_number(Acquisition: pd.DataFrame, xlabel= None, ylabel= "cell number", title= None, reset= True, close= True, show= True, path_output= None, ext ='png', **kargs) :
 
+    """
+    1 box per gene
+    """
+    Df_Acquisition = Acquisition.groupby(["rna name"])["cell number"].apply(list).sort_index()
+
+    box_plot(data= Df_Acquisition, labels= Df_Acquisition.index, xlabel= xlabel, ylabel= ylabel, title= title, reset= reset, close= close, show= show, path_output= path_output, ext =ext, **kargs)
+
+@rotate_xAxis_label
 def count_Malat_per_Cell(Cell: pd.DataFrame, Acquisition: pd.DataFrame, xlabel= None, ylabel= "malat spot per cell", title= None, reset= True, close= False, show= True, path_output= None, ext ='png', **kargs) :
     """
     1 box per gene
@@ -59,7 +70,7 @@ def count_Malat_per_Cell(Cell: pd.DataFrame, Acquisition: pd.DataFrame, xlabel= 
     box_plot(data= data_mean, ylabel= ylabel, labels= data_mean.index, xlabel=xlabel, title= title, reset= reset, close=close, show= show, path_output=path_output, ext=ext, **kargs)
 
 
-
+@rotate_xAxis_label
 def dapi_signal(Cell: pd.DataFrame, Acquisition: pd.DataFrame, projtype= 'mean', summarize_type= 'mean', integrated_signal = False,
                  xlabel= None, ylabel= None, title= None, reset= True, close= True, show= True, path_output= None, ext ='png', **kargs) :
     """
@@ -107,7 +118,6 @@ def raw_data(Cell: pd.DataFrame, Acquisition: pd.DataFrame, column_name, xlabel=
     data_mean = Df_Acquisition.groupby("rna name")[column_name].apply(list)
     
     box_plot(data= data_mean, ylabel= ylabel, labels= data_mean.index, xlabel=xlabel, title= title, reset= reset, close=close, show= show, path_output=path_output, ext=ext, **kargs)
-
 
 
 def box_plot(data: np.ndarray, xlabel= None, ylabel= None, title= None, reset= True, close= True, show= True, path_output= None, ext ='png', **kargs) :
