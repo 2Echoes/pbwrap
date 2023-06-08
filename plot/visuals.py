@@ -1,10 +1,11 @@
 import bigfish.stack as stack
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from scipy.ndimage import binary_dilation
 from skimage.segmentation import find_boundaries
-from .utils import format_array_scientific_notation
+from .utils import format_array_scientific_notation, save_plot
 
 
 
@@ -113,3 +114,28 @@ def plot_spots(spots, color= 'red', dot_size= 1):
 
     y,x = zip(*spots)
     plt.scatter(x,y, c='red', s= dot_size)
+
+
+
+def G1_G2_labelling(Cell : pd.DataFrame, segmentation_plot:str, AcquisitionId:int, path_output:str) :
+    """
+    Add G1, G2 label to cells in the  segmentation plot.
+
+    Parameters
+    ----------
+        Cell : pd.DataFrame
+        segmentation_plot : str
+            path to the segmentation plot on which to add labelling.
+        AcquisitionId : int
+            key refering to Cell["AcquisitionId"]
+        path_output : str
+    """
+    image: np.ndarray = stack.read_image(segmentation_plot)
+    df = Cell.query("`AcquisitionId` == {0}".format(AcquisitionId))
+
+    fig = plt.figure(figsize=(image.shape))
+    ax = plt.imshow(image)
+    for cell, label in zip(df["cell_coordinates"], df["Cellular_cycle"] ):
+        ax.annotate(text = label, xy= cell)
+    
+    save_plot(path_output, 'png')
