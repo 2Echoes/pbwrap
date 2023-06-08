@@ -133,7 +133,7 @@ def G1_G2_labelling(Cell : pd.DataFrame, segmentation_plot:str, AcquisitionId:in
     image: np.ndarray = stack.read_image(segmentation_plot)
     df = Cell.query("`AcquisitionId` == {0}".format(AcquisitionId))
 
-    fig = plt.figure(figsize=(image.shape))
+    fig = plt.figure(figsize= image.shape)
     ax = plt.imshow(image)
     for cell, label in zip(df["cell_coordinates"], df["Cellular_cycle"] ):
         ax.annotate(text = label, xy= cell)
