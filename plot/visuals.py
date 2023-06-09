@@ -134,10 +134,11 @@ def G1_G2_labeller(result_tables_path:str, input_path:str, gene_list: 'list[str]
     Acquisition = pd.read_feather(result_tables_path + 'Acquisition')
     Cell = pd.read_feather(result_tables_path + 'Cell')
     Cell = update.JoinCellAcquisition(Acquisition, Cell, Acquisition_columns= ["rna name"])
-    Cell = update.from_dapi_distribution_compute_CellularCycleGroup(Cell, g1 = 0.1, g2 = 0.1)
     
     for gene in gene_list :
         gene_Cell = Cell.query("`rna name` == '{0}'".format(gene))
+        gene_Cell = update.from_dapi_distribution_compute_CellularCycleGroup(gene_Cell, g1 = 0.1, g2 = 0.1)
+
     
     #Path    
     segmentation_plot_path = result_tables_path.replace("result_tables/", "steps_plots/{0}/".format(gene))
