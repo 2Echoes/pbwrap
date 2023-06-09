@@ -119,7 +119,7 @@ def plot_spots(spots, color= 'red', dot_size= 1):
 
 
 
-def G1_G2_labeller(result_tables_path:str, gene_list: 'list[str]', output_path:str) :
+def G1_G2_labeller(result_tables_path:str, input_path:str, gene_list: 'list[str]', output_path:str) :
     """
     
     """
@@ -127,6 +127,7 @@ def G1_G2_labeller(result_tables_path:str, gene_list: 'list[str]', output_path:s
 
     output_path = "/home/floricslimani/Documents/Projets/1_P_body/stack_O8_p21/output/20230531 17-01-21/results_plots"
     if not result_tables_path.endswith('/') : result_tables_path += '/'
+    if not input_path.endswith('/') : input_path += '/'
     if not output_path.endswith('/') : output_path += '/'
     os.makedirs(output_path + "G1G2visuals/", exist_ok=True)
 
@@ -149,11 +150,14 @@ def G1_G2_labeller(result_tables_path:str, gene_list: 'list[str]', output_path:s
         
         seg_path = None
         for file in dirlist :
-            target = re.findall(".*{0}f.*{1}.*_Cell_segmentation.png".format(gene, fov), file)
+            target = re.findall("(.*{0}f.*{1}.*)_Cell_segmentation.png".format(gene, fov), file)
             if len(target) > 0 :
                 print("found : ", target)
                 assert len(target) == 1, "Multiple files were found which should be impossible"
-                seg_path = segmentation_plot_path + target[0]
+                print("initial target : ",target)
+                print("corrected target : ", target)
+                target = target[0].replace("--","-DAPI-")
+                seg_path = input_path + target[0]
                 break
         if seg_path == None : continue
         
@@ -182,9 +186,12 @@ def _G1_G2_labelling(Cell : pd.DataFrame, segmentation_plot:str, AcquisitionId:i
     image: np.ndarray = stack.read_image(segmentation_plot)
     df = Cell.query("`AcquisitionId` == {0}".format(AcquisitionId))
 
+    if image.ndim == 3 : image = stack.mean_projection(image)
+    image = stack.rescale(image)
+
     print(image.shape)
     print((image.shape[0], image.shape[1]))
-    fig = plt.figure(figsize= (10,10))
+    fig = plt.figure(figsize= (round(image.shape[0]/100), round(image.shape[1]/100)))
     ax = plt.imshow(image)
     plt.axis(False)
     for cell, label in zip(df["cell_coordinates"], df["cellular_cycle"] ):
