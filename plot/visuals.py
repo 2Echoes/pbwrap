@@ -152,7 +152,7 @@ def G1_G2_labeller(result_tables_path:str, gene_list: 'list[str]', output_path:s
             if len(target) > 0 :
                 print("found : ", target)
                 assert len(target) == 1, "Multiple files were found which should be impossible"
-                seg_path = target[0]
+                seg_path = segmentation_plot_path + target[0]
                 break
         if seg_path == None : continue
         
@@ -188,3 +188,4 @@ def _G1_G2_labelling(Cell : pd.DataFrame, segmentation_plot:str, AcquisitionId:i
         ax.annotate(text = label, xy= cell)
     
     save_plot(path_output, 'png')
+    plt.close()
