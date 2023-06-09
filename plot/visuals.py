@@ -192,8 +192,8 @@ def _G1_G2_labelling(Cell : pd.DataFrame, segmentation_plot:str, AcquisitionId:i
     if image_DAPI.ndim == 3 : 
         image_DAPI = image_DAPI[:5,:,:]
         image_MALAT = image_MALAT[:5,:,:]
-        image_DAPI = stack.mean_projection(image_DAPI)
-        image_MALAT = stack.maximum_projection(image_MALAT)
+        image_DAPI = stack.rescale(stack.mean_projection(image_DAPI))
+        image_MALAT = stack.rescale(stack.maximum_projection(image_MALAT))
 
     #channel merging -> RGB
     image = np.zeros([image_DAPI.shape[0], image_DAPI.shape[1],3])
