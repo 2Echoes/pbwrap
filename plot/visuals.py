@@ -184,13 +184,21 @@ def _G1_G2_labelling(Cell : pd.DataFrame, segmentation_plot:str, AcquisitionId:i
             key refering to Cell["AcquisitionId"]
         path_output : str
     """
-    image: np.ndarray = stack.read_image(segmentation_plot)
+    image_DAPI: np.ndarray = stack.read_image(segmentation_plot)
+    path_malat = segmentation_plot.replace('DAPI', 'Alexa 647')
+    image_MALAT: np.ndarray = stack.read_image(path_malat)
     df = Cell.query("`AcquisitionId` == {0}".format(AcquisitionId))
 
-    if image.ndim == 3 : 
-        image = image[:5,:,:]
-        image = stack.mean_projection(image)
-    image = stack.rescale(image, channel_to_stretch= 0)
+    if image_DAPI.ndim == 3 : 
+        image_DAPI = image_DAPI[:5,:,:]
+        image_MALAT = image_MALAT[:5,:,:]
+        image_DAPI = stack.mean_projection(image_DAPI)
+        image_MALAT = stack.maximum_projection(image_MALAT)
+
+    #channel merging -> RGB
+    image = np.zeros([3,image_DAPI.shape[0], image_DAPI.shape[1]])
+    image[2,:,:] = image_DAPI #bleu
+    image[0,:,:] = image_MALAT #rouge
 
     print(image.shape)
     print((image.shape[0], image.shape[1]))
