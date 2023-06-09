@@ -187,7 +187,9 @@ def _G1_G2_labelling(Cell : pd.DataFrame, segmentation_plot:str, AcquisitionId:i
     image: np.ndarray = stack.read_image(segmentation_plot)
     df = Cell.query("`AcquisitionId` == {0}".format(AcquisitionId))
 
-    if image.ndim == 3 : image = stack.mean_projection(image)
+    if image.ndim == 3 : 
+        image = image[:5,:,:]
+        image = stack.mean_projection(image)
     image = stack.rescale(image, channel_to_stretch= 0)
 
     print(image.shape)
