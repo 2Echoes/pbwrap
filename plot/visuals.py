@@ -157,7 +157,7 @@ def G1_G2_labeller(result_tables_path:str, gene_list: 'list[str]', output_path:s
                 break
         if seg_path == None : continue
         
-        _G1_G2_labelling(gene_Cell, seg_path, AcquisitionId=acquisitionid,  path_output= output_path + "G1G2_Labelling_{0}".format(fov))      
+        _G1_G2_labelling(gene_Cell, seg_path, AcquisitionId=acquisitionid,  path_output= output_path + "G1G2_Labelling_{0}".format(fov))
         i+=1
         print("visual saved")
     print("done")
@@ -185,7 +185,7 @@ def _G1_G2_labelling(Cell : pd.DataFrame, segmentation_plot:str, AcquisitionId:i
     print(image.shape)
     ax = plt.imshow(image)
     for cell, label in zip(df["cell_coordinates"], df["cellular_cycle"] ):
-        ax.annotate(text = label, xy= cell)
+        plt.annotate(text = label, xy= cell)
     
     save_plot(path_output, 'png')
     plt.close()
