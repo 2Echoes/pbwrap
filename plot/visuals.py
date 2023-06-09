@@ -199,7 +199,7 @@ def _G1_G2_labelling(Cell : pd.DataFrame, segmentation_plot:str, AcquisitionId:i
     image = np.zeros([image_DAPI.shape[0], image_DAPI.shape[1],3])
     image[:,:,2] = image_DAPI #bleu
     image[:,:,0] = image_MALAT #rouge
-    image = image.astype(np.int16)
+    image = image.astype(np.int8)
     print(image)
     print(image.dtype)
 
