@@ -183,7 +183,8 @@ def _G1_G2_labelling(Cell : pd.DataFrame, segmentation_plot:str, AcquisitionId:i
     df = Cell.query("`AcquisitionId` == {0}".format(AcquisitionId))
 
     print(image.shape)
-    fig = plt.figure(figsize= (image.shape[0], image.shape[1]))
+    print((image.shape[0], image.shape[1]))
+    fig = plt.figure(figsize= (10,10))
     ax = plt.imshow(image)
     plt.axis(False)
     for cell, label in zip(df["cell_coordinates"], df["cellular_cycle"] ):
