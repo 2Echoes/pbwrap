@@ -155,7 +155,7 @@ def G1_G2_labeller(result_tables_path:str, input_path:str, gene_list: 'list[str]
                 print("found : ", target)
                 assert len(target) == 1, "Multiple files were found which should be impossible"
                 print("initial target : ",target)
-                target = target[0].replace("--","-DAPI-")
+                target = target[0].replace("--","-DAPI-") + ".tiff"
                 print("corrected target : ", target)
                 seg_path = input_path + target
                 break
