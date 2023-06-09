@@ -1,4 +1,6 @@
 import bigfish.stack as stack
+import CustomPandasFramework.PBody_project.update as update
+import os,re
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -117,7 +119,53 @@ def plot_spots(spots, color= 'red', dot_size= 1):
 
 
 
-def G1_G2_labelling(Cell : pd.DataFrame, segmentation_plot:str, AcquisitionId:int, path_output:str) :
+def G1_G2_labeller(result_tables_path:str, gene_list: 'list[str]', output_path:str) :
+    """
+    
+    """
+
+
+    output_path = "/home/floricslimani/Documents/Projets/1_P_body/stack_O8_p21/output/20230531 17-01-21/results_plots"
+    if not result_tables_path.endswith('/') : result_tables_path += '/'
+    if not output_path.endswith('/') : output_path += '/'
+    os.makedirs(output_path + "G1G2visuals/", exist_ok=True)
+
+    Acquisition = pd.read_feather(result_tables_path + 'Acquisition')
+    Cell = pd.read_feather(result_tables_path + 'Cell')
+    Cell = update.JoinCellAcquisition(Acquisition, Cell, Acquisition_columns= ["rna name"])
+    
+    for gene in gene_list :
+        gene_Cell = Cell.query("`rna name` == '{0}'".format(gene))
+    
+    #Path    
+    segmentation_plot_path = result_tables_path.replace("result_tables/", "steps_plots/{0}/".format(gene))
+    dirlist = os.listdir(segmentation_plot_path)
+    
+    i = 0
+    for fov in ['01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16'] :
+        print("fov : ",fov)
+        acquisitionid = gene_Cell["AcquisitionId"].min() + i
+        
+        seg_path = None
+        for file in dirlist :
+            target = re.findall(".*{0}f.*{1}.*_Cell_segmentation.png".format(gene, fov), file)
+            if len(target) > 0 :
+                print("found : ", target)
+                assert len(target) == 1, "Multiple files were found which should be impossible"
+                seg_path = target[0]
+                break
+        if seg_path == None : continue
+        
+        _G1_G2_labelling(gene_Cell, seg_path, AcquisitionId=acquisitionid,  path_output= output_path + "G1G2_Labelling_{0}".format(fov))      
+        i+=1
+        print("visual saved")
+    print("done")
+
+
+
+
+
+def _G1_G2_labelling(Cell : pd.DataFrame, segmentation_plot:str, AcquisitionId:int, path_output:str) :
     """
     Add G1, G2 label to cells in the  segmentation plot.
 
@@ -133,9 +181,10 @@ def G1_G2_labelling(Cell : pd.DataFrame, segmentation_plot:str, AcquisitionId:in
     image: np.ndarray = stack.read_image(segmentation_plot)
     df = Cell.query("`AcquisitionId` == {0}".format(AcquisitionId))
 
+    print(image.shape)
     fig = plt.figure(figsize= image.shape)
     ax = plt.imshow(image)
-    for cell, label in zip(df["cell_coordinates"], df["Cellular_cycle"] ):
+    for cell, label in zip(df["cell_coordinates"], df["cellular_cycle"] ):
         ax.annotate(text = label, xy= cell)
     
     save_plot(path_output, 'png')
