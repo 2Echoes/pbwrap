@@ -67,9 +67,9 @@ def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False, use
         nucleus_label = nucleus_model.eval(dapi, diameter= diameter, channels = channels)[0].astype(np.int64)
         nucleus_label = np.array(nucleus_label, dtype = np.int64)
 
-    if ndim == 3 :
-        for z in range(0,len(nucleus_label)): nucleus_label[z] = seg.clean_segmentation(nucleus_label[z], small_object_size= min_objct_size, delimit_instance=True, fill_holes= True)
-    else : nucleus_label = seg.clean_segmentation(nucleus_label, small_object_size= min_objct_size, delimit_instance=True,  fill_holes= True)
+    # if ndim == 3 :
+    #     for z in range(0,len(nucleus_label)): nucleus_label[z] = seg.clean_segmentation(nucleus_label[z], small_object_size= min_objct_size, delimit_instance=True, fill_holes= True)
+    # else : nucleus_label = seg.clean_segmentation(nucleus_label, small_object_size= min_objct_size, delimit_instance=True,  fill_holes= True)
     nucleus_label = seg.remove_disjoint(nucleus_label)
 
     if ndim == 3 :

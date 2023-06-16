@@ -35,7 +35,7 @@ def compute_signalmetrics(signal:np.ndarray, mask: np.ndarray) :
     return signalmetrics
 
 
-def count_spots_in_mask(spots, mask)->int :
+def count_spots_in_mask(spots, mask: np.ndarray)->int :
     """
     Parameters
     ----------
@@ -45,28 +45,55 @@ def count_spots_in_mask(spots, mask)->int :
     check_parameter(spots = (list, np.ndarray), mask = np.ndarray)
     if len(spots) == 0 : return 0
     dim = len(spots[0])
+    if mask.dtype != bool : mask = mask.astype(bool)
 
-    if dim == 1 : raise Exception("1D spots are not supported")
 
     
     if dim == 2 :
         line, col = unzip(spots)
-        spot_array = np.zeros_like(mask)
-        spot_array[line,col] = 1
+        count = mask[line, col].sum()
+    elif dim == 1 : 
+        raise Exception("1D spots are not supported")
+
     else : 
         plane,line,col,*_ = unzip(spots)
         #if segmentation was performed in 2D we extend constantly z-wise.
         if mask.ndim == 2 :
-            mask = np.stack([mask]* (np.array(plane).max()+1))
-            spot_array = np.zeros_like(mask)
-        spot_array[plane,line,col] = 1
+            count = mask[line,col].sum()
+        else : count = mask[plane,line, col].sum()
 
-    count_array = np.logical_and(spot_array, mask)
-    count = count_array.sum()
 
     return count
 
+def count_spots_in_masks_list(spots, masks: 'list[np.ndarray]')-> 'list[int]' :
+    """"
+    Similar to count_spots_in_mask but with the a list of masks. Same spots coords are used to count in every masks. But way faster than looping over a masks list while indexing count_spots_in_masks results
+    Returns a list of counts of length len(masks)
+    """
 
+    if type(masks) == list :
+        masks = np.array(masks)
+    elif type(masks) == np.ndarray :
+        if not masks.ndim in [3,4] : raise ValueError("Unsupported dimension for masks parameter, ndim should be 3 for 2D maskS and 4 for 3D maskS. It is {0}".format(masks.ndim))
+    else : raise TypeError("Masks should be a list or np.ndarray. It is {0}".format(type(masks)))
+    
+    if len(spots) == 0 : return [0]*masks.shape[0]
+    dim = len(spots[0])
+
+    if dim == 2 :
+        line, col = unzip(spots)
+        count = masks[:,line, col].sum(axis= 1)
+    elif dim == 1 : 
+        raise Exception("1D spots are not supported")
+
+    else : 
+        plane,line,col,*_ = unzip(spots)
+        #if segmentation was performed in 2D we extend constantly z-wise.
+        if masks.ndim == 3 :
+            count = masks[:, line,col].sum(axis= 1)
+        else : count = masks[:,plane,line, col].sum(axis= 1)
+
+    return count
 
 def compute_mask_area(mask: np.ndarray, unit: str = 'px', voxel_size: tuple= None)-> float:
     """

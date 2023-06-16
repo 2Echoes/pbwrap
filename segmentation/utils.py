@@ -163,8 +163,7 @@ def unstack_slices(image3D) :
     check_array(image3D,3)
 
     #Unstacking
-    slices = []
-    for slice in image3D : slices += [slice]
+    slices = [slice for slice in image3D]
     return(slices)
 
 
@@ -191,15 +190,8 @@ def stack_slices(slices) :
     slices = list(slices)
 
     #stacking
-    img_shape = [len(slices)] + list(slices[0].shape)
-    img_dtype = slices[0].dtype
-    image = np.zeros(img_shape, dtype= img_dtype)
-    z_index = 0
-    for zslice in slices:
-        image[z_index,:,:] = zslice
-        z_index +=1
 
-    return image
+    return np.array(slices)
 
 
 
@@ -405,7 +397,11 @@ def from2Dlabel_to3Dlabel(labels, maximal_distance= 20) :
     #Integrity checks
     check_parameter(labels = (list, np.ndarray), maximal_distance =(int, float))
     check_sameshape(*labels)
-    for label in labels : check_array(label, ndim= 2, dtype= [np.int8, np.int16, np.uint8, np.uint16, np.int32, np.int64])
+    import bigfish.plot as plot
+    for label in labels : 
+        check_array(label, ndim= 2, dtype= [np.int8, np.int16, np.uint8, np.uint16, np.int32, np.int64])
+
+    plot.plot_images([*labels], contrast= True)
 
     #stitching
     

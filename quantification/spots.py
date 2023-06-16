@@ -5,9 +5,9 @@ from bigfish.stack import check_parameter
 import numpy as np
 import pandas as pd
 from CustomPandasFramework.PBody_project.DataFrames import newframe_Spots
-from CustomPandasFramework.operations import check_samedatashape
+from CustomPandasFramework.integrity import check_samedatashape
 
-def compute_Spots(AcquisitionId, CellId, spots_dictionary : dict, cell_bbox: tuple) :
+def compute_Spots(AcquisitionId, CellId, spots_dictionary : dict, cell_bbox: tuple, Pbody_label) :
     """
     Parameters
     ----------
@@ -21,35 +21,41 @@ def compute_Spots(AcquisitionId, CellId, spots_dictionary : dict, cell_bbox: tup
 
     
     check_parameter(AcquisitionId=int, CellId=int, spots_dictionary= dict, cell_bbox= (tuple,list))
-    if len(cell_bbox) != 4 : raise ValueError("Expected 4 elements en bounding box : (min_y, min_x, max_y, max_x)")
+    if len(cell_bbox) != 4 : raise ValueError("Expected 4 elements in bounding box : (min_y, min_x, max_y, max_x)")
 
     (min_y, min_x, max_y, max_x) = cell_bbox
-
-    nbre_spots = len(spots_coords.values())
-    ids = np.arange(nbre_spots)
 
     types = []
     spots_coords = []
     for spot_type, coordinates_list in spots_dictionary.items() :
-        types += [spot_type] * len(coordinates_list)
-        spots_coords += coordinates_list
+        if type(coordinates_list) != list : coordinates_list = list(coordinates_list)
+        types.extend([spot_type] * len(coordinates_list))
+        spots_coords.extend(coordinates_list)
 
+    nbre_spots = len(spots_coords)
+    ids = np.arange(nbre_spots)
 
-    spots_coords = spots_dictionary.values()
-    Z,Y,X = zip(*spots_coords)
+    Z,Y,X,*_ = zip(*spots_coords)
     Z,Y,X = np.array(Z), np.array(Y), np.array(X)
     Y += min_y
-    X +=  min_x 
+    X +=  min_x
     spots_coords = tuple(zip(Z,Y,X))
-    types = spots_dictionary.keys()
     dataframe_ref = newframe_Spots()
 
+    if Pbody_label.ndim == 2 : 
+        Pbody_labels = Pbody_label[Y,X]
+    elif Pbody_label.ndim == 3 :
+        Pbody_labels = Pbody_label[Z,Y,X]
+    else : raise ValueError("Pbody label has an unsupported dimension : {0}. Only 2D or 3D arrays are accepted.".format(Pbody_label.ndim))
+
     spots_dataframe = pd.DataFrame({
+        'id' : ids,
         'AcquisitionId' : [AcquisitionId]*nbre_spots,
         'CellId' : [CellId]*nbre_spots,
-        'id' : ids,
+        'PbodyId' : np.nan,
         'spots_coords' : spots_coords,
-        'type' : types
+        'spots_type' : types,
+        'Pbody_label' : Pbody_labels
     })
 
     check_samedatashape(dataframe_ref, spots_dataframe)

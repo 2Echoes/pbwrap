@@ -1,4 +1,5 @@
 from .getdata import get_datetime, _get_varname
+from .output import dict_to_lines
 import pandas as pd
 
 class log :
@@ -94,11 +95,9 @@ class run_log(log) :
                      "Success : {0}\n".format(self.sucess_count),
                      "Error : {0}\n".format(self.error_count),
                      "Total cell detected : {0}\n".format(log_report['cell number']),
-                     "\n### Integrity Checks ###\n",
-                     "Acquisition DataFrame is empty : {0}.\n".format(log_report['Acquisition is_empty']),
-                     "Acquisition DataFrame has valid id column : {0}.\n".format(log_report['AcquisitionId is_primary']),
-                     "Cell DataFrame is empty : {0}.\n".format(log_report['Cell is_empty']),
-                     "Cell DataFrame has valid id column : {0}.\n".format(log_report['CellId is_primary']),
-                     "Cell defines (N,1) relation with Acquisition : {0}\n".format(log_report['Cell defines (N,1) relation with Acquisition'])
-                     ]
+                     "\n### Integrity Checks ###\n",]
+            
+            del log_report['run time'], log_report['cell number']
+            lines += list(dict_to_lines(log_report))
+
             logfile.writelines(lines)

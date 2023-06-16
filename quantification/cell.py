@@ -5,7 +5,7 @@ This submodule contains functions to compute features related to cell wide measu
 import numpy as np
 import pandas as pd
 import CustomPandasFramework.PBody_project.DataFrames as DataFrame
-import CustomPandasFramework.operations as dataOp
+from CustomPandasFramework.integrity import check_samedatashape
 from scipy.ndimage import distance_transform_edt
 from skimage.measure import regionprops_table
 from bigfish.stack import mean_projection, maximum_projection, check_parameter, check_array
@@ -16,7 +16,8 @@ from pbwrap.utils import from_label_get_centeroidscoords
 
 
 def compute_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,103)):
-    """Returns DataFrame with expected Cell datashape containing all cell level features. Features are computed using bigFish built in functions.
+    """
+    Returns DataFrame with expected Cell datashape containing all cell level features. Features are computed using bigFish built in functions.
     
     Parameters
     ----------
@@ -62,10 +63,12 @@ def compute_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,
             pbody_centroids.remove(centroid)
     pbody_centroids = np.array(pbody_centroids,  dtype= int)
 
-    has_pbody = pbody_centroids.ndim > 1
+    pbody_num = count_spots_in_mask(pbody_centroids, cell_mask)
+    has_pbody = pbody_num > 0
     del centroids_dict 
 
     #BigFish built in features
+
     if not has_pbody:
         features, features_names = compute_features(cell_mask= cell_mask, nuc_mask= nuc_mask, ndim= 3, rna_coord= rna_coord, smfish= smfish, foci_coord= foci_coord, voxel_size_yx= voxel_size_yx,
         compute_centrosome=False,
@@ -95,6 +98,7 @@ def compute_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,
     #Custom features
     cell_props_table = regionprops_table(cell_mask.astype(int), properties= ["centroid"])
     cell_coordinates = (float(cell_props_table["centroid-0"] + min_y), float(cell_props_table["centroid-1"] + min_x))
+    label = cell["cell_id"] # is the label of this cell in cell_label
     del cell_props_table
     cluster_number = len(ts_coord) + len(foci_coord)
     nucleus_area_px = compute_mask_area(nuc_mask, unit= 'px', voxel_size= voxel_size)
@@ -104,11 +108,11 @@ def compute_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,
     nucleus_mean_signal_metrics = nucleus_signal_metrics(cell, channel= dapi, projtype= 'mean')
 
     #Adding custom signal features to DataFrame
-    features.extend(  [cell_coordinates,
+    features.extend(  [cell_coordinates, label,
                          nucleus_mip_signal_metrics["mean"], nucleus_mip_signal_metrics["max"], nucleus_mip_signal_metrics["min"], nucleus_mip_signal_metrics["median"],
                          nucleus_mean_signal_metrics["mean"], nucleus_mean_signal_metrics["max"], nucleus_mean_signal_metrics["min"], nucleus_mean_signal_metrics["median"]])
     
-    features_names += [ "cell_coordinates",
+    features_names += [ "cell_coordinates", "label",
                         "nucleus_mip_mean_signal","nucleus_mip_max_signal","nucleus_mip_min_signal","nucleus_mip_median_signal",
                         "nucleus_mean_mean_signal","nucleus_mean_max_signal","nucleus_mean_min_signal","nucleus_mean_median_signal"]
 
@@ -117,13 +121,12 @@ def compute_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,
     malat1_spot_in_cyto = count_spots_in_mask(malat1_coord, cell_mask) - malat1_spot_in_nuc
     
     #pbody features
-    pbody_num = len(pbody_centroids)
     if has_pbody :
         pbody_area_px = compute_mask_area(pbody_mask, unit= 'px', voxel_size= voxel_size)
         pbody_area_nm = compute_mask_area(pbody_mask, unit= 'nm', voxel_size= voxel_size)
         rna_spot_in_pbody = count_spots_in_mask(rna_coord, pbody_mask)
         count_pbody_nucleus = count_spots_in_mask(pbody_centroids, nuc_mask)
-        count_pbody_cytoplasm = count_spots_in_mask(pbody_centroids, cell_mask) - count_pbody_nucleus
+        count_pbody_cytoplasm = pbody_num - count_pbody_nucleus
         pbody_closer_than_1000_nm = count_rna_close_pbody(pbody_mask= pbody_mask, spots_coords= rna_coord, distance_nm= 1000, voxel_size= voxel_size)
         pbody_closer_than_1500_nm = count_rna_close_pbody(pbody_mask= pbody_mask, spots_coords= rna_coord, distance_nm= 1500, voxel_size= voxel_size)
         pbody_closer_than_2000_nm = count_rna_close_pbody(pbody_mask= pbody_mask, spots_coords= rna_coord, distance_nm= 2000, voxel_size= voxel_size)
@@ -154,14 +157,15 @@ def compute_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,
     if not has_pbody :
         for feature in get_features_name(names_features_centrosome= True) :
             new_Cell[feature] = np.NaN
-    dataOp.check_samedatashape(new_Cell, datashape_ref) # Ensure datashape stability along different runs
+    check_samedatashape(new_Cell, datashape_ref) # Ensure datashape stability along different runs
     return new_Cell
 
 
 
 
 def nucleus_signal_metrics(cell, channel, projtype = 'mip') :
-    """Returns dict containing signal related measures : 'min', 'max', '1 percentile', '9 percentile', 'mean' and 'median'.
+    """
+    Returns dict containing signal related measures : 'min', 'max', '1 percentile', '9 percentile', 'mean' and 'median'.
       Computed from channel signal in cell's nucleus mask. Signal measures are computed from 2D cell, so channel is projected z-wise according to projtype (provided channel is 3D).
     
         Parameters

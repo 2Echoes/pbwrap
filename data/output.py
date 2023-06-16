@@ -37,16 +37,20 @@ def print_parameters(path_out, *parameters, printDateTime= True):
     parameter_file.close()
 
 
-def print_dict(dic, path_out):
+def print_dict(dic: dict, path_out):
     check_parameter(path_out = (str), dic = (dict))
     if path_out[len(path_out) -1] == '/' : path_out += 'dic.txt'
     elif path_out[len(path_out)-4 : len(path_out)] != '.txt' : path_out += '.txt'
 
     lines = []
-    for elmt in dic:
-        lines += "{0} : {1}\n".format(elmt, dic[elmt])
+    for key, value in dic.items():
+        lines += "{0} : {1}\n".format(key, value)
 
 
     dict_file = open(path_out, "w")
     dict_file.writelines(lines)
     dict_file.close()
+
+def dict_to_lines(di : dict) :
+    for key, value in di.items() : 
+        yield "{0} : {1}\n".format(key, value)

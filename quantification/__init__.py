@@ -9,3 +9,6 @@ This pbwrap subpackage groups custom measures and features computing.
 from .cell import compute_Cell
 from .fov import compute_fov
 from .spots import compute_Spots
+from .pbody import compute_Pbody
+
+from .measures import compute_mask_area, count_spots_in_mask

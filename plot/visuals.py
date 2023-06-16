@@ -125,17 +125,20 @@ def G1_G2_labeller(result_tables_path:str, input_path:str, gene_list: 'list[str]
     """
 
 
-    output_path = "/home/floricslimani/Documents/Projets/1_P_body/stack_O8_p21/output/20230531 17-01-21/results_plots"
+    output_path = "/home/floricslimani/Documents/Projets/1_P_body/stack_O8_p21/output/20230531 17-01-21/result_plots"
     if not result_tables_path.endswith('/') : result_tables_path += '/'
     if not input_path.endswith('/') : input_path += '/'
     if not output_path.endswith('/') : output_path += '/'
-    os.makedirs(output_path + "G1G2visuals/", exist_ok=True)
+    output_path += "G1G2visuals/"
+    os.makedirs(output_path , exist_ok=True)
 
     Acquisition = pd.read_feather(result_tables_path + 'Acquisition')
     Cell = pd.read_feather(result_tables_path + 'Cell')
     Cell = update.JoinCellAcquisition(Acquisition, Cell, Acquisition_columns= ["rna name"])
     
     for gene in gene_list :
+        path = output_path + "{0}/".format(gene)
+        os.makedirs(path, exist_ok= True)
         gene_Cell = Cell.query("`rna name` == '{0}'".format(gene))
         gene_Cell = update.from_dapi_distribution_compute_CellularCycleGroup(gene_Cell, g1 = 0.1, g2 = 0.1)
 
@@ -162,7 +165,7 @@ def G1_G2_labeller(result_tables_path:str, input_path:str, gene_list: 'list[str]
                 break
         if seg_path == None : continue
         
-        _G1_G2_labelling(gene_Cell, seg_path, AcquisitionId=acquisitionid,  path_output= output_path + "G1G2_Labelling_{0}".format(fov))
+        _G1_G2_labelling(gene_Cell, seg_path, AcquisitionId=acquisitionid,  path_output= path + "{1}_G1G2_Labelling_{0}".format(fov,gene))
         i+=1
         print("visual saved")
     print("done")
@@ -185,28 +188,15 @@ def _G1_G2_labelling(Cell : pd.DataFrame, segmentation_plot:str, AcquisitionId:i
         path_output : str
     """
     image_DAPI: np.ndarray = stack.read_image(segmentation_plot)
-    path_malat = segmentation_plot.replace('DAPI', 'Alexa 647')
-    image_MALAT: np.ndarray = stack.read_image(path_malat)
     df = Cell.query("`AcquisitionId` == {0}".format(AcquisitionId))
 
     if image_DAPI.ndim == 3 : 
-        image_DAPI = image_DAPI[:5,:,:]
-        image_MALAT = image_MALAT[:5,:,:]
+        image_DAPI = image_DAPI[5:,:,:]
         image_DAPI = stack.mean_projection(image_DAPI)
-        image_MALAT = stack.maximum_projection(image_MALAT)
 
-    #channel merging -> RGB
-    image = np.zeros([image_DAPI.shape[0], image_DAPI.shape[1],3])
-    image[:,:,2] = image_DAPI #bleu
-    image[:,:,0] = image_MALAT #rouge
-    image = image.astype(np.uint8)
-    print(image)
-    print(image.dtype)
 
-    print(image.shape)
-    print((image.shape[0], image.shape[1]))
-    fig = plt.figure(figsize= (round(image.shape[0]/100), round(image.shape[1]/100)))
-    ax = plt.imshow(image)
+    fig = plt.figure(figsize= (round(image_DAPI.shape[0]/100), round(image_DAPI.shape[1]/100)))
+    ax = plt.imshow(image_DAPI)
     plt.axis(False)
     for cell, label in zip(df["cell_coordinates"], df["cellular_cycle"] ):
         plt.annotate(text = label, xy= (cell[1],cell[0]), color= 'white')
