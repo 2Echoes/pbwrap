@@ -17,7 +17,7 @@ from skimage.feature import peak_local_max
 
 
 ###### Image segmentation
-def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False, use_3D_cellpose= False, model_type= 'hek_nuc_1.0', min_cell_number = 0) :
+def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False, use_3D_cellpose= False, model_type= 'Nuc_slices1.0', min_cell_number = 0) :
     """3D Nucleus segmentation using Cellpose from a dapi 3D grayscale image.
 
     Parameters
@@ -43,7 +43,7 @@ def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False, use
 
     #Integrity checks
     check_array(dapi, ndim= [2,3], dtype= [np.uint8, np.uint16, np.int32, np.int64, np.float32, np.float64])
-    check_parameter(diameter= (int), anisotropy= (int), use_gpu= (bool))
+    check_parameter(diameter= (int, float), anisotropy= (int), use_gpu= (bool))
 
     ndim = dapi.ndim
 
@@ -52,7 +52,6 @@ def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False, use
 
     #Segmentation
     nucleus_model = models.CellposeModel(gpu= use_gpu, model_type = model_type)
-    min_objct_size = int(round((np.pi * (diameter/2)**2) /4)) # area in pixel
     channels = [0,0]
 
     if ndim == 3 :
@@ -67,9 +66,6 @@ def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False, use
         nucleus_label = nucleus_model.eval(dapi, diameter= diameter, channels = channels)[0].astype(np.int64)
         nucleus_label = np.array(nucleus_label, dtype = np.int64)
 
-    # if ndim == 3 :
-    #     for z in range(0,len(nucleus_label)): nucleus_label[z] = seg.clean_segmentation(nucleus_label[z], small_object_size= min_objct_size, delimit_instance=True, fill_holes= True)
-    # else : nucleus_label = seg.clean_segmentation(nucleus_label, small_object_size= min_objct_size, delimit_instance=True,  fill_holes= True)
     nucleus_label = seg.remove_disjoint(nucleus_label)
 
     if ndim == 3 :
@@ -103,7 +99,7 @@ def Cytoplasm_segmentation(cy3, dapi= None, diameter= 250, maximal_distance= 100
     """
     #Integrity checks
     check_array(cy3, ndim= [2,3], dtype= [np.uint8, np.uint16, np.int32, np.int64, np.float32, np.float64])
-    check_parameter(diameter= (int), dapi= (np.ndarray, type(None)), use_gpu= (bool))
+    check_parameter(diameter= (int, float), dapi= (np.ndarray, type(None)), use_gpu= (bool))
 
     #Segmentation
     if cy3.ndim == 3 : cytoplasm_slices = unstack_slices(cy3)

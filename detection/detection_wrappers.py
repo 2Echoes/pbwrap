@@ -308,10 +308,13 @@ def detect_spots(
         voxel_size=None,
         spot_radius=None,
         log_kernel_size=None,
-        minimum_distance=None):
+        minimum_distance=None,
+        crop_zstack = None):
 
     """
-    Pbwrap : In addition to original code we added a parameter : threshold_penalty : float which is multiplied with the automatic threshold setting.
+    Pbwrap : In addition to original code we added : 
+        threshold_penalty : float which is multiplied with the automatic threshold setting.
+        crop_zstack : crop images along z axis for Threshold calculation but NOT for spots detection.
 
     Apply LoG filter followed by a Local Maximum algorithm to detect spots
     in a 2-d or 3-d image.
@@ -385,6 +388,12 @@ def detect_spots(
         minimum_distance=(int, float, tuple, list, type(None)))
 
     # if one image is provided we enlist it
+    if type(crop_zstack) != type(None):
+        if not isinstance(crop_zstack, (list,tuple)) : raise TypeError("Wrong type for crop_ztack it should be None, tuple or list. Is is {0}".format(type(crop_zstack)))
+        if len(crop_zstack) != 2 : raise ValueError("crop_zstack is expected to have 2 elements. It has {0}".format(len(crop_zstack)))
+        if not (isinstance(crop_zstack[0],int) and isinstance(crop_zstack[1], int)) : raise TypeError("crop_zstack elements should be ints.")
+        if crop_zstack[1] <= crop_zstack[0] : raise ValueError("crop zstack should be [first crop, last_crop[ last_crop can't be smaller or equal than first crop.")
+
     if not (isinstance(images, list) or isinstance(images, GeneratorType)):
         stack.check_array(
             images,
@@ -488,7 +497,8 @@ def detect_spots(
                 return_threshold=return_threshold,
                 only_compute_threshold = only_compute_threshold,
                 log_kernel_size=log_kernel_size,
-                min_distance=minimum_distance)
+                min_distance=minimum_distance,
+                crop_zstack=crop_zstack)
         else :
             spots, threshold = _detect_spots_from_images(
                 images,
@@ -498,7 +508,8 @@ def detect_spots(
                 return_threshold=return_threshold,
                 only_compute_threshold = only_compute_threshold,
                 log_kernel_size=log_kernel_size,
-                min_distance=minimum_distance)
+                min_distance=minimum_distance,
+                crop_zstack=crop_zstack)
     else:
         spots = _detect_spots_from_images(
             images,
@@ -507,7 +518,8 @@ def detect_spots(
             remove_duplicate=remove_duplicate,
             return_threshold=return_threshold,
             log_kernel_size=log_kernel_size,
-            min_distance=minimum_distance)
+            min_distance=minimum_distance,
+            crop_zstack=crop_zstack)
 
     # format results
     if only_compute_threshold : return threshold
@@ -533,7 +545,8 @@ def _detect_spots_from_images(
         return_threshold=False,
         only_compute_threshold= False,
         log_kernel_size=None,
-        min_distance=None):
+        min_distance=None,
+        crop_zstack= None):
     """Apply LoG filter followed by a Local Maximum algorithm to detect spots
     in a 2-d or 3-d image.
 
@@ -589,6 +602,7 @@ def _detect_spots_from_images(
     pixel_values = []
     masks = []
     for image in images:
+        if crop_zstack != None : image = image[crop_zstack[0]:crop_zstack[1]]
         n += 1
         # filter image
         image_filtered = stack.log_filter(image, log_kernel_size)

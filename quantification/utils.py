@@ -17,9 +17,9 @@ def unzip(lis:list)-> 'list[list]' :
     if type(lis) == np.ndarray : lis = list(lis)
 
 
-    res = []
-    for dim in zip(*lis):
-        res += [list(dim)]
+    res = [list(dim) for dim in zip(*lis)]
+    # for dim in zip(*lis):
+    #     res += [list(dim)]
     return res
 
 def spots_z_proj(spots) :

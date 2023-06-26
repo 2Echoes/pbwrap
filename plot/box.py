@@ -32,11 +32,11 @@ def count_rna_per_Cell(Cell: pd.DataFrame, Acquisition: pd.DataFrame, xlabel= No
     Join_Cell = update.JoinCellAcquisition(Acquisition, Cell, Acquisition_columns= ["rna name"])
     Join_Cell["count_rna_per_cell"] = (Join_Cell["nb_rna_out_nuc"] + Join_Cell["nb_rna_in_nuc"])
 
-    Df_Acquisition = Join_Cell.loc[:,["rna name","AcquisitionId", "count_rna_per_cell"]].groupby(["rna name","AcquisitionId"]).mean().loc[:,["count_rna_per_cell"]]
+    # Df_Acquisition = Join_Cell.loc[:,["rna name","AcquisitionId", "count_rna_per_cell"]].groupby(["rna name","AcquisitionId"]).mean().loc[:,["count_rna_per_cell"]]
 
-    Df_Acquisition = Df_Acquisition.sort_values("rna name")
-    Df_Acquisition = Df_Acquisition.reset_index(drop= False)
-    data_mean = Df_Acquisition.groupby("rna name")["count_rna_per_cell"].apply(list)
+    # Df_Acquisition = Df_Acquisition.sort_values("rna name")
+    # Df_Acquisition = Df_Acquisition.reset_index(drop= False)
+    data_mean = Join_Cell.groupby("rna name")["count_rna_per_cell"].apply(list)
     
     box_plot(data= data_mean, ylabel= ylabel, labels= data_mean.index, xlabel=xlabel, title= title, reset= reset, close=close, show= show, path_output=path_output, ext=ext, **kargs)
 
@@ -58,14 +58,14 @@ def count_Malat_per_Cell(Cell: pd.DataFrame, Acquisition: pd.DataFrame, xlabel= 
     Join_Cell = update.JoinCellAcquisition(Acquisition, Cell, Acquisition_columns= ["rna name"])
     Join_Cell["count_malat_per_cell"] = (Join_Cell["malat1 spots in nucleus"] + Join_Cell["malat1 spots in cytoplasm"])
 
-    Df_Acquisition = pd.merge(left= Join_Cell.loc[:,["rna name","AcquisitionId", "count_malat_per_cell"]].groupby(["rna name","AcquisitionId"]).mean()["count_malat_per_cell"], 
-                              right=Join_Cell.loc[:,["rna name","AcquisitionId", "count_malat_per_cell"]].groupby(["rna name","AcquisitionId"]).std()["count_malat_per_cell"]
-                              ,left_on= ('rna name',"AcquisitionId"), right_on= ('rna name', "AcquisitionId")
-                              ).rename(columns={'count_malat_per_cell_x' : 'mean', 'count_malat_per_cell_y' : 'std'})
+    # Df_Acquisition = pd.merge(left= Join_Cell.loc[:,["rna name","AcquisitionId", "count_malat_per_cell"]].groupby(["rna name","AcquisitionId"]).mean()["count_malat_per_cell"], 
+    #                           right=Join_Cell.loc[:,["rna name","AcquisitionId", "count_malat_per_cell"]].groupby(["rna name","AcquisitionId"]).std()["count_malat_per_cell"]
+    #                           ,left_on= ('rna name',"AcquisitionId"), right_on= ('rna name', "AcquisitionId")
+    #                           ).rename(columns={'count_malat_per_cell_x' : 'mean', 'count_malat_per_cell_y' : 'std'})
 
-    Df_Acquisition = Df_Acquisition.sort_values("rna name")
-    Df_Acquisition = Df_Acquisition.reset_index(drop= False)
-    data_mean = Df_Acquisition.groupby("rna name")["mean"].apply(list)
+    # Df_Acquisition = Df_Acquisition.sort_values("rna name")
+    # Df_Acquisition = Df_Acquisition.reset_index(drop= False)
+    data_mean = Join_Cell.groupby("rna name")["count_malat_per_cell"].apply(list)
     
     box_plot(data= data_mean, ylabel= ylabel, labels= data_mean.index, xlabel=xlabel, title= title, reset= reset, close=close, show= show, path_output=path_output, ext=ext, **kargs)
 
@@ -91,7 +91,7 @@ def dapi_signal(Cell: pd.DataFrame, Acquisition: pd.DataFrame, projtype= 'mean',
     Join_Cell = update.JoinCellAcquisition(Acquisition, Cell, Acquisition_columns= ["rna name"])
     
     if integrated_signal:
-        Join_Cell["integrated signal"] = (Join_Cell[X] * Join_Cell["nucleus area (nm^2)"])
+        Join_Cell["integrated signal"] = Join_Cell[X] * Join_Cell["nucleus area (nm^2)"]
         X = "integrated signal"
     
     if ylabel == None : ylabel = X
@@ -99,7 +99,7 @@ def dapi_signal(Cell: pd.DataFrame, Acquisition: pd.DataFrame, projtype= 'mean',
 
     dataframe = Join_Cell.loc[:,["rna name","AcquisitionId", X]].groupby(["rna name","AcquisitionId"]).mean().loc[:,[X]]
     dataframe.sort_values("rna name").reset_index(drop= False)
-    data_mean = dataframe.groupby("rna name")[X].apply(list)
+    data_mean = Join_Cell.groupby("rna name")[X].apply(list)
     box_plot(data= data_mean, ylabel= ylabel, labels= data_mean.index, xlabel=xlabel, title= title, reset= reset, close=close, show= show, path_output=path_output, ext=ext, **kargs)
 
 

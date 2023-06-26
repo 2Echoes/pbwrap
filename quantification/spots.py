@@ -33,6 +33,7 @@ def compute_Spots(AcquisitionId, CellId, spots_dictionary : dict, cell_bbox: tup
         spots_coords.extend(coordinates_list)
 
     nbre_spots = len(spots_coords)
+    if nbre_spots == 0 : return newframe_Spots()
     ids = np.arange(nbre_spots)
 
     Z,Y,X,*_ = zip(*spots_coords)

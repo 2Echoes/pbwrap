@@ -45,11 +45,10 @@ def compute_Pbody(AcquisitionId: int, Pbody_label: np.ndarray, cell_label: np.nd
         "rna_count" : Pbody_dictionary["rna_count"],
         "malat1_count" : Pbody_dictionary["malat1_count"]
     })
-
     datashape_ref = Dataframe.newframe_Pbody()
     check_samedatashape(res_DataFrame, datashape_ref)
-
-    return res_DataFrame.query('cell_label != 0')
+    res_DataFrame = res_DataFrame.query('cell_label != 0')
+    return res_DataFrame
 
 
 

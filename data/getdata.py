@@ -107,7 +107,7 @@ def get_images_as_list(path_input: str, Input: pd.DataFrame, acquisition_list: '
 
     return images
 
-def get_acquisition_num(Input) :
+def get_acquisition_num(Input: pd.DataFrame) :
     """ Returns the number of acquistion that will be computed from data placed in the input folder.
 
     Parameters
@@ -127,7 +127,7 @@ def get_acquisition_num(Input) :
     #Integrity :
     check_parameter(Input = (pd.DataFrame))
 
-    acquisition_num = Input["acquisition index"].max() + 1
+    acquisition_num = len(Input.value_counts(subset=["acquisition index"]))
     return acquisition_num
 
 

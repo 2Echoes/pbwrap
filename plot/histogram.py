@@ -7,13 +7,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import CustomPandasFramework.PBody_project.update as update
 from .utils import set_axis_ticks, save_plot
-from .decorators import use_g1_g2_grouping
+from .decorators import use_g1_g2_grouping, plot_distribution_median, plot_distribution_percentile
 
 ########################
 ##### RESULT PLOTS #####
 ########################
 
-def dapi_signal(Cell, projtype= 'MIP', summarize_type = 'median', path_output= None, show = True, ext= 'png', title: str = None, bins= 500, **axis_boundaries) :
+
+def dapi_signal(Cell, projtype= 'mean', summarize_type = 'mean', path_output= None, show = True, ext= 'png', title: str = None, bins= 500, auto_bins= True, **axis_boundaries) :
     """
     From the Maximum Intensity Projection (MIP) or Mean projection computes the histogram of integrated signal within cells (signal*nucleus area).
     Signal can be chosen from mean or median.
@@ -37,9 +38,11 @@ def dapi_signal(Cell, projtype= 'MIP', summarize_type = 'median', path_output= N
     elif summarize_type.upper() == 'MEAN' : X += "mean_signal"
     else : raise ValueError("summarize_type should either be 'median' or 'mean'.")
 
-    dapi_signal = Cell.loc[:,X] * Cell.loc[:,"nuc_area"]
-    histogram(dapi_signal, xlabel="Dapi signal (Nucleus area * {0})".format(X), ylabel= "count", path_output=path_output, show=show, ext=ext, title=title, bins=bins, **axis_boundaries)
-
+    dapi_signal = Cell.loc[:,X] * Cell.loc[:,"nucleus area (nm^2)"]
+    title += "   {0} cells".format(len(dapi_signal))
+    if len(dapi_signal) < 100 and auto_bins :bins = 20
+    distribution = histogram(dapi_signal, xlabel="Dapi signal (Nucleus area * {0})".format(X), ylabel= "count", path_output=path_output, show=show, ext=ext, title=title, bins=bins, **axis_boundaries)
+    return distribution
 
 def dapi_density(Cell, projtype= 'MIP', summarize_type = 'median', path_output= None, show = True, ext= 'png', title: str = None, bins= 500, **axis_boundaries) :
     """
@@ -81,8 +84,6 @@ def malat_count(Cell, location= 'nucleus', path_output= None, show = True, close
     elif location.upper() == "CYTOPLASM" or location.upper() == "CELL" : X = "malat1 spots in cytoplasm"
     else : raise ValueError("Incorrect value for location parameter. Should be one of the following : 'nucleus', 'cytoplasm' or 'cell'.")
     dapi_signal = Cell.loc[:, [X, "Cellular_cycle (malat proportion)"]]
-    g1 = dapi_signal.query("`Cellular_cycle (malat proportion)` == 'g1'").index
-    g2 = dapi_signal.query("`Cellular_cycle (malat proportion)` == 'g2'").index
     if location.upper() == "CELL" : dapi_signal += Cell.loc[:, "malat1 spots in nucleus"]
     
     histogram(dapi_signal.loc[:, X], color= 'green',xlabel=X, ylabel= "count", show=show, path_output=path_output, ext=ext, close=close, title=title, bins=bins, **axis_boundaries)
@@ -116,7 +117,8 @@ def RawData(DataFrame:pd.DataFrame, variable_name:str, color='blue', label:str=N
 
 
 def histogram(data: 'list[float]', color= 'blue', label:str = None, xlabel= 'distribution', ylabel= 'count', path_output= None, show = True, close= True, reset= True, ext= 'png', title: str = None, bins= 500, ticks_number= 21, disable_axis= False, **axis_boundaries) :
-    """Base function for histograms plotting.
+    """
+    Base function for histograms plotting. Returns data array used for distribution histogram plot.
     
     Parameters
     ----------
@@ -140,8 +142,7 @@ def histogram(data: 'list[float]', color= 'blue', label:str = None, xlabel= 'dis
     data = data[~np.logical_or(np.isnan(data),np.isinf(data))] # ~ = not
     if reset : fig = plt.figure(figsize= (20,10))
     else : fig = plt.gcf()
-    
-    hist = plt.hist(data, bins= bins, color= color, label= label, alpha= 0.5)
+    hist = plt.hist(data, bins= bins, color= color, label= label, edgecolor= 'white', lw=1, alpha= 0.5)
     if not disable_axis : 
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
@@ -149,15 +150,17 @@ def histogram(data: 'list[float]', color= 'blue', label:str = None, xlabel= 'dis
 
         #Axis boundaries
         ax = fig.gca()
-        axis_bound = hist_set_axis_boundaries(ax, data, hist, **axis_boundaries)
-        #Axis ticks
-        set_axis_ticks(axis_bound, ticks_number)
+        # axis_bound = hist_set_axis_boundaries(ax, data, hist, **axis_boundaries)
+        # Axis ticks
+        # set_axis_ticks(axis_bound, ticks_number)
 
 
         if title != None : plt.title(title)
     if path_output != None : save_plot(path_output, ext)
     if show : plt.show()
     if close : plt.close()
+
+    return data
 
 
 def hist_set_axis_boundaries(ax, data=None, hist=None, **axis_boundaries) :
@@ -187,3 +190,5 @@ def hist_set_axis_boundaries(ax, data=None, hist=None, **axis_boundaries) :
     axis = [xmin,xmax,ymin,ymax]
     ax.axis(axis)
     return axis
+
+

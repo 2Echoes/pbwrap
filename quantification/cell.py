@@ -1,7 +1,6 @@
 """
 This submodule contains functions to compute features related to cell wide measurement.
 """
-
 import numpy as np
 import pandas as pd
 import CustomPandasFramework.PBody_project.DataFrames as DataFrame
@@ -51,24 +50,22 @@ def compute_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,
     #Computing pbody coords from masks
     assert cell_mask.dtype == bool, "cell_mask is not boolean this should NOT happen."
     pbody_label: np.ndarray = pbody_label[min_y : max_y, min_x : max_x]
-    pbody_label[~cell_mask] = 0 # Excluding p-bodies in the neighborhood but not in the cell
+    # pbody_label[~cell_mask] = 0 # Excluding p-bodies in the neighborhood but not in the cell
     pbody_mask = pbody_label.astype(bool)
     centroids_dict = from_label_get_centeroidscoords(pbody_label)
-    pbody_centroids = list(zip(centroids_dict["centroid-0"], centroids_dict["centroid-1"]))
+    Y,X = centroids_dict["centroid-0"], centroids_dict["centroid-1"]
+    pbody_coordinates = list(zip(Y, X))
+    Y,X = np.array(Y).round().astype(int), np.array(X).round().astype(int)
 
-    #Removing p-bodies with centroids outside of the cell even though part of the mask is inside cell
-    for centroid in pbody_centroids :
-        y,x = int(centroid[0]), int(centroid[1]) #pbody centroid is determined with +- 0.5 px error
-        if not cell_mask[y,x] :
-            pbody_centroids.remove(centroid)
-    pbody_centroids = np.array(pbody_centroids,  dtype= int)
+    Y_array = np.array(Y[cell_mask[Y,X]])
+    X_array = np.array(X[cell_mask[Y,X]])
+    pbody_centroids = np.array(list(zip(Y_array, X_array)))
 
     pbody_num = count_spots_in_mask(pbody_centroids, cell_mask)
     has_pbody = pbody_num > 0
     del centroids_dict 
 
     #BigFish built in features
-
     if not has_pbody:
         features, features_names = compute_features(cell_mask= cell_mask, nuc_mask= nuc_mask, ndim= 3, rna_coord= rna_coord, smfish= smfish, foci_coord= foci_coord, voxel_size_yx= voxel_size_yx,
         compute_centrosome=False,
@@ -108,11 +105,11 @@ def compute_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,
     nucleus_mean_signal_metrics = nucleus_signal_metrics(cell, channel= dapi, projtype= 'mean')
 
     #Adding custom signal features to DataFrame
-    features.extend(  [cell_coordinates, label,
+    features.extend(  [cell_coordinates, label, cell["bbox"], pbody_coordinates,
                          nucleus_mip_signal_metrics["mean"], nucleus_mip_signal_metrics["max"], nucleus_mip_signal_metrics["min"], nucleus_mip_signal_metrics["median"],
                          nucleus_mean_signal_metrics["mean"], nucleus_mean_signal_metrics["max"], nucleus_mean_signal_metrics["min"], nucleus_mean_signal_metrics["median"]])
     
-    features_names += [ "cell_coordinates", "label",
+    features_names += [ "cell_coordinates", "label", "bbox", "pbody coordinates",
                         "nucleus_mip_mean_signal","nucleus_mip_max_signal","nucleus_mip_min_signal","nucleus_mip_median_signal",
                         "nucleus_mean_mean_signal","nucleus_mean_max_signal","nucleus_mean_min_signal","nucleus_mean_median_signal"]
 

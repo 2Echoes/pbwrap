@@ -4,6 +4,7 @@ import os,re
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import pbwrap.data as data
 from matplotlib.colors import ListedColormap
 from scipy.ndimage import binary_dilation
 from skimage.segmentation import find_boundaries
@@ -119,13 +120,11 @@ def plot_spots(spots, color= 'red', dot_size= 1):
 
 
 
-def G1_G2_labeller(result_tables_path:str, input_path:str, gene_list: 'list[str]', output_path:str) :
+def G1_G2_labeller(result_tables_path:str, grouping, input_path:str, output_path:str, gene_list:'list[str]'=None ) :
     """
     
     """
 
-
-    output_path = "/home/floricslimani/Documents/Projets/1_P_body/stack_O8_p21/output/20230531 17-01-21/result_plots"
     if not result_tables_path.endswith('/') : result_tables_path += '/'
     if not input_path.endswith('/') : input_path += '/'
     if not output_path.endswith('/') : output_path += '/'
@@ -136,38 +135,41 @@ def G1_G2_labeller(result_tables_path:str, input_path:str, gene_list: 'list[str]
     Cell = pd.read_feather(result_tables_path + 'Cell')
     Cell = update.JoinCellAcquisition(Acquisition, Cell, Acquisition_columns= ["rna name"])
     
+    if type(gene_list) == type(None) : gene_list = data.from_Acquisition_get_rna(Acquisition)
+    print(len(gene_list), " genes found.")
+    
     for gene in gene_list :
         path = output_path + "{0}/".format(gene)
         os.makedirs(path, exist_ok= True)
-        gene_Cell = Cell.query("`rna name` == '{0}'".format(gene))
-        gene_Cell = update.from_dapi_distribution_compute_CellularCycleGroup(gene_Cell, g1 = 0.1, g2 = 0.1)
+        gene_Cell_index = Cell.query("`rna name` == '{0}'".format(gene)).index
+        gene_Cell = grouping(Cell.loc[gene_Cell_index,:])
 
     
     #Path    
-    segmentation_plot_path = result_tables_path.replace("result_tables/", "steps_plots/{0}/".format(gene))
-    dirlist = os.listdir(segmentation_plot_path)
-    
-    i = 0
-    for fov in ['01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16'] :
-        print("fov : ",fov)
-        acquisitionid = gene_Cell["AcquisitionId"].min() + i
-        
-        seg_path = None
-        for file in dirlist :
-            target = re.findall("(.*{0}f.*{1}.*)_Cell_segmentation.png".format(gene, fov), file)
-            if len(target) > 0 :
-                print("found : ", target)
-                assert len(target) == 1, "Multiple files were found which should be impossible"
-                print("initial target : ",target)
-                target = target[0].replace("--","-DAPI-") + ".tiff"
-                print("corrected target : ", target)
-                seg_path = input_path + target
-                break
-        if seg_path == None : continue
-        
-        _G1_G2_labelling(gene_Cell, seg_path, AcquisitionId=acquisitionid,  path_output= path + "{1}_G1G2_Labelling_{0}".format(fov,gene))
-        i+=1
-        print("visual saved")
+        segmentation_plot_path = result_tables_path.replace("result_tables/", "steps_plots/{0}/".format(gene))
+        dirlist = os.listdir(segmentation_plot_path)
+
+        i = 0
+        for fov in ['01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16'] :
+            print("fov : ",fov)
+            acquisitionid = gene_Cell["AcquisitionId"].min() + i
+
+            seg_path = None
+            for file in dirlist :
+                target = re.findall("(.*{0}f.*{1}.*)_Cell_segmentation.png".format(gene, fov), file)
+                if len(target) > 0 :
+                    print("found : ", target)
+                    assert len(target) == 1, "Multiple files were found which should be impossible"
+                    print("initial target : ",target)
+                    target = target[0].replace("--","-DAPI-") + ".tiff"
+                    print("corrected target : ", target)
+                    seg_path = input_path + target
+                    break
+            if seg_path == None : continue
+
+            _G1_G2_labelling(gene_Cell, seg_path, AcquisitionId=acquisitionid,  path_output= path + "{1}_G1G2_Labelling_{0}".format(fov,gene))
+            i+=1
+            print("visual saved")
     print("done")
 
 
@@ -191,7 +193,6 @@ def _G1_G2_labelling(Cell : pd.DataFrame, segmentation_plot:str, AcquisitionId:i
     df = Cell.query("`AcquisitionId` == {0}".format(AcquisitionId))
 
     if image_DAPI.ndim == 3 : 
-        image_DAPI = image_DAPI[5:,:,:]
         image_DAPI = stack.mean_projection(image_DAPI)
 
 
@@ -199,7 +200,7 @@ def _G1_G2_labelling(Cell : pd.DataFrame, segmentation_plot:str, AcquisitionId:i
     ax = plt.imshow(image_DAPI)
     plt.axis(False)
     for cell, label in zip(df["cell_coordinates"], df["cellular_cycle"] ):
-        plt.annotate(text = label, xy= (cell[1],cell[0]), color= 'white')
+        plt.annotate(text = label, xy= (cell[1],cell[0]), color= 'red', size= 'large')
     
     save_plot(path_output, 'png')
     plt.close()
