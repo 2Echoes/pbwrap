@@ -50,17 +50,20 @@ def compute_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,
     #Computing pbody coords from masks
     assert cell_mask.dtype == bool, "cell_mask is not boolean this should NOT happen."
     pbody_label: np.ndarray = pbody_label[min_y : max_y, min_x : max_x]
+    assert pbody_label.shape == cell_mask.shape
     # pbody_label[~cell_mask] = 0 # Excluding p-bodies in the neighborhood but not in the cell
     pbody_mask = pbody_label.astype(bool)
     centroids_dict = from_label_get_centeroidscoords(pbody_label)
     Y,X = centroids_dict["centroid-0"], centroids_dict["centroid-1"]
-    pbody_coordinates = list(zip(Y, X))
-    Y,X = np.array(Y).round().astype(int), np.array(X).round().astype(int)
+    Y,X = np.array(Y).round().astype(int) , np.array(X).round().astype(int)
 
-    Y_array = np.array(Y[cell_mask[Y,X]])
-    X_array = np.array(X[cell_mask[Y,X]])
+
+    Y_array = Y[cell_mask[Y,X]]
+    X_array = X[cell_mask[Y,X]]
+    Y_abs,X_abs = Y_array + min_y, X_array + min_x 
+    pbody_coordinates = list(zip(Y_abs, X_abs))
+    
     pbody_centroids = np.array(list(zip(Y_array, X_array)))
-
     pbody_num = count_spots_in_mask(pbody_centroids, cell_mask)
     has_pbody = pbody_num > 0
     del centroids_dict 
@@ -105,7 +108,7 @@ def compute_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,
     nucleus_mean_signal_metrics = nucleus_signal_metrics(cell, channel= dapi, projtype= 'mean')
 
     #Adding custom signal features to DataFrame
-    features.extend(  [cell_coordinates, label, cell["bbox"], pbody_coordinates,
+    features.extend([cell_coordinates, label, cell["bbox"], pbody_coordinates,
                          nucleus_mip_signal_metrics["mean"], nucleus_mip_signal_metrics["max"], nucleus_mip_signal_metrics["min"], nucleus_mip_signal_metrics["median"],
                          nucleus_mean_signal_metrics["mean"], nucleus_mean_signal_metrics["max"], nucleus_mean_signal_metrics["min"], nucleus_mean_signal_metrics["median"]])
     

@@ -298,7 +298,7 @@ def random_walker_segmentation(image, percentile_down = 99.5, percentile_up = 99
     seed[image < np.percentile(image, percentile_down)] = 2
     mask = random_walker(image, seed, beta=beta)
     mask[mask != 1] = 0
-    mask = np.array(mask, dtype= bool)
+    mask = mask.astype(bool)
     
     return mask
 

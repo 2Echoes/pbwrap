@@ -19,7 +19,7 @@ def compute_Pbody(AcquisitionId: int, Pbody_label: np.ndarray, cell_label: np.nd
     ids = np.arange(nbre_pbody)
     AcquisitionIds = [AcquisitionId] * nbre_pbody
     CellIds = np.nan # Computed during 'CustomPandasFramework.Pbody_project.Pbody_AddCellFK' call
-    centroids_coordinates = list(zip(*(Pbody_dictionary["centroid-{0}".format(n)] for n in range(0,Pbody_dim)))) 
+    centroids_coordinates = list(zip(*(np.array(Pbody_dictionary["centroid-{0}".format(n)]).round().astype(int) for n in range(0,Pbody_dim)))) 
     
     if Pbody_dim == 2 :
         areas  = Pbody_dictionary["area"]
@@ -28,7 +28,7 @@ def compute_Pbody(AcquisitionId: int, Pbody_label: np.ndarray, cell_label: np.nd
         areas = len(Pbody_dictionary["boundary"])
         volumes = Pbody_dictionary["area"] #TODO : test that this has been implemented as stated on the internet.
 
-    Y,X = np.array(Pbody_dictionary["centroid-0"], dtype= int), np.array(Pbody_dictionary["centroid-1"], dtype= int)
+    Y,X = np.array(Pbody_dictionary["centroid-0"]).round().astype(int), np.array(Pbody_dictionary["centroid-1"]).round().astype(int)
     
     if cell_dim == 2 : cell_labels = cell_label[Y,X]
     else : raise ValueError("Only 2D arrays are supported for Cell label")
@@ -48,6 +48,8 @@ def compute_Pbody(AcquisitionId: int, Pbody_label: np.ndarray, cell_label: np.nd
     datashape_ref = Dataframe.newframe_Pbody()
     check_samedatashape(res_DataFrame, datashape_ref)
     res_DataFrame = res_DataFrame.query('cell_label != 0')
+    print(cell_label[1790,921])
+    print(cell_label[1792,921])
     return res_DataFrame
 
 

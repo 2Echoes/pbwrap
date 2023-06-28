@@ -3,36 +3,49 @@ import numpy as np
 import bigfish.stack as stack
 import bigfish.plot as plot 
 from skimage.measure import regionprops
-from .utils import from_label_get_centeroidscoords
+from .utils import from_label_get_centeroidscoords, get_colors_list
 
 """
 This submodule contains plot meant to be called during analysis pipeline.
 """
 
-def plot_labels(labelled_image: np.ndarray, path_output:str = None, show= True, axis= False, close= True):
+def plot_labels(labelled_image: np.ndarray, arrows = None, path_output:str = None, show= True, axis= False, close= True):
     """
     Plot a labelled image and indicate the label number at the center of each region.
     """
     #TODO : Comment
-    stack.check_parameter(labelled_image = (np.ndarray), show = (bool))
-    stack.check_array(labelled_image, ndim= 2)
+    stack.check_parameter(labelled_image = (np.ndarray, list), show = (bool))
+    if isinstance(labelled_image, np.ndarray) : 
+        stack.check_array(labelled_image, ndim= 2)
+        labelled_image = [labelled_image]
+    
+    if type(arrows) == type(None) : arrows = [False] * len(labelled_image)
+    else : stack.check_parameter(arrows = (list,tuple))
+
     plt.figure(figsize= (10,10))
-    rescaled_image = stack.rescale(np.array(labelled_image, dtype= np.int32), channel_to_stretch= 0)
+    rescaled_image = stack.rescale(np.array(labelled_image[0], dtype= np.int32), channel_to_stretch= 0)
     plot = plt.imshow(rescaled_image)
     plot.axes.get_xaxis().set_visible(axis)
     plot.axes.get_yaxis().set_visible(axis)
     plt.tight_layout()
 
-    centroid_dict = from_label_get_centeroidscoords(labelled_image)
-    labels = centroid_dict["label"]
-    Y = centroid_dict["centroid-0"]
-    X = centroid_dict["centroid-1"]
-    centroids = zip(Y,X)
+    color_list = get_colors_list(len(labelled_image))
+    color_list = ['white','red']
 
-    for label in labels :
-        y,x = next(centroids)
-        y,x = round(y), round(x)
-        an = plt.annotate(str(label), [round(x), round(y)])
+    for index in range(0, len(labelled_image)) :
+        arrow = arrows[index]
+        centroid_dict = from_label_get_centeroidscoords(labelled_image[index])
+        labels = centroid_dict["label"]
+        Y = centroid_dict["centroid-0"]
+        X = centroid_dict["centroid-1"]
+        centroids = zip(Y,X)
+
+        for label in labels :
+            y,x = next(centroids)
+            y,x = round(y), round(x)
+            if arrow : arrow_prop = {"width" : 5, "headwidth" : 2, "headlength" : 2}
+            else : arrow_prop = {}
+            an = plt.annotate(str(label), [round(x), round(y)], color= color_list[index], arrowprops= arrow_prop)
 
     if not axis : plt.cla
     if show : plt.show()
