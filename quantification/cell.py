@@ -161,7 +161,48 @@ def compute_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,
     return new_Cell
 
 
+def compute_Nucleus(cell: dict, dapi, voxel_size, acquisition_id) : 
+    """
+    Is a subpart of compute Cell. Meaning that it contains the fraction of measure of 'compute_Cell' which are related to DAPI signal (Nucleus).
+    When calling multistack.extract_cell use nucleus mask as cell mask.
+    """
+    
 
+    new_Cell_columns = DataFrame.newframe_Cell(names_features_distance= False,
+                    names_features_area= False,
+                    names_features_centrosome= False,
+                    names_features_dispersion= False,
+                    names_features_foci= False,
+                    names_features_intranuclear= False,
+                    names_features_protrusion= False,
+                    names_features_topography= False,
+                    names_features_signal= True,
+                    names_features_malat1= False,
+                    names_features_pbody= False).columns
+    
+    min_y, min_x, max_y, max_x = cell["bbox"]
+    nuc_mask = cell["cell_mask"]
+    cell_props_table = regionprops_table(nuc_mask.astype(int), properties= ["centroid"])
+    cell_coordinates = (float(cell_props_table["centroid-0"] + min_y), float(cell_props_table["centroid-1"] + min_x))
+
+    label = cell["cell_id"] # is the label of this cell in cell_label
+    del cell_props_table
+    nucleus_area_px = compute_mask_area(nuc_mask, unit= 'px', voxel_size= voxel_size)
+    nucleus_area_nm = compute_mask_area(nuc_mask, unit= 'nm', voxel_size= voxel_size)
+    #signal features
+    nucleus_mip_signal_metrics = nucleus_signal_metrics(cell, channel= dapi, projtype= 'mip')
+    nucleus_mean_signal_metrics = nucleus_signal_metrics(cell, channel= dapi, projtype= 'mean')
+
+    features = [cell_coordinates, label, cell["bbox"],
+                         nucleus_mip_signal_metrics["mean"], nucleus_mip_signal_metrics["max"], nucleus_mip_signal_metrics["min"], nucleus_mip_signal_metrics["median"],
+                         nucleus_mean_signal_metrics["mean"], nucleus_mean_signal_metrics["max"], nucleus_mean_signal_metrics["min"], nucleus_mean_signal_metrics["median"],nucleus_area_px,nucleus_area_nm]
+
+
+    data = [0, acquisition_id] 
+    data.extend(features)
+    new_Cell = pd.DataFrame(columns= new_Cell_columns, data= data)
+
+    return new_Cell
 
 def nucleus_signal_metrics(cell, channel, projtype = 'mip') :
     """
