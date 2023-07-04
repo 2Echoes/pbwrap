@@ -11,7 +11,7 @@ def compute_Pbody(AcquisitionId: int, Pbody_label: np.ndarray, cell_label: np.nd
     Compute Pbody DF during analysis pipeline.
     Note : It is important that the Pbody_label given is the same as the one used during cells computation (fov).
     """
-
+    print(Pbody_label.sum())
     Pbody_dim = Pbody_label.ndim
     cell_dim = cell_label.ndim
     Pbody_dictionary = compute_Pbody_dictionary(Pbody_label, rna_coords, malat1_coords)
@@ -27,6 +27,9 @@ def compute_Pbody(AcquisitionId: int, Pbody_label: np.ndarray, cell_label: np.nd
     elif Pbody_dim == 3 :
         areas = len(Pbody_dictionary["boundary"])
         volumes = Pbody_dictionary["area"] #TODO : test that this has been implemented as stated on the internet.
+    
+    print("pbody")
+    print("sum : ",Pbody_dictionary["centroid-1"].sum(),"\n len : ",len(Pbody_dictionary["centroid-1"]))
 
     Y,X = np.array(Pbody_dictionary["centroid-0"]).round().astype(int), np.array(Pbody_dictionary["centroid-1"]).round().astype(int)
     
@@ -48,8 +51,8 @@ def compute_Pbody(AcquisitionId: int, Pbody_label: np.ndarray, cell_label: np.nd
     datashape_ref = Dataframe.newframe_Pbody()
     check_samedatashape(res_DataFrame, datashape_ref)
     res_DataFrame = res_DataFrame.query('cell_label != 0')
-    print(cell_label[1790,921])
-    print(cell_label[1792,921])
+    print(Pbody_label.sum())
+
     return res_DataFrame
 
 

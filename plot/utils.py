@@ -23,9 +23,9 @@ def get_colors_list(size:int) -> np.ndarray:
     Get a list of color from matplotlib.colors of length 'size'.
     """
     color_list  = list(mcolors.CSS4_COLORS.keys())
-    # for color in ['white', 'snow', 'whitesmoke', 'ivory', 'floralwhite', 'ghostwhite', 'seashell', 'linen', 'honeydew', 'aliceblue', 'mintcream', 'cornsilk', 'oldlace',
-    #               'dimgray', 'gray', 'darkgray', "lightgray", 'darkslategray','darkslategrey', 'darkblue'] :
-        # color_list.remove(color)
+    for color in ['white', 'snow', 'whitesmoke', 'ivory', 'floralwhite', 'ghostwhite', 'seashell', 'linen', 'honeydew', 'aliceblue', 'mintcream', 'cornsilk', 'oldlace',
+                  'dimgray', 'gray', 'darkgray', "lightgray", 'darkslategray','darkslategrey', 'darkblue'] :
+        color_list.remove(color)
     length = len(color_list) - 1
     index = np.linspace(0,length,size).round().astype(int)
     color_list = np.array(color_list)
