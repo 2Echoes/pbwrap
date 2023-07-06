@@ -5,6 +5,7 @@ This submodule contains functions to compute features no matter the data layer.
 import numpy as np
 from bigfish.stack import check_parameter, check_array
 from .utils import unzip
+from scipy.ndimage import distance_transform_edt
 
 
 def compute_signalmetrics(signal:np.ndarray, mask: np.ndarray) :
@@ -133,3 +134,110 @@ def compute_mask_area(mask: np.ndarray, unit: str = 'px', voxel_size: tuple= Non
     else : res = pixel_number * y_dim * x_dim
 
     return res
+
+def count_rna_close_pbody(pbody_mask: np.ndarray, spots_coords: 'list[tuple]', distance_nm: float, voxel_size: 'tuple[float]')-> int :
+    """
+    Count number of RNA (spots) closer than 'distance_nm' from a p-body (mask).
+    """
+    
+    check_parameter(pbody_mask = (np.ndarray), spots_coords = (list, np.ndarray), distance_nm = (int, float), voxel_size = (tuple, list))
+
+    if pbody_mask.ndim != 2: raise ValueError("Unsupported p_body mask dimension. Only 2D arrays are supported.")
+    if type(spots_coords) == np.ndarray : spots_coords = list(spots_coords)
+    if len(voxel_size) == 3 :
+        y_scale = voxel_size[1]
+        x_scale = voxel_size[2]
+    elif len(voxel_size) == 2 :
+        y_scale = voxel_size[0]
+        x_scale = voxel_size[1]
+    else : raise ValueError("Incorrect voxel_size length should be either 2 or 3. {0} was given".format(len(voxel_size)))
+
+    frompbody_distance_map = distance_transform_edt(np.logical_not(pbody_mask), sampling= [y_scale, x_scale])
+    rna_distance_map = np.ones_like(pbody_mask) * -999
+    if len(spots_coords) == 0 : return 0
+    if len(spots_coords[0]) == 2 :
+        y_coords, x_coords = unzip(spots_coords)
+    elif len(spots_coords[0]) == 3 :
+        z_coords, y_coords, x_coords = unzip(spots_coords)
+        del z_coords
+    else : 
+        z_coords, y_coords, x_coords,*_ = unzip(spots_coords)
+        del z_coords,_
+    rna_distance_map[y_coords, x_coords] = frompbody_distance_map[y_coords, x_coords] # This distance maps gives the distance of each RNA to the closest p-body
+    # count_map = rna_distance_map[rna_distance_map >= 0] <= distance_nm
+    count_map = np.logical_and(rna_distance_map >= 0, rna_distance_map <= distance_nm)
+    count = np.sum(count_map, axis= 1)
+    
+    # values,count = np.unique(count_map, return_counts= True)
+    # if not True in values : 
+    #     count = 0
+    # else:
+    #     index = list(values).index(True)
+    #     count = count[index]
+    
+    return count
+
+
+def count_rna_close_pbody_list(list_pbody_mask: np.ndarray, spots_coords: 'list[tuple]', distance_nm: float, voxel_size: 'tuple[float]')-> 'list[int]' :
+    
+    if len(voxel_size) == 3 :
+        y_scale = voxel_size[1]
+        x_scale = voxel_size[2]
+    elif len(voxel_size) == 2 :
+        y_scale = voxel_size[0]
+        x_scale = voxel_size[1]
+    else : raise ValueError("Incorrect voxel_size length should be either 2 or 3. {0} was given".format(len(voxel_size)))
+
+    pbody_masks = np.array(list_pbody_mask)
+    # frompbody_distance_map = distance_transform_edt(np.logical_not(pbody_masks), sampling= [0, y_scale, x_scale]) # 1e15 used to make the computation unrelated to the z axis which has no meaning here.
+    frompbody_distance_map = np.array([distance_transform_edt(np.logical_not(pbody_mask), sampling= [y_scale, x_scale]) for pbody_mask in pbody_masks])
+    rna_distance_map = np.ones_like(pbody_masks) * -999
+    
+    if len(spots_coords) == 0 : return 0
+    if len(spots_coords[0]) == 2 :
+        y_coords, x_coords = unzip(spots_coords)
+    elif len(spots_coords[0]) == 3 :
+        z_coords, y_coords, x_coords = unzip(spots_coords)
+        del z_coords
+    else : 
+        z_coords, y_coords, x_coords,*_ = unzip(spots_coords)
+        del z_coords,_
+    z_coords = np.arange(len(list_pbody_mask))
+    rna_distance_map[:, y_coords, x_coords] = frompbody_distance_map[:, y_coords, x_coords] # This distance maps gives the distance of each RNA to the closest p-body
+    count_map = np.logical_and(rna_distance_map >= 0, rna_distance_map <= distance_nm)
+    counts = np.sum(count_map, axis= (2,1))
+    return counts
+
+def count_rna_close_pbody_global(pbody_label: np.ndarray, spots_coords: 'list[tuple]', distance_nm: float, voxel_size: 'tuple[float]')-> int :
+    """
+    Count number of RNA (spots) closer than 'distance_nm' from a p-body (mask).
+    """
+    
+    check_parameter(pbody_label = (np.ndarray), spots_coords = (list, np.ndarray), distance_nm = (int, float), voxel_size = (tuple, list))
+
+    pbody_mask = pbody_label.astype(bool)
+    if pbody_mask.ndim != 2: raise ValueError("Unsupported p_body mask dimension. Only 2D arrays are supported.")
+    if type(spots_coords) == np.ndarray : spots_coords = list(spots_coords)
+    if len(voxel_size) == 3 :
+        y_scale = voxel_size[1]
+        x_scale = voxel_size[2]
+    elif len(voxel_size) == 2 :
+        y_scale = voxel_size[0]
+        x_scale = voxel_size[1]
+    else : raise ValueError("Incorrect voxel_size length should be either 2 or 3. {0} was given".format(len(voxel_size)))
+
+    frompbody_distance_map, indices = distance_transform_edt(np.logical_not(pbody_mask), sampling= [y_scale, x_scale], return_indices= True)
+    rna_distance_map = np.ones_like(pbody_mask) * -999
+    if len(spots_coords) == 0 : return 0
+    if len(spots_coords[0]) == 2 :
+        y_coords, x_coords = unzip(spots_coords)
+    elif len(spots_coords[0]) == 3 :
+        z_coords, y_coords, x_coords = unzip(spots_coords)
+        del z_coords
+    else : 
+        z_coords, y_coords, x_coords,*_ = unzip(spots_coords)
+        del z_coords,_
+    rna_distance_map[y_coords, x_coords] = frompbody_distance_map[y_coords, x_coords] # This distance maps gives the distance of each RNA to the closest p-body
+    count_map = np.logical_and(rna_distance_map >= 0, rna_distance_map <= distance_nm)
+    Y_truth, X_truth = indices[0,count_map], indices[1,count_map]
+    return np.unique(pbody_label[Y_truth,X_truth], return_counts= True)

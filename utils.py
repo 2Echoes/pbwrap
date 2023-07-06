@@ -1,6 +1,7 @@
 import numpy as np
 from skimage.measure import regionprops_table
 from bigfish.stack import check_parameter
+import time
 
 def from_label_get_centeroidscoords(label):
     """Returns dict{"label", "centroid"}"""
@@ -55,3 +56,14 @@ def is_contained(list1, list2) :
     res = all(truth)
 
     return res
+
+
+def show_process_time(func):
+    def wrapper(text) :
+        def inner(*args, **kargs) :
+            clock = time.process_time()
+            res =func(*args, **kargs)
+            print(text + "{0}".format(time.process_time() - clock))
+            return res
+        return inner
+    return wrapper

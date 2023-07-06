@@ -12,10 +12,11 @@ from .utils import unzip
 from bigfish.classification import compute_features, get_features_name
 from .measures import count_spots_in_mask, compute_mask_area, compute_signalmetrics
 from pbwrap.utils import from_label_get_centeroidscoords
-
+"""
 
 def compute_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,103)):
     """
+"""
     Returns DataFrame with expected Cell datashape containing all cell level features. Features are computed using bigFish built in functions.
     
     Parameters
@@ -31,6 +32,7 @@ def compute_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,
     -------
         new_Cell : pd.Dataframe
     """
+"""
     #Integrity checks
     check_parameter(acquisition_id = (int), cell = (dict), voxel_size = (tuple, list), dapi = (np.ndarray), pbody_label = (np.ndarray))
     check_array(dapi, ndim=3)
@@ -162,7 +164,7 @@ def compute_Cell(acquisition_id, cell, pbody_label, dapi, voxel_size = (300,103,
     check_samedatashape(new_Cell, datashape_ref) # Ensure datashape stability along different runs
     return new_Cell
 
-
+"""
 def compute_Nucleus(cell: dict, dapi, voxel_size, acquisition_id) : 
     """
     Is a subpart of compute Cell. Meaning that it contains the fraction of measure of 'compute_Cell' which are related to DAPI signal (Nucleus).
@@ -297,12 +299,6 @@ def count_rna_close_pbody(pbody_mask: np.ndarray, spots_coords: 'list[tuple]', d
 
 
 
-
-
-
-
-
-
 """
 This submodule contains functions to compute features related to cell wide measurement.
 """
@@ -317,12 +313,12 @@ from .utils import unzip
 from bigfish.classification import compute_features, get_features_name
 from .measures import count_spots_in_mask, compute_mask_area, compute_signalmetrics
 from pbwrap.utils import from_label_get_centeroidscoords
-
-
-def compute_Cell(acquisition_id, cell, Pbody_Acquisition:pd.DataFrame, Pbody_label, dapi, voxel_size = (300,103,103)):
+# 
+# 
+def compute_Cell(acquisition_id, cell, Pbody_Acquisition:pd.DataFrame, dapi, voxel_size = (300,103,103)):
     """
     Returns DataFrame with expected Cell datashape containing all cell level features. Features are computed using bigFish built in functions.
-    
+    # 
     Parameters
     ----------
         acquisition_id : int
@@ -331,22 +327,16 @@ def compute_Cell(acquisition_id, cell, Pbody_Acquisition:pd.DataFrame, Pbody_lab
             Unique identifier for current cell.
         cell : dict
             Dictionary computed from bigFish.multistack.extract_cell
-    
+    # 
     Returns
     -------
         new_Cell : pd.Dataframe
     """
     #Integrity checks
-    check_parameter(acquisition_id = (int), cell = (dict), voxel_size = (tuple, list), dapi = (np.ndarray), pbody_label = (np.ndarray))
+    check_parameter(acquisition_id = (int), cell = (dict), voxel_size = (tuple, list), dapi = (np.ndarray), Pbody_Acquisition = (pd.DataFrame))
     check_array(dapi, ndim=3)
-    check_array(pbody_label, ndim= 2) # TODO : update if 3D seg is performed for pbody_label.
+# 
 
-    Y_raw, X_raw = Pbody_Acquisition.loc[:,"centroid_coordinates"]
-    Y_abs = Y_raw[np.logical_and(Y_abs >= min_y, Y_abs < max_y) & np.logical_and(X_abs >= min_x, X_abs < max_x)]
-    X_abs = X_raw[np.logical_and(Y_abs >= min_y, Y_abs < max_y) & np.logical_and(X_abs >= min_x, X_abs < max_x)]
-    del Y_raw, X_raw
-    assert len(Y_abs) == len(X_abs)
-    Y,X = np.array(Y_abs) - min_y, np.array(X_abs) - min_x
 
     #Extracting bigfish cell information
     voxel_size_yx = voxel_size[1]
@@ -358,25 +348,24 @@ def compute_Cell(acquisition_id, cell, Pbody_Acquisition:pd.DataFrame, Pbody_lab
     malat1_coord = cell["malat1_coord"]
     smfish = cell["smfish"]
     min_y, min_x, max_y, max_x = cell["bbox"]
+    label = cell["cell_id"] # is the label of this cell in cell_label
+    
+    if Pbody_Acquisition.query('cell_label == {0}'.format(label)).loc[:,"centroid_coordinates"].empty :
+        Y_abs, X_abs = np.array([]), np.array([])
+        Y, X = np.array([]), np.array([])
 
+    else : 
+        Y_abs, X_abs = zip(*Pbody_Acquisition.query('cell_label == {0}'.format(label)).loc[:,"centroid_coordinates"])
+        assert len(Y_abs) == len(X_abs)
+        Y,X = np.array(Y_abs) - min_y, np.array(X_abs) - min_x
     #Computing pbody coords from masks
+    
     assert cell_mask.dtype == bool, "cell_mask is not boolean this should NOT happen."
-    pbody_label: np.ndarray = pbody_label[min_y : max_y, min_x : max_x]
-    assert pbody_label.shape == cell_mask.shape
-    pbody_copy = pbody_label.copy()
-    pbody_copy[~cell_mask] = 0 # Excluding p-bodies in the neighborhood but not in the cell
-    pbody_mask = pbody_copy.astype(bool)
-    centroids_dict = from_label_get_centeroidscoords(pbody_label)
-
-    Y_array = Y[cell_mask[Y,X]]
-    X_array = X[cell_mask[Y,X]]
-
 
     pbody_coordinates = list(zip(Y_abs, X_abs))    
-    pbody_centroids = np.array(list(zip(Y_array, X_array)))
+    pbody_centroids = np.array(list(zip(Y, X)))
     pbody_num = count_spots_in_mask(pbody_centroids, cell_mask)
     has_pbody = pbody_num > 0
-    del centroids_dict 
 
     #BigFish built in features
     if not has_pbody:
@@ -390,7 +379,7 @@ def compute_Cell(acquisition_id, cell, Pbody_Acquisition:pd.DataFrame, Pbody_lab
         compute_foci=True,
         compute_area=True,
         return_names=True)
-        
+         
     #if there is pbody
     else:
         features, features_names = compute_features(cell_mask= cell_mask, nuc_mask= nuc_mask, ndim= 3, rna_coord= rna_coord, smfish= smfish, centrosome_coord= pbody_centroids, foci_coord= foci_coord, voxel_size_yx= voxel_size_yx,
@@ -404,11 +393,10 @@ def compute_Cell(acquisition_id, cell, Pbody_Acquisition:pd.DataFrame, Pbody_lab
             compute_area=True,
             return_names=True)
     features = list(features)
-    
+     
     #Custom features
     cell_props_table = regionprops_table(cell_mask.astype(int), properties= ["centroid"])
     cell_coordinates = (float(cell_props_table["centroid-0"] + min_y), float(cell_props_table["centroid-1"] + min_x))
-    label = cell["cell_id"] # is the label of this cell in cell_label
     del cell_props_table
     cluster_number = len(ts_coord) + len(foci_coord)
     nucleus_area_px = compute_mask_area(nuc_mask, unit= 'px', voxel_size= voxel_size)
@@ -416,46 +404,36 @@ def compute_Cell(acquisition_id, cell, Pbody_Acquisition:pd.DataFrame, Pbody_lab
     #signal features
     nucleus_mip_signal_metrics = nucleus_signal_metrics(cell, channel= dapi, projtype= 'mip')
     nucleus_mean_signal_metrics = nucleus_signal_metrics(cell, channel= dapi, projtype= 'mean')
-
+ 
     #Adding custom signal features to DataFrame
     features.extend([cell_coordinates, label, cell["bbox"], pbody_coordinates,
                          nucleus_mip_signal_metrics["mean"], nucleus_mip_signal_metrics["max"], nucleus_mip_signal_metrics["min"], nucleus_mip_signal_metrics["median"],
                          nucleus_mean_signal_metrics["mean"], nucleus_mean_signal_metrics["max"], nucleus_mean_signal_metrics["min"], nucleus_mean_signal_metrics["median"]])
-    
+     
     features_names += [ "cell_coordinates", "label", "bbox", "pbody coordinates",
                         "nucleus_mip_mean_signal","nucleus_mip_max_signal","nucleus_mip_min_signal","nucleus_mip_median_signal",
                         "nucleus_mean_mean_signal","nucleus_mean_max_signal","nucleus_mean_min_signal","nucleus_mean_median_signal"]
-
+ 
     #malat features
     malat1_spot_in_nuc = count_spots_in_mask(malat1_coord, nuc_mask)
     malat1_spot_in_cyto = count_spots_in_mask(malat1_coord, cell_mask) - malat1_spot_in_nuc
-    
+     
     #pbody features
     if has_pbody :
-        pbody_area_px = compute_mask_area(pbody_mask, unit= 'px', voxel_size= voxel_size)
-        pbody_area_nm = compute_mask_area(pbody_mask, unit= 'nm', voxel_size= voxel_size)
-        rna_spot_in_pbody = count_spots_in_mask(rna_coord, pbody_mask)
         count_pbody_nucleus = count_spots_in_mask(pbody_centroids, nuc_mask)
         count_pbody_cytoplasm = pbody_num - count_pbody_nucleus
-        pbody_closer_than_1000_nm = count_rna_close_pbody(pbody_mask= pbody_mask, spots_coords= rna_coord, distance_nm= 1000, voxel_size= voxel_size)
-        pbody_closer_than_1500_nm = count_rna_close_pbody(pbody_mask= pbody_mask, spots_coords= rna_coord, distance_nm= 1500, voxel_size= voxel_size)
-        pbody_closer_than_2000_nm = count_rna_close_pbody(pbody_mask= pbody_mask, spots_coords= rna_coord, distance_nm= 2000, voxel_size= voxel_size)
+
     else :
-        pbody_area_px = np.NaN
-        pbody_area_nm = np.NaN
-        rna_spot_in_pbody = np.NaN
         count_pbody_nucleus = np.NaN
         count_pbody_cytoplasm = np.NaN
-        pbody_closer_than_1000_nm = np.NaN
-        pbody_closer_than_1500_nm = np.NaN
-        pbody_closer_than_2000_nm = np.NaN
+
 
 
     #Adding custom features to DataFrames
     features.extend([malat1_spot_in_nuc, malat1_spot_in_cyto, cluster_number,nucleus_area_px,nucleus_area_nm,
-                         rna_spot_in_pbody, pbody_num, pbody_area_px, pbody_area_nm, count_pbody_nucleus, count_pbody_cytoplasm, pbody_closer_than_1000_nm, pbody_closer_than_1500_nm, pbody_closer_than_2000_nm])
+                         pbody_num, count_pbody_nucleus, count_pbody_cytoplasm])
     features_names += ['malat1 spots in nucleus', 'malat1 spots in cytoplasm', 'cluster number','nucleus area (px)','nucleus area (nm^2)',
-               'rna spots in pbody', 'pbody number', 'pbody area (px)', 'pbody area (nm^2)', "count pbody in nucleus", "count pbody in cytoplasm", "rna 1000 nm from pbody", "rna 1500 nm from pbody", "rna 2000 nm from pbody"]
+               'pbody number', "count pbody in nucleus", "count pbody in cytoplasm"]
     header = ["id", "AcquisitionId"] + features_names
     data = [0, acquisition_id] 
     data.extend(features)
