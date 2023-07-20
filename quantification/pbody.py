@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import time
 import CustomPandasFramework.PBody_project.DataFrames as Dataframe
 from CustomPandasFramework.integrity import check_samedatashape
 from .measures import count_spots_in_mask, count_spots_in_masks_list, count_rna_close_pbody, count_rna_close_pbody_list, count_rna_close_pbody_global
@@ -57,7 +56,6 @@ def compute_Pbody(AcquisitionId: int, Pbody_label: np.ndarray, cell_label: np.nd
     check_samedatashape(res_DataFrame, datashape_ref)
     res_DataFrame = res_DataFrame.query('cell_label != 0')
 
-    print(Pbody_label.sum())
     return res_DataFrame
 
 
@@ -85,18 +83,11 @@ def compute_Pbody_dictionary(Pbody_label: np.ndarray, rna_coords, malat_coords, 
     rna_count = count_spots_in_masks_list(rna_coords, masks_list)
     malat1_count = count_spots_in_masks_list(malat_coords, masks_list)
 
-    # clock = time.process_time()
-    # pbody_closer_than_1000_nm = [count_rna_close_pbody(pbody_mask= pbody_mask, spots_coords= rna_coords, distance_nm= 1000, voxel_size= voxelsize) for pbody_mask in masks_list]
-    # print("time for 1st individual computation : {0}".format(time.process_time() - clock))
-    clock = time.process_time()
-    # pbody_closer_than_1500_nm = [count_rna_close_pbody(pbody_mask= pbody_mask, spots_coords= rna_coords, distance_nm= 1500, voxel_size= voxelsize) for pbody_mask in masks_list]
-    # pbody_closer_than_2000_nm = [count_rna_close_pbody(pbody_mask= pbody_mask, spots_coords= rna_coords, distance_nm= 2000, voxel_size= voxelsize) for pbody_mask in masks_list]
     Pbody_dictionary["rna_count"] = rna_count
     Pbody_dictionary["malat1_count"] = malat1_count
     Pbody_dictionary["pbody_closer_than_1000_nm"] = count_rna_close_pbody_global(pbody_label= Pbody_label, spots_coords= rna_coords, distance_nm= 1000, voxel_size= voxelsize)
     Pbody_dictionary["pbody_closer_than_1500_nm"] = count_rna_close_pbody_global(pbody_label= Pbody_label, spots_coords= rna_coords, distance_nm= 1500, voxel_size= voxelsize)
     Pbody_dictionary["pbody_closer_than_2000_nm"] = count_rna_close_pbody_global(pbody_label= Pbody_label, spots_coords= rna_coords, distance_nm= 2000, voxel_size= voxelsize)
-    print("time for 3 global computation : {0}".format(time.process_time() - clock))
 
     return Pbody_dictionary
 

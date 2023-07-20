@@ -6,7 +6,6 @@ import cmath
 from sklearn.linear_model import LinearRegression
 from sklearn.mixture import GaussianMixture
 from ..errors import SolutionNotRealError
-from scipy.optimize import leastsq
 
 def simple_linear_regression(X: np.array, Y: np.array) :
     """
@@ -18,7 +17,6 @@ def simple_linear_regression(X: np.array, Y: np.array) :
     lin_model.fit(X,Y)
 
     return lin_model.coef_[0], lin_model.intercept_
-
 
 def _MultiGaussianfit(distribution:'list[float]') :
     """

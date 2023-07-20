@@ -4,6 +4,7 @@ import matplotlib.colors as mcolors
 from skimage.measure import regionprops_table
 from bigfish.stack import check_parameter
 from math import floor, ceil
+from itertools import zip_longest
 import functools
 
 def from_label_get_centeroidscoords(label: np.ndarray):
@@ -17,20 +18,6 @@ def from_label_get_centeroidscoords(label: np.ndarray):
     centroid = regionprops_table(label, properties= ["label","centroid"])
     return centroid
 
-
-def get_colors_list(size:int) -> np.ndarray:
-    """
-    Get a list of color from matplotlib.colors of length 'size'.
-    """
-    color_list  = list(mcolors.CSS4_COLORS.keys())
-    for color in ['white', 'snow', 'whitesmoke', 'ivory', 'floralwhite', 'ghostwhite', 'seashell', 'linen', 'honeydew', 'aliceblue', 'mintcream', 'cornsilk', 'oldlace',
-                  'dimgray', 'gray', 'darkgray', "lightgray", 'darkslategray','darkslategrey', 'darkblue'] :
-        color_list.remove(color)
-    length = len(color_list) - 1
-    index = np.linspace(0,length,size).round().astype(int)
-    color_list = np.array(color_list)
-
-    return color_list[index]
 
 
 
@@ -180,3 +167,58 @@ def hist_maximum(hist:tuple) :
     index = bins_num.index(highest_count)
     if index < len(bins_num) : index +=1
     return hist[1][index]
+
+
+
+
+def get_colors_list(size:int = 62) -> np.ndarray:
+    """
+    Get a list of color from matplotlib.colors of length 'size'. max size 62
+    """
+    if not isinstance(size, int) : raise TypeError("size should be an int, it is a {0}".format(type(size)))
+    if size > 62 or size < 1 : raise ValueError("Size is only supported between 1 and 62")
+
+    red = get_red_colors()
+    yellow = get_yellow_colors()
+    green = get_green_colors()
+    blue = get_blue_colors()
+    purple = get_purple_colors()
+    brown = get_brown_colors()
+    pink = get_pink_colors()
+    black = get_black_colors()
+    grey = get_grey_colors()
+
+    color_list = list(sum([*zip_longest(red, green, blue, black, purple, grey, yellow, brown, pink)],()))
+    while None in color_list : color_list.remove(None)
+    return color_list[:size]
+
+
+def get_red_colors() :
+    return ["#D0312D", "#990F02", "#60100B", "#7E2811", "#4E0707", "#BC544B", "#680C07"]
+
+def get_orange_colors():
+    return ["#ED7014", "#FCAE1E", "#B56727", "#BE5504", "#D67229", "#E34A27", "#FF8C00"]
+
+def get_yellow_colors():
+    return ["#D6B85A", "#DFC98A", "#C8A951", "#E7C27D", "#BDA55D", "#E4D00A", "#FFEF00"]
+
+def get_green_colors():
+    return ["#3CB043", "#3A5311", "#728C69", "#AEF359", "#5DBB63", "#028A0F", "#234F1E", "#568203", "#4CBB17", "#487800"]
+
+def get_blue_colors():
+    return ["#3944BC", "#63C5DA", "#0A1172", "#281E5D", "#1338BE", "#48AAAD", "#016064", "#2832C2", "#1F456E", "#4682B4"]
+
+def get_purple_colors():
+    return ["#A32CC4", "#7A4988", "#601A35", "#A1045A", "#663046", "#311432", "#9867C5", "#880085"]
+
+def get_pink_colors():
+    return ["#FC94AF", "#F25278", "#FE7D6A", "#FD5DA8", "#E3256B", "#FF6EC7"]
+
+def get_brown_colors():
+    return ["#4B371C", "#231709", "#795C34", "#CC7722", "#65350F", "#652A0E", "#8A3324"]
+
+def get_black_colors():
+    return ["#000000"]
+
+def get_grey_colors():
+    return ["#808080", "#373737", "#594D5B", "#3E3D53", "#9897A9", "#63645E"]

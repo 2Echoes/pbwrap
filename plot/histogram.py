@@ -41,7 +41,24 @@ def dapi_signal(Cell, projtype= 'mean', summarize_type = 'mean', path_output= No
     dapi_signal = Cell.loc[:,X] * Cell.loc[:,"nucleus area (nm^2)"]
     title += "   {0} cells".format(len(dapi_signal))
     if len(dapi_signal) < 100 and auto_bins :bins = 20
-    distribution = histogram(dapi_signal, xlabel="Dapi signal (Nucleus area * {0})".format(X), ylabel= "count", path_output=path_output, show=show, ext=ext, title=title, bins=bins, **axis_boundaries)
+
+
+    if "xlabel" not in axis_boundaries :
+        xlabel = "Dapi signal (Nucleus area * {0})".format(X)
+    else : 
+        xlabel = axis_boundaries["xlabel"]
+        del axis_boundaries["xlabel"]
+
+    if "ylabel" not in axis_boundaries :
+        ylabel = "count"
+    else : 
+        ylabel = axis_boundaries["ylabel"]
+        del axis_boundaries["ylabel"]
+
+
+     
+
+    distribution = histogram(dapi_signal, xlabel=xlabel, ylabel= ylabel, path_output=path_output, show=show, ext=ext, title=title, bins=bins, **axis_boundaries)
     return distribution
 
 def dapi_density(Cell, projtype= 'MIP', summarize_type = 'median', path_output= None, show = True, ext= 'png', title: str = None, bins= 500, **axis_boundaries) :
@@ -73,31 +90,31 @@ def dapi_density(Cell, projtype= 'MIP', summarize_type = 'median', path_output= 
 
 
 
-def malat_count(Cell, location= 'nucleus', path_output= None, show = True, close = True, ext= 'png', title: str = None, bins= 500, **axis_boundaries) :
+def malat_count(CellCycle_view, location= 'nucleus', path_output= None, show = True, close = True, ext= 'png', title: str = None, bins= 500, **axis_boundaries) :
     """
     Histogram of malat spots detected in nucleus, cytoplasm or both.
     location : 'nucleus', 'cytoplasm' or 'cell' (cell = nuc + cytoplasm)
     projtype : "MIP" or "MEAN"
     """
-    Cell = update.from_nucleus_malat_proportion_compute_CellullarCycleGroup(Cell, 0.5)
-    if location.upper() == "NUCLEUS" : X = "malat1 spots in nucleus"
-    elif location.upper() == "CYTOPLASM" or location.upper() == "CELL" : X = "malat1 spots in cytoplasm"
+
+
+    df = CellCycle_view.copy().dropna(subset= ["count_in_nuc", "count_in_cyto"]) 
+    if location.upper() == "NUCLEUS" : X = "count_in_nuc"
+    elif location.upper() == "CYTOPLASM" or location.upper() == "CELL" : X = "count_in_cyto"
     else : raise ValueError("Incorrect value for location parameter. Should be one of the following : 'nucleus', 'cytoplasm' or 'cell'.")
-    dapi_signal = Cell.loc[:, [X, "Cellular_cycle (malat proportion)"]]
-    if location.upper() == "CELL" : dapi_signal += Cell.loc[:, "malat1 spots in nucleus"]
+    dapi_signal = df.loc[:, X]
+    if location.upper() == "CELL" : dapi_signal += df.loc[:, "count_in_nuc"]
     
     histogram(dapi_signal.loc[:, X], color= 'green',xlabel=X, ylabel= "count", show=show, path_output=path_output, ext=ext, close=close, title=title, bins=bins, **axis_boundaries)
 
 
-def in_nuc_malat_proportion(Cell, path_output= None, show = True, close = True, ext= 'png', title: str = None, bins= 500, **axis_boundaries) :
+def in_nuc_malat_proportion(CellCycle_view, path_output= None, show = True, close = True, ext= 'png', title: str = None, bins= 500, **axis_boundaries) :
     """
     Histogram of malat proportion detected inside nucleus.
     """
-    proportion = Cell.loc[:, "malat1 spots in nucleus"] / (Cell.loc[:, "malat1 spots in nucleus"] + Cell.loc[:, "malat1 spots in cytoplasm"])
-    histogram(proportion, xlabel="malat spots proportion in nucleus", ylabel= "count", path_output=path_output, show=show, close=close, ext=ext, title=title, bins=bins, **axis_boundaries)
-
-
-
+    df = CellCycle_view.copy().dropna(subset=["count_in_nuc", "count_in_cyto"])
+    proportion = df.loc[:, "count_in_nuc"] / (df.loc[:, "count_in_nuc"] + df.loc[:, "count_in_cyto"])
+    histogram(proportion, xlabel="malat spots in nucleus proportion", ylabel= "count", path_output=path_output, show=show, close=close, ext=ext, title=title, bins=bins, **axis_boundaries)
 
 
 def RawData(DataFrame:pd.DataFrame, variable_name:str, color='blue', label:str=None, path_output= None, show = True, reset= True, close = True, ext= 'png', title: str = None, bins= 500, **axis_boundaries):

@@ -63,7 +63,7 @@ def compute_Spots_cell(AcquisitionId, CellId, Cell_mask, spots_dictionary : dict
     check_samedatashape(dataframe_ref, spots_dataframe)
     return spots_dataframe
 
-def compute_Spots_global(AcquisitionId, Cell_label, Pbody_label, spots_dictionary) :
+def compute_Spots_global(AcquisitionId, Cell_label, Nucleus_mask, Pbody_label, spots_dictionary) :
     
     types = []
     spots_coords = []
@@ -78,6 +78,8 @@ def compute_Spots_global(AcquisitionId, Cell_label, Pbody_label, spots_dictionar
 
     Z,Y,X,*_ = zip(*spots_coords)
     Z,Y,X = np.array(Z), np.array(Y), np.array(X)
+
+    InNucleus = Nucleus_mask[Y,X].astype(bool)
 
     dataframe_ref = newframe_Spots()
 
@@ -95,13 +97,14 @@ def compute_Spots_global(AcquisitionId, Cell_label, Pbody_label, spots_dictionar
 
     spots_dataframe = pd.DataFrame({
         'id' : ids,
-        'AcquisitionId' : [AcquisitionId]*nbre_spots,
+        'AcquisitionId' : [AcquisitionId] * nbre_spots,
         'CellId' : np.nan,
         'PbodyId' : np.nan,
         'spots_coords' : spots_coords,
         'spots_type' : types,
         'cell_label' : Cell_labels,
-        'Pbody_label' : Pbody_labels
+        'Pbody_label' : Pbody_labels,
+        'InNucleus' : InNucleus
     })
 
     filter_idx = spots_dataframe.query("cell_label != 0 or Pbody_label != 0").index

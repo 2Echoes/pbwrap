@@ -216,7 +216,7 @@ def plot_distribution_percentile(percentile: float, color= 'red', anotate= False
     return decorator
 
 
-def plot_hist_max(color= 'green', anotate= False, last_decorator= True, multiplicator= 1, shift = 0, label= 'auto'):
+def plot_hist_max(color= 'green', anotate= False, last_decorator= True, multiplicator= 1, shift = 0, auto_shift= False, label= 'auto'):
     """
     Distribution function has to return data it used to plot the distribution.
 
@@ -224,6 +224,7 @@ def plot_hist_max(color= 'green', anotate= False, last_decorator= True, multipli
     ----------
         distribution : np.ndarray, numpy compatible iterable
     """
+    
     def decorator(plot_function):
         def inner(*args, **kargs) :
             new_kargs = kargs.copy()
@@ -234,7 +235,12 @@ def plot_hist_max(color= 'green', anotate= False, last_decorator= True, multipli
             else : bins = new_kargs["bins"]= 50
             distribution = plot_function(*args, **new_kargs)
             if len(distribution) < 100 : bins = 20
-            maximum_value = (hist_maximum(np.histogram(distribution, bins=bins)) + shift )* multiplicator
+
+            if auto_shift :
+                maximum_value = (hist_maximum(np.histogram(distribution, bins=bins)) - np.percentile(distribution, 0.5)/2 )* multiplicator
+            else : maximum_value = (hist_maximum(np.histogram(distribution, bins=bins)) + shift )* multiplicator
+
+            
             if maximum_value > 10000 : maximum_value_anot = np.format_float_scientific(maximum_value, 3)
             else : maximum_value_anot = maximum_value
             plt.axis('tight')

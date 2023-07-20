@@ -119,14 +119,14 @@ def compute_mask_area(mask: np.ndarray, unit: str = 'px', voxel_size: tuple= Non
     
     if mask.ndim != 2 : raise ValueError("Only 2D masks are supported")
 
-    if len(voxel_size) == 2 :
-        y_dim = voxel_size[0]
-        x_dim = voxel_size[1]
-    elif len(voxel_size) == 3 :
-        y_dim = voxel_size[1]
-        x_dim = voxel_size[2]
-    else : raise ValueError("Inapropriate voxel_size length. Should be either 2 or 3, it is {0}".format(len(voxel_size)))
-
+    if not return_pixel :
+        if len(voxel_size) == 2 :
+            y_dim = voxel_size[0]
+            x_dim = voxel_size[1]
+        elif len(voxel_size) == 3 :
+            y_dim = voxel_size[1]
+            x_dim = voxel_size[2]
+        else : raise ValueError("Inapropriate voxel_size length. Should be either 2 or 3, it is {0}".format(len(voxel_size)))
 
     pixel_number = mask.sum()
 

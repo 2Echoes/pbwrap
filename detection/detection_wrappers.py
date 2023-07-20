@@ -309,7 +309,8 @@ def detect_spots(
         spot_radius=None,
         log_kernel_size=None,
         minimum_distance=None,
-        crop_zstack = None):
+        crop_zstack = None,
+        show_advancement= False):
 
     """
     Pbwrap : In addition to original code we added : 
@@ -498,7 +499,8 @@ def detect_spots(
                 only_compute_threshold = only_compute_threshold,
                 log_kernel_size=log_kernel_size,
                 min_distance=minimum_distance,
-                crop_zstack=crop_zstack)
+                crop_zstack=crop_zstack,
+                show_advancement=show_advancement)
         else :
             spots, threshold = _detect_spots_from_images(
                 images,
@@ -509,7 +511,8 @@ def detect_spots(
                 only_compute_threshold = only_compute_threshold,
                 log_kernel_size=log_kernel_size,
                 min_distance=minimum_distance,
-                crop_zstack=crop_zstack)
+                crop_zstack=crop_zstack,
+                show_advancement=show_advancement)
     else:
         spots = _detect_spots_from_images(
             images,
@@ -519,7 +522,8 @@ def detect_spots(
             return_threshold=return_threshold,
             log_kernel_size=log_kernel_size,
             min_distance=minimum_distance,
-            crop_zstack=crop_zstack)
+            crop_zstack=crop_zstack,
+            show_advancement=show_advancement)
 
     # format results
     if only_compute_threshold : return threshold
@@ -546,7 +550,8 @@ def _detect_spots_from_images(
         only_compute_threshold= False,
         log_kernel_size=None,
         min_distance=None,
-        crop_zstack= None):
+        crop_zstack= None,
+        show_advancement=False):
     """Apply LoG filter followed by a Local Maximum algorithm to detect spots
     in a 2-d or 3-d image.
 
@@ -602,14 +607,17 @@ def _detect_spots_from_images(
     pixel_values = []
     masks = []
     for image in images:
-        if crop_zstack != None : image = image[crop_zstack[0]:crop_zstack[1]]
         n += 1
         # filter image
         image_filtered = stack.log_filter(image, log_kernel_size)
+        import bigfish.plot as plot
         images_filtered.append(image_filtered)
 
         # get pixels value
-        pixel_values += list(image_filtered.ravel())
+        if crop_zstack != None : 
+            pixel_values += list(image_filtered[crop_zstack[0]:crop_zstack[1]].ravel())
+        else : 
+            pixel_values += list(image_filtered.ravel())
 
         # find local maximum
         mask_local_max = local_maximum_detection(image_filtered, min_distance)
@@ -645,6 +653,7 @@ def _detect_spots_from_images(
     # detect spots
     all_spots = []
     for i in range(n):
+        if show_advancement : print("image {0}/{1}".format(i+1,n))
 
         # get images and masks
         image_filtered = images_filtered[i]

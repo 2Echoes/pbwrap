@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import pbwrap.data as data
+import bigfish.plot as plot
 from matplotlib.colors import ListedColormap
 from scipy.ndimage import binary_dilation
 from skimage.segmentation import find_boundaries
@@ -13,7 +14,9 @@ from .utils import format_array_scientific_notation, save_plot
 
 
 def output_spot_tiffvisual(channel, spots, path_output, dot_size = 3, rescale = True):
-    """Outputs a tiff image with one channel being {channel} and the other a mask containing dots where sports are located.
+    
+    """
+    Outputs a tiff image with one channel being {channel} and the other a mask containing dots where sports are located.
     
     Parameters
     ----------
@@ -24,16 +27,15 @@ def output_spot_tiffvisual(channel, spots, path_output, dot_size = 3, rescale = 
         dot_size : int
             in pixels
     """
+    
     stack.check_parameter(channel = (np.ndarray),spots= (list, np.ndarray), path_output = (str), dot_size = (int))
     stack.check_array(channel, ndim= [2,3])
     if channel.ndim == 3 : 
         channel = stack.maximum_projection(channel)
     if len(spots[0]) == 3 : 
         new_spots = []
-        for i in range(0,len(spots)) : new_spots += [[spots[i][1], spots[i][2]]] 
+        for i in range(0, len(spots)) : new_spots += [[spots[i][1], spots[i][2]]] 
         spots = new_spots
-
-    
 
     spots_mask = np.zeros_like(channel)
     for spot in new_spots :
@@ -204,3 +206,24 @@ def _G1_G2_labelling(Cell : pd.DataFrame, segmentation_plot:str, AcquisitionId:i
     
     save_plot(path_output, 'png')
     plt.close()
+
+
+def reconstruct_detection(cy3gen, Spots_result_table: pd.DataFrame, path_out, spots_type= 'rna') :
+    spots_gen = make_spot_gen(Spots_result_table, spots_type=spots_type)
+    i = 0
+    for cy3proj in cy3gen :
+        i+=1
+        print(i)
+        spots = next(spots_gen)
+        print(spots)
+        plot.plot_detection(cy3proj, spots, show=False, contrast= True, path_output= path_out + str(i))
+
+
+
+def make_spot_gen(Spots_result_table: pd.DataFrame, spots_type = 'rna') :
+    
+    acquisition_ids = Spots_result_table.value_counts(subset='AcquisitionId').index
+
+    for acquisition_id in acquisition_ids :
+        idx = Spots_result_table.query("AcquisitionId == {0} and spots_type == '{1}'".format(acquisition_id, spots_type)).index
+        yield np.array([*(Spots_result_table.loc[idx, "spots_coords"])])

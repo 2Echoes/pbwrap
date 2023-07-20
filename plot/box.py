@@ -51,21 +51,15 @@ def cell_number(Acquisition: pd.DataFrame, xlabel= None, ylabel= "cell number", 
     box_plot(data= Df_Acquisition, labels= Df_Acquisition.index, xlabel= xlabel, ylabel= ylabel, title= title, reset= reset, close= close, show= show, path_output= path_output, ext =ext, **kargs)
 
 @rotate_xAxis_label
-def count_Malat_per_Cell(Cell: pd.DataFrame, Acquisition: pd.DataFrame, xlabel= None, ylabel= "malat spot per cell", title= None, reset= True, close= False, show= True, path_output= None, ext ='png', **kargs) :
+def count_Malat_per_Cell(CellCellular_cycle, xlabel= None, ylabel= "malat spot per cell", title= None, reset= True, close= False, show= True, path_output= None, ext ='png', **kargs) :
     """
     1 box per gene
     """
-    Join_Cell = update.JoinCellAcquisition(Acquisition, Cell, Acquisition_columns= ["rna name"])
-    Join_Cell["count_malat_per_cell"] = (Join_Cell["malat1 spots in nucleus"] + Join_Cell["malat1 spots in cytoplasm"])
 
-    # Df_Acquisition = pd.merge(left= Join_Cell.loc[:,["rna name","AcquisitionId", "count_malat_per_cell"]].groupby(["rna name","AcquisitionId"]).mean()["count_malat_per_cell"], 
-    #                           right=Join_Cell.loc[:,["rna name","AcquisitionId", "count_malat_per_cell"]].groupby(["rna name","AcquisitionId"]).std()["count_malat_per_cell"]
-    #                           ,left_on= ('rna name',"AcquisitionId"), right_on= ('rna name', "AcquisitionId")
-    #                           ).rename(columns={'count_malat_per_cell_x' : 'mean', 'count_malat_per_cell_y' : 'std'})
+    df = CellCellular_cycle.copy().dropna(subset= ["count_in_nuc", "count_in_cyto"])
+    df["total"] = df["count_in_nuc"] + df["count_in_cyto"]
 
-    # Df_Acquisition = Df_Acquisition.sort_values("rna name")
-    # Df_Acquisition = Df_Acquisition.reset_index(drop= False)
-    data_mean = Join_Cell.groupby("rna name")["count_malat_per_cell"].apply(list)
+    data_mean = pd.groupby(by="rna name", axis= 0, level= 0)["total"].apply(list)
     
     box_plot(data= data_mean, ylabel= ylabel, labels= data_mean.index, xlabel=xlabel, title= title, reset= reset, close=close, show= show, path_output=path_output, ext=ext, **kargs)
 
