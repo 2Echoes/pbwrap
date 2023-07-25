@@ -6,9 +6,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import CustomPandasFramework.PBody_project.update as update
-from .utils import set_axis_ticks, save_plot
-from .decorators import use_g1_g2_grouping, plot_distribution_median, plot_distribution_percentile
-
+from .utils import set_axis_ticks, save_plot, get_colors_list
+from math import sqrt, floor
 ########################
 ##### RESULT PLOTS #####
 ########################
@@ -98,14 +97,14 @@ def malat_count(CellCycle_view, location= 'nucleus', path_output= None, show = T
     """
 
 
-    df = CellCycle_view.copy().dropna(subset= ["count_in_nuc", "count_in_cyto"]) 
+    df = CellCycle_view.copy().dropna(subset= ["count_in_nuc", "count_in_cyto"])
     if location.upper() == "NUCLEUS" : X = "count_in_nuc"
     elif location.upper() == "CYTOPLASM" or location.upper() == "CELL" : X = "count_in_cyto"
     else : raise ValueError("Incorrect value for location parameter. Should be one of the following : 'nucleus', 'cytoplasm' or 'cell'.")
     dapi_signal = df.loc[:, X]
     if location.upper() == "CELL" : dapi_signal += df.loc[:, "count_in_nuc"]
     
-    histogram(dapi_signal.loc[:, X], color= 'green',xlabel=X, ylabel= "count", show=show, path_output=path_output, ext=ext, close=close, title=title, bins=bins, **axis_boundaries)
+    histogram(dapi_signal, color= 'green',xlabel=X, ylabel= "count", show=show, path_output=path_output, ext=ext, close=close, title=title, bins=bins, **axis_boundaries)
 
 
 def in_nuc_malat_proportion(CellCycle_view, path_output= None, show = True, close = True, ext= 'png', title: str = None, bins= 500, **axis_boundaries) :
@@ -115,6 +114,56 @@ def in_nuc_malat_proportion(CellCycle_view, path_output= None, show = True, clos
     df = CellCycle_view.copy().dropna(subset=["count_in_nuc", "count_in_cyto"])
     proportion = df.loc[:, "count_in_nuc"] / (df.loc[:, "count_in_nuc"] + df.loc[:, "count_in_cyto"])
     histogram(proportion, xlabel="malat spots in nucleus proportion", ylabel= "count", path_output=path_output, show=show, close=close, ext=ext, title=title, bins=bins, **axis_boundaries)
+
+
+def rna_in_pbodies(Pbody: pd.DataFrame, bins=20, auto_bins= True, path_output= None, show = True, reset=True, close = True, ext= 'png', title: str = "Rna spots in P-bodies Genes Distributions") :
+    """
+    Tile plot of rna spots distribution in P-bodies.
+    """
+
+    df = Pbody.copy().set_index(["rna name", "id"]).fillna(0)
+
+    gene_list = df.index.get_level_values(0).unique()
+    #tile init
+    plot_number = len(gene_list)
+    root = sqrt(plot_number)
+    if root - floor(root) == 0 :
+        n_lin = n_col = root
+    elif root - floor(root) < 0.5 :
+        n_lin = floor(root)
+        n_col = floor(root) + 1
+    else :
+        n_lin = floor(root) + 1
+        n_col = floor(root) + 1
+
+
+    if reset : fig, ax = plt.subplots(nrows= int(n_lin), ncols= int(n_col), figsize= (int(12*n_col), int(12*n_lin)))
+    else : fig, ax = plt.gcf(), plt.gca()
+
+    plot_idx=1
+    colors = iter(get_colors_list(plot_number))
+    
+    #Subplot
+    for gene in gene_list :
+        plt.subplot(n_lin, n_col, plot_idx)
+
+        plot_idx +=1
+        color = next(colors)
+        distribution = df.loc[gene, "rna_count"]
+        pbody_number = len(distribution)
+        
+        if auto_bins :
+            if pbody_number < 100 : bins = 20
+            else : bins = 50
+
+        histogram(distribution, color, bins= bins, y_label = "count", title= "{0} - {1} P-bodies.".format(gene, pbody_number), show= False, close= False, reset= False, edgecolor = 'black', linewidth= 3)
+
+    fig.text(0.5, 0.04, 'Number of rna spots detected in P-bodies', ha='center', fontsize= 65)
+    if type(title) != type(None) : plt.suptitle(title, fontsize= 80, fontweight= 'bold')
+    if type(path_output) != type(None) : plt.savefig(path_output + "Rna spots in Pbodies tiles plot")
+    if show : plt.show()
+    if close : plt.close()
+
 
 
 def RawData(DataFrame:pd.DataFrame, variable_name:str, color='blue', label:str=None, path_output= None, show = True, reset= True, close = True, ext= 'png', title: str = None, bins= 500, **axis_boundaries):

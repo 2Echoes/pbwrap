@@ -7,7 +7,7 @@ from bigfish.stack import mean_projection
 from .measures import compute_signalmetrics
 
 
-def compute_fov(rootfilename:str, rna_name:str, cell_number: int, rna_threshold:float, malat_threshold:float, dapi: np.ndarray, nucleus_mask: np.ndarray) :
+def compute_fov(acquisition_id, rootfilename:str, rna_name:str, cell_number: int, rna_threshold:float, malat_threshold:float, dapi: np.ndarray, nucleus_mask: np.ndarray) :
     """Returns DataFrame with expected Acquisition datashape containing all acquisition (fov) level features."""
 
     if dapi.ndim == 3 : 
@@ -21,7 +21,7 @@ def compute_fov(rootfilename:str, rna_name:str, cell_number: int, rna_threshold:
     dapi_backgrnd_metrics = compute_signalmetrics(dapi, ~nucleus_mask)
 
     new_Acquisition = DataFrame.newframe_Acquisitions()
-    new_Acquisition["id"] = [0]
+    new_Acquisition["id"] = [acquisition_id]
     new_Acquisition["rootfilename"] = [rootfilename]
     new_Acquisition["rna name"] = [rna_name]
     new_Acquisition["cell number"] = [cell_number]

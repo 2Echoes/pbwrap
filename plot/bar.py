@@ -28,7 +28,7 @@ def threshold(Acquisition: pd.DataFrame, rna_list:'list[str]' = None, path_outpu
 
 
 ## P-Body ##
-def P_body_detect_inside_nucleus(Cell, path_output= None, show = True, close = True, ext= 'png', title: str = None) :
+def P_body_detect_inside_nucleus(Cell: pd.DataFrame, path_output= None, show = True, close = True, ext= 'png', title: str = None) :
     """
     Plot a 2 bar graphs : one bar for number of pbodies detected inside nucleus and one for number of pbodies detected in cytoplasm.
     """
@@ -120,85 +120,65 @@ def spots_per_cell(Acquisition: pd.DataFrame, Cell: pd.DataFrame, spot_type = 'r
 def cluster_per_cell() :
     pass #TODO
 
-def RNA_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list[str]' = None, path_output= None, show = True, close= True, ext= 'png', title = "Count of RNA in P-bodies"):
 
-    join_frame = pd.merge(Cell, Acquisition.loc[:,["id", "rna name"]], how= "left", left_on= "AcquisitionId", right_on= "id")
-    join_frame = join_frame.drop(axis= 0, index= join_frame[join_frame["pbody number"] == 0].index)
-    if gene_list == None : gene_list = gdata.from_Acquisition_get_rna(Acquisition)
-    
+
+def cytoRNA_proportion_in_pbody(detection_view:pd.DataFrame, gene_list: 'list[str]' = None, path_output= None, show = True, close=True, ext= 'png', title = "Nucleus RNA proportion inside P-bodies"):
+
+    if gene_list == None : gene_list = detection_view.index.get_level_values(1).unique()
     std_list= []
-    mean_rna_per_pbody_list = []
-    for gene in gene_list : 
-        gene_Cell = join_frame [join_frame["rna name"] == gene]
-        mean_rna_per_pbody_list += [(gene_Cell.loc[:, "rna spots in pbody"] / gene_Cell.loc[:, "pbody number"]).mean()]
-        std_list += [(gene_Cell.loc[:, "rna spots in pbody"] / gene_Cell.loc[:, "pbody number"]).std()]
+    mean_list = []
+    for gene in gene_list :
+        group = detection_view.loc[("rna",gene), ["count_in_cyto", "count_in_Pbody"]]
+        hasPbodyidx = group.query("count_in_Pbody == 0").index
+        group = group.drop(hasPbodyidx, axis= 0)
+        group["proportion"] = group["count_in_Pbody"]/ group["count_in_cyto"]
+        mean = group["proportion"].mean()
+        std = group["proportion"].std()
+        mean_list.append(mean)
+        std_list.append(std)
 
-    fig = gene_bar_plot(gene_list, mean_rna_per_pbody_list, std_list, title= title, xlabel="count", path_output= path_output, ext=ext, show=show, close= close)
-
-
-
-def cytoRNA_proportion_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list[str]' = None, path_output= None, show = True, close=True, ext= 'png', title = "Nucleus RNA proportion inside P-bodies"):
-
-    join_frame = pd.merge(Cell, Acquisition.loc[:,["id", "rna name"]], how= "left", left_on= "AcquisitionId", right_on= "id")
-    join_frame = join_frame.drop(axis= 0, index= join_frame[join_frame["pbody number"] == 0].index)
-    if gene_list == None : gene_list = gdata.from_Acquisition_get_rna(Acquisition)
-    
-    std_list= []
-    mean_rna_per_pbody_list = []
-    for gene in gene_list : 
-        gene_Cell = join_frame [join_frame["rna name"] == gene]
-        mean_rna_in_pbody = gene_Cell.loc[:,"rna spots in pbody"].mean()
-        mean_cyto_rna_number = gene_Cell.loc[:,"nb_rna_out_nuc"].mean()
-        mean_rna_per_pbody_list += [mean_rna_in_pbody/mean_cyto_rna_number]        
-        std_rna_in_pbody = gene_Cell.loc[:,"rna spots in pbody"].std()
-        std_cyto_rna_number = gene_Cell.loc[:,"nb_rna_out_nuc"].std()
-        std_list += [std_rna_in_pbody/std_cyto_rna_number] # Comment calculer la std ?
-
-
-    fig = gene_bar_plot(gene_list, mean_rna_per_pbody_list, std_list, title= title,ylabel="cytoplasmic RNA proportion detected inside p-bodies",
+    fig = gene_bar_plot(gene_list, mean_list, std_list, title= title,ylabel="Proportion of cytoplasmic rna detected inside P-bodies.",
                          path_output= path_output, ext=ext, show=show, close= close)
 
 
 
-def RNA_proportion_in_pbody(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list[str]' = None, path_output= None, show = True, close= True, ext= 'png', title = "RNA proportion inside P-bodies"):
+def RNA_proportion_in_pbody(detection_view: pd.DataFrame, gene_list: 'list[str]' = None, path_output= None, show = True, close= True, ext= 'png', title = "RNA proportion inside P-bodies"):
 
-    join_frame = pd.merge(Cell, Acquisition.loc[:,["id", "rna name"]], how= "left", left_on= "AcquisitionId", right_on= "id")
-    join_frame = join_frame.drop(axis= 0, index= join_frame[join_frame["pbody number"] == 0].index)
-    if gene_list == None : gene_list = gdata.from_Acquisition_get_rna(Acquisition)
+    if gene_list == None : gene_list = detection_view.index.get_level_values(1).unique()
     
-    # std_list= []
-    mean_rna_per_pbody_list = []
+    std_list= []
+    mean_list = []
     for gene in gene_list : 
-        gene_Cell = join_frame [join_frame["rna name"] == gene]
+        group = detection_view.loc[("rna",gene), ["count", "count_in_Pbody"]]
+        
+        group["proportion"] = group["count"]/ group["count_in_Pbody"]
+        hasPbodyidx = group.query("count_in_Pbody == 0").index
+        group = group.drop(hasPbodyidx, axis= 0)
+        mean = group["proportion"].mean()
+        std = group["proportion"].std()
+        mean_list.append(mean)
+        std_list.append(std)
 
-        mean_rna_per_pbody_list += [gene_Cell.loc[:, "rna spots in pbody"].sum() / (gene_Cell.loc[:, "nb_rna_out_nuc"] + gene_Cell.loc[:, "nb_rna_in_nuc"]).sum()]
-        # mean_rna_per_pbody_list += [(gene_Cell.loc[:, "rna spots in pbody"] / (gene_Cell.loc[:, "nb_rna_out_nuc"] + gene_Cell.loc[:, "nb_rna_in_nuc"])).mean()]
-        # std_list += [(gene_Cell.loc[:, "rna spots in pbody"] / (gene_Cell.loc[:, "nb_rna_out_nuc"] + gene_Cell.loc[:, "nb_rna_in_nuc"])).std()]
-
-    fig = gene_bar_plot(gene_list, mean_rna_per_pbody_list, title= title,path_output= path_output, ext=ext, show=show, close= close)
+    fig = gene_bar_plot(gene_list, mean_list, std_list, title= title,ylabel="Proportion of cytoplasmic rna detected inside P-bodies.",
+                         path_output= path_output, ext=ext, show=show, close= close)
 
 
 
+def RNApercentage_in_nucleus(detection_view: pd.DataFrame, gene_list: 'list[str]' = None, plot_in_and_out_bars= True, path_output= None, show = True, close= True, ext= 'png', title = None) :
 
-def RNApercentage_in_out_nucleus(Acquisition: pd.DataFrame, Cell: pd.DataFrame, gene_list: 'list[str]' = None, plot_in_and_out_bars= True, path_output= None, show = True, close= True, ext= 'png', title = None) :
-
-    join_frame = pd.merge(Cell, Acquisition.loc[:,["id", "rna name"]], how= "left", left_on= "AcquisitionId", right_on= "id")
-    if gene_list == None : gene_list = gdata.from_Acquisition_get_rna(Acquisition)
-
-    std_list = []
-    mean_value_inside = []
-    mean_value_outside = []
+    if gene_list == None : gene_list = detection_view.index.get_level_values(1).unique()
+    std_list= []
+    mean_list = []
     for gene in gene_list : 
-        gene_Cell = join_frame[join_frame["rna name"] == gene]
-        mean_value_inside += [gene_Cell.loc[:, "proportion_rna_in_nuc"].mean() * 100]
-        mean_value_outside += [(1- gene_Cell.loc[:, "proportion_rna_in_nuc"].mean()) * 100]
-        std_list += [gene_Cell.loc[:, "proportion_rna_in_nuc"].std() * 100]
+        group = detection_view.loc[("rna",gene), ["count_in_nuc", "count"]]
+        group["proportion"] = group["count_in_nuc"]/ group["count"]
+        mean = group["proportion"].mean()
+        std = group["proportion"].std()
+        mean_list.append(mean)
+        std_list.append(std)
 
-    #plot
-    ylabel = "Percentage of RNA found inside nucleus (%)"
-    if plot_in_and_out_bars : fig = gene_bar_plot(gene_list, [mean_value_inside, mean_value_outside], [std_list]*2, legend = ["inside nuc", "outside nuc"])
-    else : 
-        fig = gene_bar_plot(gene_list, mean_value_inside, std_list, legend = "inside nuc", title= title, ylabel= ylabel, path_output= path_output, ext=ext, show=show, close= close)
+    fig = gene_bar_plot(gene_list, mean_list, std_list, title= title,ylabel="Proportion of cytoplasmic rna detected inside P-bodies.",
+                         path_output= path_output, ext=ext, show=show, close= close)
 
 def total_cell_number(Acquisition: pd.DataFrame,xlabel=None, ylabel= "Cell number", path_output= None, show = True, close= True, ext= 'png', title = "Computed cell number") :
     """

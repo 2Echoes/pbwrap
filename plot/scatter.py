@@ -73,30 +73,41 @@ def count_Malat_per_Cell(CellCellular_cycle, xlabel= "Mean", ylabel= "Standard d
         reset = False
 
 
-def count_rna_per_Cell(Cell: pd.DataFrame, Acquisition: pd.DataFrame, xlabel= "Mean", ylabel= "Standard deviation", title= "Rna spots detected per Fov", reset= True, close= True, show= True, path_output= None, ext ='png', **kargs) :
+def count_rna_per_Cell(detection_view, xlabel= "Mean", ylabel= "Standard deviation", title= "Rna spots detected per Fov", reset= True, close= True, show= True, path_output= None, ext ='png', **kargs) :
     """
-    1 box per gene
+    1 point per fov
     """
-    Join_Cell = update.JoinCellAcquisition(Acquisition, Cell, Acquisition_columns= ["rna name"])
-    Join_Cell["count_rna_per_cell"] = (Join_Cell["nb_rna_out_nuc"] + Join_Cell["nb_rna_in_nuc"])
 
-    Df_Acquisition = pd.merge(left= Join_Cell.loc[:,["rna name","AcquisitionId", "count_rna_per_cell"]].groupby(["rna name","AcquisitionId"]).mean()["count_rna_per_cell"], 
-                              right=Join_Cell.loc[:,["rna name","AcquisitionId", "count_rna_per_cell"]].groupby(["rna name","AcquisitionId"]).std()["count_rna_per_cell"]
-                              ,left_on= ('rna name',"AcquisitionId"), right_on= ('rna name', "AcquisitionId")
-                              ).rename(columns={'count_rna_per_cell_x' : 'mean', 'count_rna_per_cell_y' : 'std'})
-    Df_Acquisition = Df_Acquisition.reset_index(drop= False).sort_values("rna name")
-    gene_frame = Join_Cell.value_counts(subset="rna name").reset_index(drop= False)
-    gene_number = len(Join_Cell.value_counts(subset="rna name"))
-    color_list = pd.DataFrame(columns = ["color"], data = get_colors_list(gene_number))
-    gene_frame = pd.concat([gene_frame, color_list], axis= 1).drop(0, axis= 1)
-    Df_Acquisition = pd.merge(left= Df_Acquisition, right= gene_frame, how= 'left', left_on= "rna name", right_on= "rna name")
+    rna_list = detection_view.index.get_level_values(1).unique() 
 
-    scatter(X= Df_Acquisition["mean"], Y = Df_Acquisition["std"], xlabel= xlabel, ylabel= ylabel, color= Df_Acquisition["color"], label= list(Df_Acquisition["rna name"]), title=title, reset=reset, close=close, show=show, path_output=path_output, ext=ext, **kargs)
+    #axis labels
+    if xlabel == None : xlabel = "Integrated Dapi Signal"
+    if ylabel == None : ylabel = "Malat spot count"
 
+    #colors
+    if not "color" in kargs :
+        auto_color = True 
+        color_gen =  iter(get_colors_list(len(rna_list)))
+    else : auto_color = False
+
+    for rna in rna_list :
+        if auto_color : kargs["color"] = next(color_gen)
+        group = detection_view.loc[("rna", rna), ["AcquisitionId", "count"]].groupby("AcquisitionId")
+        X = group["count"].mean()
+        Y = group["count"].std()
+        scatter(X=X, Y=Y, xlabel=xlabel, ylabel=ylabel, show=False, close=False, reset=reset, title=title, **kargs)
+        plt.scatter(x=[],y=[], label= rna, **kargs)
+        reset = False
+
+    
+    plt.legend()
+    if type(path_output) != type(None) : save_plot(path_output=path_output,ext=ext)
+    if show : plt.show()
+    if close : plt.close()
 
 def count_pbody_per_Cell(Cell: pd.DataFrame, Acquisition: pd.DataFrame, xlabel= "Mean", ylabel= "Standard deviation", title= "P-bodies detected per Fov", reset= True, close= True, show= True, path_output= None, ext ='png', **kargs) :
     """
-    1 box per gene
+    1 point per fov. Obsolete.
     """
     Join_Cell = update.JoinCellAcquisition(Acquisition, Cell, Acquisition_columns= ["rna name"])
 
@@ -116,7 +127,7 @@ def count_pbody_per_Cell(Cell: pd.DataFrame, Acquisition: pd.DataFrame, xlabel= 
 
 
 
-def dapi_signal(Cell: pd.DataFrame, Acquisition: pd.DataFrame, projtype= 'mean', summarize_type= 'mean', integrated_signal = False,
+def dapi_signal(Cell: pd.DataFrame, projtype= 'mean', summarize_type= 'mean', integrated_signal = False,
                 xlabel= "Mean", ylabel= "Standard deviation", title= None, reset= True, close= True, show= True, path_output= None, ext ='png', **kargs) :
     """
     1 box per gene
@@ -132,21 +143,20 @@ def dapi_signal(Cell: pd.DataFrame, Acquisition: pd.DataFrame, projtype= 'mean',
     elif summarize_type.upper() == 'MEAN' : X += "mean_signal"
     else : raise ValueError("summarize_type should either be 'median' or 'mean'.")
 
-    Join_Cell = update.JoinCellAcquisition(Acquisition, Cell, Acquisition_columns= ["rna name"])
     
     if integrated_signal:
-        Join_Cell["Integrated signal ({0})".format(X)] = (Join_Cell[X] * Join_Cell["nucleus area (nm^2)"])
+        Cell["Integrated signal ({0})".format(X)] = (Cell[X] * Cell["nucleus area (nm^2)"])
         X = "Integrated signal ({0})".format(X)
 
     if title == None : title = X
 
-    Df_Acquisition = pd.merge(left= Join_Cell.loc[:,["rna name","AcquisitionId", X]].groupby(["rna name","AcquisitionId"]).mean()[X], 
-                              right=Join_Cell.loc[:,["rna name","AcquisitionId", X]].groupby(["rna name","AcquisitionId"]).std()[X]
+    Df_Acquisition = pd.merge(left= Cell.loc[:,["rna name","AcquisitionId", X]].groupby(["rna name","AcquisitionId"]).mean()[X], 
+                              right=Cell.loc[:,["rna name","AcquisitionId", X]].groupby(["rna name","AcquisitionId"]).std()[X]
                               ,left_on= ('rna name',"AcquisitionId"), right_on= ('rna name', "AcquisitionId")
                               ).rename(columns={ X+'_x' : 'mean', X+'_y' : 'std'})
     Df_Acquisition = Df_Acquisition.reset_index(drop= False).sort_values("rna name")
-    gene_frame = Join_Cell.value_counts(subset="rna name").reset_index(drop= False)
-    gene_number = len(Join_Cell.value_counts(subset="rna name"))
+    gene_frame = Cell.value_counts(subset="rna name").reset_index(drop= False)
+    gene_number = len(Cell.value_counts(subset="rna name"))
     color_list = pd.DataFrame(columns = ["color"], data = get_colors_list(gene_number))
     gene_frame = pd.concat([gene_frame, color_list], axis= 1).drop(0, axis= 1)
     Df_Acquisition = pd.merge(left= Df_Acquisition, right= gene_frame, how= 'left', left_on= "rna name", right_on= "rna name")

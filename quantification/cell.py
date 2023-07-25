@@ -315,7 +315,7 @@ from .measures import count_spots_in_mask, compute_mask_area, compute_signalmetr
 from pbwrap.utils import from_label_get_centeroidscoords
 # 
 # 
-def compute_Cell(acquisition_id, cell, Pbody_Acquisition:pd.DataFrame, dapi, voxel_size = (300,103,103)):
+def compute_Cell(acquisition_id, cell, Pbody_Acquisition:pd.DataFrame, dapi, cell_label, voxel_size = (300,103,103)):
     """
     Returns DataFrame with expected Cell datashape containing all cell level features. Features are computed using bigFish built in functions.
     # 
@@ -397,6 +397,7 @@ def compute_Cell(acquisition_id, cell, Pbody_Acquisition:pd.DataFrame, dapi, vox
     #Custom features
     cell_props_table = regionprops_table(cell_mask.astype(int), properties= ["centroid"])
     cell_coordinates = (float(cell_props_table["centroid-0"] + min_y), float(cell_props_table["centroid-1"] + min_x))
+    label_bis = cell_label[int(cell_coordinates[0]), int(cell_coordinates[1])]
     del cell_props_table
     cluster_number = len(ts_coord) + len(foci_coord)
     nucleus_area_px = compute_mask_area(nuc_mask, unit= 'px', voxel_size= voxel_size)
@@ -406,11 +407,11 @@ def compute_Cell(acquisition_id, cell, Pbody_Acquisition:pd.DataFrame, dapi, vox
     nucleus_mean_signal_metrics = nucleus_signal_metrics(cell, channel= dapi, projtype= 'mean')
  
     #Adding custom signal features to DataFrame
-    features.extend([cell_coordinates, label, cell["bbox"], pbody_coordinates,
+    features.extend([cell_coordinates, label, label_bis, cell["bbox"], pbody_coordinates,
                          nucleus_mip_signal_metrics["mean"], nucleus_mip_signal_metrics["max"], nucleus_mip_signal_metrics["min"], nucleus_mip_signal_metrics["median"],
                          nucleus_mean_signal_metrics["mean"], nucleus_mean_signal_metrics["max"], nucleus_mean_signal_metrics["min"], nucleus_mean_signal_metrics["median"]])
      
-    features_names += [ "cell_coordinates", "label", "bbox", "pbody coordinates",
+    features_names += [ "cell_coordinates", "label","label_bis", "bbox", "pbody coordinates",
                         "nucleus_mip_mean_signal","nucleus_mip_max_signal","nucleus_mip_min_signal","nucleus_mip_median_signal",
                         "nucleus_mean_mean_signal","nucleus_mean_max_signal","nucleus_mean_min_signal","nucleus_mean_median_signal"]
  

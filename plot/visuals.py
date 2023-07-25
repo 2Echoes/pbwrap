@@ -208,22 +208,3 @@ def _G1_G2_labelling(Cell : pd.DataFrame, segmentation_plot:str, AcquisitionId:i
     plt.close()
 
 
-def reconstruct_detection(cy3gen, Spots_result_table: pd.DataFrame, path_out, spots_type= 'rna') :
-    spots_gen = make_spot_gen(Spots_result_table, spots_type=spots_type)
-    i = 0
-    for cy3proj in cy3gen :
-        i+=1
-        print(i)
-        spots = next(spots_gen)
-        print(spots)
-        plot.plot_detection(cy3proj, spots, show=False, contrast= True, path_output= path_out + str(i))
-
-
-
-def make_spot_gen(Spots_result_table: pd.DataFrame, spots_type = 'rna') :
-    
-    acquisition_ids = Spots_result_table.value_counts(subset='AcquisitionId').index
-
-    for acquisition_id in acquisition_ids :
-        idx = Spots_result_table.query("AcquisitionId == {0} and spots_type == '{1}'".format(acquisition_id, spots_type)).index
-        yield np.array([*(Spots_result_table.loc[idx, "spots_coords"])])
