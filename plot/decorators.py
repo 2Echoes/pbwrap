@@ -67,9 +67,10 @@ def rotate_xAxis_label(plot_function) :
         ax.set_xticks(xticks, labels= labels_list, rotation= rotation)
 
         #back to called parameters
-        if "path_output" in kargs : 
-            if "ext" not in kargs : kargs["ext"] = 'png'
-            save_plot(path_output= kargs["path_output"], ext= kargs["ext"])
+        if "path_output" in kargs :
+            if type(kargs["path_output"]) != type(None) : 
+                if "ext" not in kargs : kargs["ext"] = 'png'
+                save_plot(path_output= kargs["path_output"], ext= kargs["ext"])
         if "show" in kargs :
             if kargs["show"] : plt.show()
         if "close" in kargs :

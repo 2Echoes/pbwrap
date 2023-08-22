@@ -127,7 +127,7 @@ def box_plot(data: np.ndarray, xlabel= None, ylabel= None, title= None, reset= T
     plt.ylabel(ylabel)
     plt.title(title)
 
-    if path_output != None : save_plot(path_output=path_output, ext=ext)
+    if type(path_output) != type(None) : save_plot(path_output=path_output, ext=ext)
     
     if show : plt.show()
     if close : plt.close()
