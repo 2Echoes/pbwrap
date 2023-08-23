@@ -314,8 +314,10 @@ def detect_spots(
 
     """
     Pbwrap : In addition to original code we added : 
-        threshold_penalty : float which is multiplied with the automatic threshold setting.
-        crop_zstack : crop images along z axis for Threshold calculation but NOT for spots detection.
+        threshold_penalty : float-like
+            float which is multiplied with the automatic threshold setting.
+        crop_zstack : list, tuple
+         Crop images along z axis for Threshold calculation but NOT for spots detection.
 
     Apply LoG filter followed by a Local Maximum algorithm to detect spots
     in a 2-d or 3-d image.

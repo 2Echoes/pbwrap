@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 import matplotlib.colors as mcolors
 from skimage.measure import regionprops_table
 from bigfish.stack import check_parameter
@@ -222,3 +223,90 @@ def get_black_colors():
 
 def get_grey_colors():
     return ["#808080", "#373737", "#594D5B", "#3E3D53", "#9897A9", "#63645E"]
+
+
+
+
+def compute_textbox_positions(position_list, text_list, character_size : int) :
+    """
+    """
+    if len(position_list) != len(text_list) : raise ValueError("position_list and text_list arguments should have the same length.")
+
+    textbox_position = [(xmin[0], character_size*len(text)) for xmin,text in zip(position_list,text_list)]
+    return textbox_position
+
+
+def is_overlapping(box1, box2) :
+
+    xmin1,xmax1,ymin1,ymax1 = box1
+    xmin2,xmax2,ymin2,ymax2 = box2
+
+    for angle in box1 :
+        x,y = angle
+        if x >= xmin1 and x <= xmax1 and y >= ymin1 and y <=ymax1 :
+            return True
+    
+    for angle in box2 :
+        x,y = angle
+        if x >= xmin2 and x <= xmax2 and y >= ymin2 and y <=ymax2 :
+            return True
+    
+    return False
+
+def compute_overlapping_list(bbox_list:list) :
+    """
+    Returns a list where each element is the number of bbox overlapping whith the current bbox at this position.
+    """
+
+    count_list = []
+
+    for bbox in bbox_list :
+        count = 0
+        bbox_list_bis = bbox_list.copy()
+        bbox_list_bis.remove(bbox)
+        for bbis in bbox_list_bis :
+            if is_overlapping(bbox, bbis) : count +=1
+        
+    count_list.append(count)
+    overlapping_list = list(zip(bbox,count_list))
+
+    return overlapping_list
+
+def sort_overlapping_list(overlapping_list) :
+    count_list, bbox_list = list(zip(*overlapping_list)) 
+    df = pd.DataFrame({
+        "bbox" : bbox_list,
+        "overlapping_count" : count_list
+    }
+    )
+
+    df.sort_values(by= "overlapping_count", ascending= False)
+
+
+def random_direction() :
+    """
+    returns randomly -1 or 1.
+    """
+    roll = np.random.rand()
+
+    if roll < 0.5 : res = -1
+    else : res = 1
+
+    return res
+
+
+def random_move(bbox, length= 1) :
+    xmin,xmax,ymin,ymax = bbox
+    x_movement = np.random.rand()
+    y_movement = 1-x_movement
+    x_movement *= length
+    y_movement *= length
+    y_direction = random_direction()
+    x_direction = random_direction()
+
+    xmin += x_direction * x_movement
+    xmax += x_direction * x_movement
+    ymin += y_direction * y_movement
+    ymax += y_direction * y_movement
+
+    return (xmin,xmax,ymin,ymax)
