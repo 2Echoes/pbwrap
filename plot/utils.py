@@ -5,7 +5,7 @@ import matplotlib.colors as mcolors
 from skimage.measure import regionprops_table
 from bigfish.stack import check_parameter
 from math import floor, ceil
-from itertools import zip_longest
+from itertools import zip_longest, product
 import functools
 
 def from_label_get_centeroidscoords(label: np.ndarray):
@@ -225,6 +225,7 @@ def get_grey_colors():
     return ["#808080", "#373737", "#594D5B", "#3E3D53", "#9897A9", "#63645E"]
 
 
+######## FIRST IDEA : random move until no annotations are overlapping ######
 
 
 def compute_textbox_positions(position_list, text_list, character_size : int) :
@@ -234,6 +235,10 @@ def compute_textbox_positions(position_list, text_list, character_size : int) :
 
     textbox_position = [(xmin[0], character_size*len(text)) for xmin,text in zip(position_list,text_list)]
     return textbox_position
+
+
+def collect_textbox_positions():
+    pass
 
 
 def is_overlapping(box1, box2) :
@@ -280,7 +285,8 @@ def sort_overlapping_list(overlapping_list) :
     }
     )
 
-    df.sort_values(by= "overlapping_count", ascending= False)
+    df = df.sort_values(by= "overlapping_count", ascending= False)
+    return df
 
 
 def random_direction() :
@@ -295,14 +301,15 @@ def random_direction() :
     return res
 
 
-def random_move(bbox, length= 1) :
+def random_move(bbox, length= 1, x_direction=None, y_direction= None) :
     xmin,xmax,ymin,ymax = bbox
     x_movement = np.random.rand()
     y_movement = 1-x_movement
     x_movement *= length
     y_movement *= length
-    y_direction = random_direction()
-    x_direction = random_direction()
+
+    if type(x_direction) == type(None) : x_direction = random_direction()
+    if type(y_direction) == type(None) : y_direction = random_direction()
 
     xmin += x_direction * x_movement
     xmax += x_direction * x_movement
@@ -310,3 +317,146 @@ def random_move(bbox, length= 1) :
     ymax += y_direction * y_movement
 
     return (xmin,xmax,ymin,ymax)
+
+def correct_overlapping_textboxes(overlapping_list) :
+    pass
+
+
+############ 2nd Idea divide the plot in grid of rectangles and assign one rectangle to each annotation ###################
+
+def compute_scale(fig, pos, text):
+
+    ax = fig.gca()
+    master_annotation = plt.annotate(text,pos)
+    bbox = master_annotation.get_window_extent()
+    x0,y0,x1,y1 = ax.transData.inverted().transform(bbox)
+
+    box_xlength = x1 - x0
+    box_ylength = y1 - y0
+
+    return box_xlength, box_ylength
+
+def compute_annotation_df(pos_list, text_list):
+    annotation_df = pd.DataFrame({
+        'position' : pos_list,
+        'annotation' : text_list,
+        'grid_coords' : np.NaN
+    })
+
+    return annotation_df
+
+def compute_grid(x_unit, y_unit) :
+
+    #Dividing plot area
+    xmin, xmax, ymin, ymax = plt.axis()
+    x_length = (xmax - xmin) // x_unit
+    y_length = (ymax - ymin) // y_unit
+    if (xmax - xmin) % x_unit != 0 : x_length += 1
+    if (ymax - ymin) % y_unit != 0 : y_length += 1
+
+    y_coords = np.arange(0, y_length)
+    x_coords = np.arange(0, x_length)
+
+
+    #Computing grid
+    coordinates_list = list(product(x_coords, y_coords))
+    x_coords, y_coords = zip(*coordinates_list)
+
+    grid = pd.DataFrame({
+        "coord" : coordinates_list,
+        "x" : x_coords,
+        "y" : y_coords,
+        "empty" : [True] * len(coordinates_list)
+    })
+
+    #Excluding border
+    ymax = grid["y"].max()
+    xmax = grid["x"].max()
+    border_idx = grid.query("y == 0 or y == {0} or x == 0 or x == {1}".format(ymax,xmax)).index
+    grid.loc[border_idx, "empty"] = False
+
+    return grid
+
+def find_grid_coordinates_list(elmt_coords_list, x_unit, y_unit) :
+    x,y = zip(*elmt_coords_list)
+
+    x_coord = np.array(x)//x_unit
+    y_coord = np.array(y)//y_unit
+
+    return list(zip(x_coord,y_coord))
+
+def fill_grid(coordinates_list, grid):
+    x_list, y_list = zip(*coordinates_list)
+    index = grid.query("x in {0} and y in {1}".format(x_list, y_list)).index
+    grid.loc[index, "empty"] = False
+    return grid
+
+
+def find_closest_available_space(coords, grid: pd.DataFrame) :
+    available_grid = grid.copy()
+    taken_spaces = grid.query("empty == False").index
+    available_grid = available_grid.drop(taken_spaces, axis= 0)
+    x,y = coords
+    available_grid["distance"] = np.sqrt( np.power((available_grid["x"] - x),2) + np.power((available_grid["y"] - x),2) )
+    available_grid = available_grid.sort_values('distance').reset_index(drop= False)
+
+    return available_grid.at[0, "index"]
+
+
+def give_available_space(annotation_index, grid, annotation_df) :
+    coords = annotation_df.at[annotation_index, 'position']
+    space_index = find_closest_available_space(coords,grid)
+    grid.at[space_index, "empty"] = False
+    annotation_df.at[annotation_index, "grid_coords"] = grid.at[space_index, "coords"]
+
+    return grid, annotation_df
+
+def get_space_position(grid_coords, x_unit,y_unit) :
+
+    x_pos = x_unit * grid_coords[0]
+    y_pos = y_unit * grid_coords[1]
+
+    return x_pos,y_pos
+
+
+
+def write_annotation(annotation_df, x_unit, y_unit) :
+    annotation_obj_list = []
+    for idx in annotation_df.index :
+        text = annotation_df.at[idx, "annotation"]
+        grid_coords = annotation_df.at[idx, "grid_coords"]
+        xy = get_space_position(x_unit=x_unit,y_unit=y_unit, grid_coords=grid_coords)
+
+        annotation_obj_list.append(plt.annotate(text, xy))
+
+    return annotation_obj_list
+
+
+def annotate_plot(fig, pos_list, text_list) :
+    """
+    Add annotations to a plot and correct overlapping annotations.
+
+    Parameters
+    ----------
+        pos_list : list[tuple]
+            List of tuple, each tuple correspond to the position (x,y) of an annotation.
+        text_list : list[string]
+            List of string each element is the text displayed in the annotation.
+    """
+
+    if not isinstance(pos_list, list) : raise TypeError("'pos_list' argument should be a list, it is a {0}".format(type(pos_list)))
+    if not isinstance(text_list, list) : raise TypeError("'text_list' argument should be a list, it is a {0}".format(type(pos_list)))
+    if len(pos_list) <= 1 : raise ValueError("There should me more than 1 annotation to plot.")
+    if len(pos_list) != len(text_list) : raise ValueError("pos_list and text_list should have the same number of elements.")
+
+    x_unit, y_unit = compute_scale(fig, pos_list[0], text_list[0])
+    annotation_df = compute_annotation_df(pos_list[1:],text_list[1:])
+    grid = compute_grid(x_unit, y_unit)
+    coords = find_grid_coordinates_list(pos_list, x_unit=x_unit, y_unit=y_unit)
+    grid = fill_grid(coords, grid)
+
+    for idx in annotation_df.index :
+        grid, annotation_df = give_available_space(annotation_index= idx, annotation_df= annotation_df, grid= grid)
+    annotations_obj_list = write_annotation(annotation_df,x_unit,y_unit)
+
+    return annotations_obj_list 
