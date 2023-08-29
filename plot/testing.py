@@ -9,7 +9,7 @@ import pbwrap.plot as plot
 from pbwrap.quantification.CurveAnalysis import simple_linear_regression
 import matplotlib.pyplot as plt
 import numpy as np
-
+from pbwrap.plot.utils import *
 # in_path = "/home/floricslimani/Documents/Projets/1_P_body/stack_O8_p21/output/20230531 17-01-21/result_tables"
 # output_path = "/home/floricslimani/Documents/Projets/1_P_body/Workshop/"
 # if not in_path.endswith('/') : in_path += '/'
@@ -57,32 +57,46 @@ import numpy as np
 fig = plt.figure(figsize=(10,10))
 
 #Data
-X = [0,1,2,3,4,5,5.5,5.7,6,7,7.7,8,9,10]
+X = [0,1,2,3,4,5,5.1,5.15,5.12,5.23,5.4,6,7,7.2,8,9,10]
 Y = X
 
 plt.scatter(X,Y)
 text_post = list(zip(X,Y))
 annotations = ['GENE {0}'.format(i) for i in range(1,len(text_post)+1)]
-
-
 obj_list = []
-for text,pos in zip(annotations,text_post) :
-    obj_list.append(plt.annotate(text, pos))
+# for text,pos in zip(annotations,text_post) :
+#     obj_list.append(plt.annotate(text, pos))
 
 fig.canvas.draw()
 plt.tight_layout()
-tester = obj_list[0]
 xmin, xmax, ymin, ymax = plt.axis()
 xmin = 0
 ymin = 0
 plt.axis([xmin,xmax,ymin,ymax])
 
-print(tester.get_window_extent())
-print(obj_list[len(obj_list)-1].get_window_extent())
-ax = fig.gca()
-x = tester.get_window_extent()
-print(x)
-print(ax.transData.inverted().transform(x))
-y = ax.transData.inverted().transform(x)
-print(ax.transData.inverted().transform(y))
+# plt.show()
+
+#Testing
+
+pos_list = list(zip(X,Y))
+text_list = annotations
+x_unit, y_unit = compute_scale(fig, pos_list[0], text_list[0])
+master_length = len(text_list[0])
+print("x_unit, y units : ", x_unit, y_unit)
+annotation_df = compute_annotation_df(pos_list[1:],text_list[1:])
+print( "annotation dataframe : \n", annotation_df)
+grid = compute_grid(x_unit, y_unit)
+print("GRID :\n", grid)
+coords = find_grid_coordinates_list(pos_list, x_unit=x_unit, y_unit=y_unit)
+print("coords :", coords)
+assert len(coords) == len(pos_list)
+filled_grid = fill_grid(coords, grid)
+print("filled GRID :\n", grid)
+annotation_df["grid_coords"] = annotation_df["grid_coords"].astype('object')
+for idx in annotation_df.index :
+    grid, annotation_df = give_available_space(annotation_index= idx, annotation_df= annotation_df, grid= grid, x_unit= x_unit, y_unit=y_unit)
+annotations_obj_list = write_annotation(annotation_df,x_unit,y_unit, master_length)
+
+print(annotation_df)
+
 plt.show()

@@ -329,10 +329,13 @@ def compute_scale(fig, pos, text):
     ax = fig.gca()
     master_annotation = plt.annotate(text,pos)
     bbox = master_annotation.get_window_extent()
-    x0,y0,x1,y1 = ax.transData.inverted().transform(bbox)
+    [x0,y0],[x1,y1] = ax.transData.inverted().transform(bbox)
 
     box_xlength = x1 - x0
     box_ylength = y1 - y0
+
+    box_xlength = box_xlength * (1+3/len(text))
+    box_ylength = box_ylength * 1.3
 
     return box_xlength, box_ylength
 
@@ -342,7 +345,7 @@ def compute_annotation_df(pos_list, text_list):
         'annotation' : text_list,
         'grid_coords' : np.NaN
     })
-
+    annotation_df["grid_coords"] = annotation_df["grid_coords"].astype('object')
     return annotation_df
 
 def compute_grid(x_unit, y_unit) :
@@ -353,10 +356,10 @@ def compute_grid(x_unit, y_unit) :
     y_length = (ymax - ymin) // y_unit
     if (xmax - xmin) % x_unit != 0 : x_length += 1
     if (ymax - ymin) % y_unit != 0 : y_length += 1
-
     y_coords = np.arange(0, y_length)
     x_coords = np.arange(0, x_length)
-
+    print("xlength :", x_length)
+    print("ylength :", y_length)
 
     #Computing grid
     coordinates_list = list(product(x_coords, y_coords))
@@ -386,28 +389,27 @@ def find_grid_coordinates_list(elmt_coords_list, x_unit, y_unit) :
     return list(zip(x_coord,y_coord))
 
 def fill_grid(coordinates_list, grid):
-    x_list, y_list = zip(*coordinates_list)
-    index = grid.query("x in {0} and y in {1}".format(x_list, y_list)).index
+    index = grid[grid["coord"].isin(coordinates_list) == True].index
     grid.loc[index, "empty"] = False
     return grid
 
 
-def find_closest_available_space(coords, grid: pd.DataFrame) :
+def find_closest_available_space(coords, grid: pd.DataFrame, x_unit, y_unit) :
     available_grid = grid.copy()
     taken_spaces = grid.query("empty == False").index
     available_grid = available_grid.drop(taken_spaces, axis= 0)
     x,y = coords
-    available_grid["distance"] = np.sqrt( np.power((available_grid["x"] - x),2) + np.power((available_grid["y"] - x),2) )
+    available_grid["distance"] = np.sqrt( np.power((available_grid["x"]*x_unit - x),2) + np.power((available_grid["y"]*y_unit - y),2) )
     available_grid = available_grid.sort_values('distance').reset_index(drop= False)
-
+    
     return available_grid.at[0, "index"]
 
 
-def give_available_space(annotation_index, grid, annotation_df) :
+def give_available_space(annotation_index, grid, annotation_df, x_unit, y_unit) :
     coords = annotation_df.at[annotation_index, 'position']
-    space_index = find_closest_available_space(coords,grid)
+    space_index = find_closest_available_space(coords,grid, x_unit, y_unit)
     grid.at[space_index, "empty"] = False
-    annotation_df.at[annotation_index, "grid_coords"] = grid.at[space_index, "coords"]
+    annotation_df.at[annotation_index, "grid_coords"] = grid.at[space_index, "coord"]
 
     return grid, annotation_df
 
@@ -420,14 +422,21 @@ def get_space_position(grid_coords, x_unit,y_unit) :
 
 
 
-def write_annotation(annotation_df, x_unit, y_unit) :
+def write_annotation(annotation_df, x_unit, y_unit, master_length) :
     annotation_obj_list = []
     for idx in annotation_df.index :
         text = annotation_df.at[idx, "annotation"]
         grid_coords = annotation_df.at[idx, "grid_coords"]
-        xy = get_space_position(x_unit=x_unit,y_unit=y_unit, grid_coords=grid_coords)
-
-        annotation_obj_list.append(plt.annotate(text, xy))
+        xy = annotation_df.at[idx,'position']
+        xy_text = get_space_position(x_unit=x_unit,y_unit=y_unit, grid_coords=grid_coords)
+        distance = np.sqrt(np.power((xy[0] - xy_text[0]),2) + np.power((xy[1] - xy_text[1]),2))
+        xy_text = (xy_text[0] + np.random.rand() * 1.5/master_length * random_direction(), xy_text[1])        
+        
+        print(text, " : ", distance)
+        if distance >= x_unit/3 : 
+            arrow_patch = {"width" : 0.5, "headwidth" : 5, 'headlength' : 2}
+        else : arrow_patch = None
+        annotation_obj_list.append(plt.annotate(text, xy=xy, xytext = xy_text, arrowprops= arrow_patch))
 
     return annotation_obj_list
 
@@ -450,6 +459,7 @@ def annotate_plot(fig, pos_list, text_list) :
     if len(pos_list) != len(text_list) : raise ValueError("pos_list and text_list should have the same number of elements.")
 
     x_unit, y_unit = compute_scale(fig, pos_list[0], text_list[0])
+    master_length = len(text_list[0])
     annotation_df = compute_annotation_df(pos_list[1:],text_list[1:])
     grid = compute_grid(x_unit, y_unit)
     coords = find_grid_coordinates_list(pos_list, x_unit=x_unit, y_unit=y_unit)
@@ -457,6 +467,6 @@ def annotate_plot(fig, pos_list, text_list) :
 
     for idx in annotation_df.index :
         grid, annotation_df = give_available_space(annotation_index= idx, annotation_df= annotation_df, grid= grid)
-    annotations_obj_list = write_annotation(annotation_df,x_unit,y_unit)
+    annotations_obj_list = write_annotation(annotation_df,x_unit,y_unit, master_length)
 
     return annotations_obj_list 

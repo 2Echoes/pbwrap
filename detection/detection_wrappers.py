@@ -395,7 +395,7 @@ def detect_spots(
         if not isinstance(crop_zstack, (list,tuple)) : raise TypeError("Wrong type for crop_ztack it should be None, tuple or list. Is is {0}".format(type(crop_zstack)))
         if len(crop_zstack) != 2 : raise ValueError("crop_zstack is expected to have 2 elements. It has {0}".format(len(crop_zstack)))
         if not (isinstance(crop_zstack[0],int) and isinstance(crop_zstack[1], int)) : raise TypeError("crop_zstack elements should be ints.")
-        if crop_zstack[1] <= crop_zstack[0] : raise ValueError("crop zstack should be [first crop, last_crop[ last_crop can't be smaller or equal than first crop.")
+        if crop_zstack[1] <= crop_zstack[0] : raise ValueError("crop zstack should be [first crop, last_crop[ last_crop can't be smaller than or equals first crop.")
 
     if not (isinstance(images, list) or isinstance(images, GeneratorType)):
         stack.check_array(
@@ -616,7 +616,7 @@ def _detect_spots_from_images(
         images_filtered.append(image_filtered)
 
         # get pixels value
-        if crop_zstack != None : 
+        if crop_zstack != None :
             pixel_values += list(image_filtered[crop_zstack[0]:crop_zstack[1]].ravel())
         else : 
             pixel_values += list(image_filtered.ravel())
