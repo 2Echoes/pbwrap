@@ -8,8 +8,7 @@ import CustomPandasFramework.PBody_project.get as get
 import matplotlib.pyplot as plt
 from CustomPandasFramework.integrity.Errors import MissingColumnError
 from ..quantification.CurveAnalysis import simple_linear_regression
-from .utils import save_plot, get_colors_list, identity
-from .decorators import plot_curve
+from .utils import save_plot, get_colors_list, annotate_plot, get_markers_generator, hide_overlapping_annotations
 
 def Malat_inNuc_asDapiIntensity(CellularCycle_view: pd.DataFrame, plot_linear_regression= False, path_output= None, show = True, close= True, reset= True, ext= 'png', title = None, xlabel=None, ylabel= 'malat1 spots in nucleus', **kargs):
     """
@@ -196,7 +195,7 @@ def G1G2_RNAQuantif(Cell: pd.DataFrame, Spots: pd.DataFrame,
     
     if 'cellular_cycle' not in Cell.columns : raise MissingColumnError("'cellular_cycle' column is missing Cell DF : consider using update.from_IntegratedSignal_spike_compute_CellularCycleGroup")
     
-    if reset : fig, _ = plt.subplots(nrows= 1, ncols= 3, figsize= (30, 10))
+    if reset : fig, _ = plt.subplots(nrows= 1, ncols= 3, figsize= (45, 15))
     else : fig = plt.gcf()
     if type(title) != type(None) : plt.suptitle(title, fontsize= 35, fontweight= 'bold')
     if type(xlabel) != type(None) : fig.text(0.5, 0.04, xlabel, ha='center', fontsize= 65)
@@ -217,7 +216,7 @@ def G1G2_RNAQuantif(Cell: pd.DataFrame, Spots: pd.DataFrame,
         linewidths_list = kargs["linewidths"]
         if len(linewidths_list) == 1 : linewidths_list *= len(gene_list)
         elif isinstance(linewidths_list, (float,int)) : linewidths_list = [linewidths_list]*len(gene_list)
-    else : linewidths_list = [1.5]*len(gene_list)
+    else : linewidths_list = [1]*len(gene_list)
 
     #edgecolor set
     if "edgecolors" in kargs :
@@ -231,24 +230,24 @@ def G1G2_RNAQuantif(Cell: pd.DataFrame, Spots: pd.DataFrame,
     red_index = [gene_list.index(gene) for gene in red_genes]
     for idx in red_index :
         edgecolors_list[idx] = 'red'
-        linewidths_list[idx] = 2
+        linewidths_list[idx] = 1.2
 
 
     kargs["color"] = color_list
     kargs["linewidths"] = linewidths_list
     kargs["edgecolors"] = edgecolors_list
+    kargs["alpha"] = 0.7
 
     plt.subplot(1,3,1)
-    G1G2_RnaNumberInPbody(Cell=Cell_df, Spots=Spots, legend=False, **kargs)
+    G1G2_RnaNumberInPbody(Cell=Cell_df, Spots=Spots, legend=True, **kargs)
     plt.subplot(1,3,2)
-    G1G2_RnaProportionInPbody(Cell=Cell_df, Spots=Spots, legend=False, **kargs)
+    G1G2_RnaProportionInPbody(Cell=Cell_df, Spots=Spots, legend=True, **kargs)
     ax =plt.subplot(1,3,3)
     G1G2_CellNumber(Cell=Cell_df, legend=False, **kargs)
     handle1 = plt.scatter([],[], color= "white", linewidths= 1.5, edgecolor='black', label= 'Genes with more \nthan 100 cells computed')
     handle2 = plt.scatter([],[], color= "white", linewidths= 2, edgecolor='red', label= 'Genes with less \nthan 100 cells computed')
     handles = [handle1, handle2]
     labels = ['Genes with more than 100 cells computed', 'Genes with less than 100 cells computed']
-    print(handles,labels)
     fig.legend(handles, labels, loc='upper left', prop={'size': 20})
     
     if type(path_output) != type(None) : save_plot(path_output, ext=ext)
@@ -274,18 +273,23 @@ def G1G2_RnaNumberInPbody(Cell: pd.DataFrame, Spots: pd.DataFrame,
     kargs_copy = kargs.copy()
     del kargs_copy["color"],kargs_copy["linewidths"],kargs_copy["edgecolors"]
 
+
+    markers_gen = get_markers_generator()
+    annotation_list = []
     for gene, color, lw, edgecolor in zip(gene_list, kargs["color"], kargs["linewidths"], kargs["edgecolors"]) :
+        marker = next(markers_gen)
         DF = Spots_DF.loc[gene,:]
         index_lvl0 = DF.index.get_level_values(0).unique()
         if "g1" in index_lvl0 : g1_mean = DF.loc["g1",:].mean()
         else : g1_mean = 0
         if "g2" in index_lvl0 : g2_mean = DF.loc["g2",:].mean()
         else : g2_mean = 0
-        plt.scatter(x= g1_mean, y= g2_mean, color = color, label= gene, linewidths=lw, edgecolors= edgecolor, **kargs_copy)
-        plt.text(x= g1_mean*0.95, y = g2_mean*1.05, s= gene, size= 7)
-    
+        plt.scatter(x= g1_mean, y= g2_mean, color = color, label= gene, linewidths=lw, marker=marker, edgecolors= edgecolor, s= 60, **kargs_copy)
+        annotation_list.append(plt.text(x= g1_mean*0.98, y = g2_mean*1.01, s= gene, size= 10))
+
+    hide_overlapping_annotations(*annotation_list)
     if legend : plt.legend(ncols= 4)
-    plt.axis('square')
+    plt.axis([0,300,0,300])
     if type(xlabel) != type(None) : plt.xlabel(xlabel)
     if type(ylabel) != type(None) : plt.ylabel(ylabel)
     if type(title) != type(None) : plt.title(title)
@@ -319,19 +323,23 @@ def G1G2_RnaProportionInPbody(Cell: pd.DataFrame, Spots: pd.DataFrame,
     
     kargs_copy = kargs.copy()
     del kargs_copy["color"],kargs_copy["linewidths"],kargs_copy["edgecolors"]
-
+    marker_gen = get_markers_generator()
+    annotation_list = []
     for gene, color, lw, edgecolor in zip(gene_list, kargs["color"], kargs["linewidths"], kargs["edgecolors"]) :
+        marker = next(marker_gen)
         DF = Spots_DF.loc[gene,:]
         index_lvl0 = DF.index.get_level_values(0).unique()
         if "g1" in index_lvl0 : g1_mean = DF.loc["g1",:].mean()
         else : g1_mean = 0
         if "g2" in index_lvl0 : g2_mean = DF.loc["g2",:].mean()
         else : g2_mean = 0
-        plt.scatter(x= g1_mean, y= g2_mean, color = color, label= gene, linewidths=lw, edgecolors= edgecolor, **kargs_copy)
-        plt.text(x= g1_mean*0.95, y = g2_mean*1.05, s= gene, size= 7)
-    
+        plt.scatter(x= g1_mean, y= g2_mean, color = color, label= gene, marker=marker, linewidths=lw, edgecolors= edgecolor, s=60, **kargs_copy)
+        annotation_list.append(plt.text(x= g1_mean*0.98, y = g2_mean*1.02, s= gene, size= 7))
+    print('ici')
+    hide_overlapping_annotations(*annotation_list)
     if legend : plt.legend(ncols= 4)
-    plt.axis('square')
+    axes = plt.axis('square')
+    # plt.axis([0,0.6,0,0.6])
     if type(xlabel) != type(None) : plt.xlabel(xlabel)
     if type(ylabel) != type(None) : plt.ylabel(ylabel)
     if type(title) != type(None) : plt.title(title)
@@ -354,8 +362,9 @@ def G1G2_CellNumber(Cell: pd.DataFrame,
  
     kargs_copy = kargs.copy()
     del kargs_copy["color"],kargs_copy["linewidths"],kargs_copy["edgecolors"]
-
+    marker_gen = get_markers_generator()
     for gene, color, lw, edgecolor in zip(gene_list, kargs["color"], kargs["linewidths"], kargs["edgecolors"]) :
+        marker = next(marker_gen)
         DF = cell_number.loc[gene,:]
         index_lvl0 = DF.index
         if "g1" in index_lvl0 : g1_mean = DF.at["g1"]
@@ -363,8 +372,8 @@ def G1G2_CellNumber(Cell: pd.DataFrame,
         if "g2" in index_lvl0 : g2_mean = DF.at["g2"]
         else : g2_mean = 0
 
-        plt.scatter(x= g1_mean, y= g2_mean, color = color, label= gene, linewidths=lw, edgecolors= edgecolor, **kargs_copy)
-        plt.text(x= g1_mean*0.95, y = g2_mean*1.05, s= gene, size= 7)
+        plt.scatter(x= g1_mean, y= g2_mean, color = color, label= gene, marker=marker, linewidths=lw, edgecolors= edgecolor, **kargs_copy)
+        plt.text(x= g1_mean*0.98, y = g2_mean*1.02, s= gene, size= 7)
     
     if legend : plt.legend(ncols= 4)
     plt.axis('square')

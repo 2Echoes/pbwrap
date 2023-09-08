@@ -612,7 +612,6 @@ def _detect_spots_from_images(
         n += 1
         # filter image
         image_filtered = stack.log_filter(image, log_kernel_size)
-        import bigfish.plot as plot
         images_filtered.append(image_filtered)
 
         # get pixels value

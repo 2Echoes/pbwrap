@@ -171,7 +171,7 @@ def from_rootfilename_get_Acquisitionid(Acquisition: pd.DataFrame, rootfilename:
 
 
 def from_Acquisition_get_rna(Acquisition: pd.DataFrame) :
-    return list(Acquisition.value_counts(subset= "rna name").index)
+    return list(Acquisition.value_counts(subset= "rna name").sort_index().index)
 
 
 

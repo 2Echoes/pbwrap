@@ -16,14 +16,14 @@ def threshold(Acquisition: pd.DataFrame, rna_list:'list[str]' = None, path_outpu
     #Computing RNA mean threshold and var :
     if rna_list == None : rna_list =  gdata.from_Acquisition_get_rna(Acquisition)
     elif type(rna_list) == str : rna_list = [rna_list]
-
+    
     threshold_list = [] 
     std_list = []
     for rna in rna_list :
+        print(rna)
         threshold_list += [Acquisition[Acquisition["rna name"] == rna].loc[:,"RNA spot threshold"].mean()]
         std_list += [Acquisition[Acquisition["rna name"] == rna].loc[:,"RNA spot threshold"].std()]
 
-    
     fig = gene_bar_plot(rna_list, threshold_list, errors= std_list, title= title, ylabel= "mean threshold", path_output= path_output, ext=ext, show=show, close= close)
 
 
