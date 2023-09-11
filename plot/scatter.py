@@ -243,7 +243,7 @@ def G1G2_RNAQuantif(Cell: pd.DataFrame, Spots: pd.DataFrame,
     plt.subplot(1,3,2)
     G1G2_RnaProportionInPbody(Cell=Cell_df, Spots=Spots, legend=True, **kargs)
     ax =plt.subplot(1,3,3)
-    G1G2_CellNumber(Cell=Cell_df, legend=False, **kargs)
+    G1G2_CellNumber(Cell=Cell_df, legend=True, **kargs)
     handle1 = plt.scatter([],[], color= "white", linewidths= 1.5, edgecolor='black', label= 'Genes with more \nthan 100 cells computed')
     handle2 = plt.scatter([],[], color= "white", linewidths= 2, edgecolor='red', label= 'Genes with less \nthan 100 cells computed')
     handles = [handle1, handle2]
@@ -289,7 +289,8 @@ def G1G2_RnaNumberInPbody(Cell: pd.DataFrame, Spots: pd.DataFrame,
 
     hide_overlapping_annotations(*annotation_list)
     if legend : plt.legend(ncols= 4)
-    plt.axis([0,300,0,300])
+    plt.axis("square")
+    # plt.axis([0,300,0,300])
     if type(xlabel) != type(None) : plt.xlabel(xlabel)
     if type(ylabel) != type(None) : plt.ylabel(ylabel)
     if type(title) != type(None) : plt.title(title)
@@ -335,7 +336,7 @@ def G1G2_RnaProportionInPbody(Cell: pd.DataFrame, Spots: pd.DataFrame,
         else : g2_mean = 0
         plt.scatter(x= g1_mean, y= g2_mean, color = color, label= gene, marker=marker, linewidths=lw, edgecolors= edgecolor, s=60, **kargs_copy)
         annotation_list.append(plt.text(x= g1_mean*0.98, y = g2_mean*1.02, s= gene, size= 7))
-    print('ici')
+
     hide_overlapping_annotations(*annotation_list)
     if legend : plt.legend(ncols= 4)
     axes = plt.axis('square')
@@ -363,6 +364,9 @@ def G1G2_CellNumber(Cell: pd.DataFrame,
     kargs_copy = kargs.copy()
     del kargs_copy["color"],kargs_copy["linewidths"],kargs_copy["edgecolors"]
     marker_gen = get_markers_generator()
+    
+    marker_gen = get_markers_generator()
+    annotation_list = []
     for gene, color, lw, edgecolor in zip(gene_list, kargs["color"], kargs["linewidths"], kargs["edgecolors"]) :
         marker = next(marker_gen)
         DF = cell_number.loc[gene,:]
@@ -373,9 +377,10 @@ def G1G2_CellNumber(Cell: pd.DataFrame,
         else : g2_mean = 0
 
         plt.scatter(x= g1_mean, y= g2_mean, color = color, label= gene, marker=marker, linewidths=lw, edgecolors= edgecolor, **kargs_copy)
-        plt.text(x= g1_mean*0.98, y = g2_mean*1.02, s= gene, size= 7)
+        annotation_list.append(plt.text(x= g1_mean*0.98, y = g2_mean*1.02, s= gene, size= 7))
     
     if legend : plt.legend(ncols= 4)
+    hide_overlapping_annotations(*annotation_list)
     plt.axis('square')
     if type(xlabel) != type(None) : plt.xlabel(xlabel)
     if type(ylabel) != type(None) : plt.ylabel(ylabel)
