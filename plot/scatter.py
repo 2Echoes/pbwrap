@@ -391,12 +391,33 @@ def G1G2_CellNumber(Cell: pd.DataFrame,
     if close : plt.close()
 
 
+def G1G2_Nucleus_rna(Cell: pd.DataFrame, Spots: pd.DataFrame, 
+                          xlabel= "G1", ylabel= "G2", title= "Mean rna proportion in Pbodies",legend=True, reset= False, close= False, show= False, path_output= None, ext ='png', **kargs) :
+    
+    if 'rna name' not in Cell.columns : raise MissingColumnError("'rna name' column is missing from Cell DF : consider using update.AddRnaName")
+    if 'cellular_cycle' not in Cell.columns : raise MissingColumnError("'cellular_cycle' column is missing Cell DF : consider using update.from_IntegratedSignal_spike_compute_CellularCycleGroup")
 
+    Spots_DF = pd.merge(Spots, Cell.loc[:,["id", "cellular_cycle"]], how= 'left', left_on= "CellId", right_on= 'id')
+    inNucleus = Spots_DF.groupby(["rna name", "cellular_cycle", "CellId"])["InNucleus"].count()
+    gene_list = inNucleus.sort_index().index.get_level_values(0).unique()
 
+    if reset : plt.figure(figsize=(20,20))
 
+    kargs_copy = kargs.copy()
+    del kargs_copy["color"],kargs_copy["linewidths"],kargs_copy["edgecolors"]
 
-
-
+    markers_gen = get_markers_generator()
+    annotation_list = []
+    for gene, color, lw, edgecolor in zip(gene_list, kargs["color"], kargs["linewidths"], kargs["edgecolors"]) :
+        marker = next(markers_gen)
+        DF = Spots_DF.loc[gene,:]
+        index_lvl0 = DF.index.get_level_values(0).unique()
+        if "g1" in index_lvl0 : g1_mean = DF.loc["g1",:].mean()
+        else : g1_mean = 0
+        if "g2" in index_lvl0 : g2_mean = DF.loc["g2",:].mean()
+        else : g2_mean = 0
+        plt.scatter(x= g1_mean, y= g2_mean, color = color, label= gene, linewidths=lw, marker=marker, edgecolors= edgecolor, s= 60, **kargs_copy)
+        annotation_list.append(plt.text(x= g1_mean*0.98, y = g2_mean*1.01, s= gene, size= 10))
 ## Base plot ##
 
 def plot(X: np.ndarray, Y: np.ndarray, xlabel= None, ylabel= None, title= None, reset= False, close= False, show= True, path_output= None, ext ='png', **kargs) :
