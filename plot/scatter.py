@@ -205,7 +205,7 @@ def G1G2_SpotsInPbody_Quantif(Cell: pd.DataFrame, Spots: pd.DataFrame, spots_typ
     
     Cell_df = update.removeCellsWithoutSpotsInPodies(Cell, Spots)
     gene_list = list(Cell_df.groupby(['rna name'])["id"].count().sort_index().index)
-
+    print(len(gene_list),gene_list)
     #Color set
     if "color" in kargs :
         color_list = kargs["color"]
