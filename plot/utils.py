@@ -412,6 +412,7 @@ def is_overlapping(box1, box2) :
     ax = plt.gca()
     [xmin1,ymin1],[xmax1,ymax1] = ax.transData.inverted().transform(box1)
     [xmin2,ymin2],[xmax2,ymax2] = ax.transData.inverted().transform(box2)
+
     test = 0
     if xmin1 < xmin2 and xmin2 < xmax1 : test +=1
     if ymin1 < ymin2 and ymin2 < ymax1 : test +=1
@@ -429,5 +430,4 @@ def hide_overlapping_annotations(*annotations) :
     
     for annotation, overlaps in zip(annotations, truth_list) :
         if overlaps :
-            print('oui')
             annotation.remove()

@@ -190,7 +190,7 @@ def DapiSignal_vs_CellNumber(Cell: pd.DataFrame, projtype= 'mean', summarize_typ
     plot(df["cell number"], df[Y], xlabel= xlabel, title= title, reset= reset, close= close, show= show, path_output= path_output, ext =ext, **kargs)
 
 
-def G1G2_RNAQuantif(Cell: pd.DataFrame, Spots: pd.DataFrame,
+def G1G2_SpotsInPbody_Quantif(Cell: pd.DataFrame, Spots: pd.DataFrame, spots_type= 'rna',
                           xlabel= None, title= None, reset= True, close= True, show= True, path_output= None, ext ='png', **kargs) :
     
     if 'cellular_cycle' not in Cell.columns : raise MissingColumnError("'cellular_cycle' column is missing Cell DF : consider using update.from_IntegratedSignal_spike_compute_CellularCycleGroup")
@@ -199,7 +199,10 @@ def G1G2_RNAQuantif(Cell: pd.DataFrame, Spots: pd.DataFrame,
     else : fig = plt.gcf()
     if type(title) != type(None) : plt.suptitle(title, fontsize= 35, fontweight= 'bold')
     if type(xlabel) != type(None) : fig.text(0.5, 0.04, xlabel, ha='center', fontsize= 65)
-
+    
+    RNA_idx = Spots.query("spots_type == '{0}'".format(spots_type)).index
+    Spots = Spots.copy().loc[RNA_idx,:]
+    
     Cell_df = update.removeCellsWithoutSpotsInPodies(Cell, Spots)
     gene_list = list(Cell_df.groupby(['rna name'])["id"].count().sort_index().index)
 
@@ -239,9 +242,80 @@ def G1G2_RNAQuantif(Cell: pd.DataFrame, Spots: pd.DataFrame,
     kargs["alpha"] = 0.7
 
     plt.subplot(1,3,1)
-    G1G2_RnaNumberInPbody(Cell=Cell_df, Spots=Spots, legend=True, **kargs)
+    title= "Mean {0} number in Pbodies".format(spots_type)
+    G1G2_RnaNumberInPbody(Cell=Cell_df, Spots=Spots, legend=True, title=title, **kargs)
     plt.subplot(1,3,2)
-    G1G2_RnaProportionInPbody(Cell=Cell_df, Spots=Spots, legend=True, **kargs)
+    title = "Mean {0} proportion in Pbodies".format(spots_type)
+    G1G2_RnaProportionInPbody(Cell=Cell_df, Spots=Spots, legend=True, title=title, **kargs)
+    ax =plt.subplot(1,3,3)
+    G1G2_CellNumber(Cell=Cell_df, legend=True, **kargs)
+    handle1 = plt.scatter([],[], color= "white", linewidths= 1.5, edgecolor='black', label= 'Genes with more \nthan 100 cells computed')
+    handle2 = plt.scatter([],[], color= "white", linewidths= 2, edgecolor='red', label= 'Genes with less \nthan 100 cells computed')
+    handles = [handle1, handle2]
+    labels = ['Genes with more than 100 cells computed', 'Genes with less than 100 cells computed']
+    fig.legend(handles, labels, loc='upper left', prop={'size': 20})
+    
+    if type(path_output) != type(None) : save_plot(path_output, ext=ext)
+    if show : plt.show()
+    if close : plt.close()
+
+def G1G2_CytoSpotsInPbody_Quantif(Cell: pd.DataFrame, Spots: pd.DataFrame, spots_type= 'rna',
+                          xlabel= None, title= None, reset= True, close= True, show= True, path_output= None, ext ='png', **kargs) :
+    
+    if 'cellular_cycle' not in Cell.columns : raise MissingColumnError("'cellular_cycle' column is missing Cell DF : consider using update.from_IntegratedSignal_spike_compute_CellularCycleGroup")
+    
+    if reset : fig, _ = plt.subplots(nrows= 1, ncols= 3, figsize= (45, 15))
+    else : fig = plt.gcf()
+    if type(title) != type(None) : plt.suptitle(title, fontsize= 35, fontweight= 'bold')
+    if type(xlabel) != type(None) : fig.text(0.5, 0.04, xlabel, ha='center', fontsize= 65)
+    
+    RNA_idx = Spots.query("spots_type == '{0}'".format(spots_type)).index
+    Spots = Spots.copy().loc[RNA_idx,:]
+    
+    Cell_df = update.removeCellsWithoutSpotsInPodies(Cell, Spots)
+    gene_list = list(Cell_df.groupby(['rna name'])["id"].count().sort_index().index)
+
+    #Color set
+    if "color" in kargs :
+        color_list = kargs["color"]
+        if len(color_list) == 1 : color_list *= len(gene_list)
+        elif isinstance(color_list, str) : color_list = [color_list]*len(gene_list)
+    else : 
+        color_list = get_colors_list(len(gene_list))
+
+    #linewidth set
+    if "linewidths" in kargs :
+        linewidths_list = kargs["linewidths"]
+        if len(linewidths_list) == 1 : linewidths_list *= len(gene_list)
+        elif isinstance(linewidths_list, (float,int)) : linewidths_list = [linewidths_list]*len(gene_list)
+    else : linewidths_list = [1]*len(gene_list)
+
+    #edgecolor set
+    if "edgecolors" in kargs :
+        edgecolors_list = kargs["edgecolors"]
+        if len(edgecolors_list) == 1 : edgecolors_list *= len(gene_list)
+        elif isinstance(edgecolors_list, str) : edgecolors_list = [edgecolors_list]*len(gene_list)
+    else : edgecolors_list = ['black']*len(gene_list)
+
+    red_genes = get.get_GenesWithlessThanXCells(Cell_df.query("cellular_cycle == 'g1'"),100,'id')
+    red_genes += get.get_GenesWithlessThanXCells(Cell_df.query("cellular_cycle == 'g2'"),100,'id')
+    red_index = [gene_list.index(gene) for gene in red_genes]
+    for idx in red_index :
+        edgecolors_list[idx] = 'red'
+        linewidths_list[idx] = 1.2
+
+
+    kargs["color"] = color_list
+    kargs["linewidths"] = linewidths_list
+    kargs["edgecolors"] = edgecolors_list
+    kargs["alpha"] = 0.7
+
+    plt.subplot(1,3,1)
+    title= "Mean {0} number in Pbodies".format(spots_type)
+    G1G2_cyto_spots_InPbody(Cell=Cell_df, Spots=Spots, legend=True, title=title, **kargs)
+    plt.subplot(1,3,2)
+    title = "Mean {0} proportion in Pbodies".format(spots_type)
+    G1G2_cyto_spots_InPbody_proportion(Cell=Cell_df, Spots=Spots, legend=True, title=title, **kargs)
     ax =plt.subplot(1,3,3)
     G1G2_CellNumber(Cell=Cell_df, legend=True, **kargs)
     handle1 = plt.scatter([],[], color= "white", linewidths= 1.5, edgecolor='black', label= 'Genes with more \nthan 100 cells computed')
@@ -255,6 +329,72 @@ def G1G2_RNAQuantif(Cell: pd.DataFrame, Spots: pd.DataFrame,
     if close : plt.close()
 
 
+
+def G1G2_Spots_Quantif(Cell: pd.DataFrame, Spots: pd.DataFrame, spots_type = 'rna',
+                          xlabel= None, title= None, reset= True, close= True, show= True, path_output= None, ext ='png', **kargs) :
+    
+    if 'cellular_cycle' not in Cell.columns : raise MissingColumnError("'cellular_cycle' column is missing Cell DF : consider using update.from_IntegratedSignal_spike_compute_CellularCycleGroup")
+    
+    if reset : fig, _ = plt.subplots(nrows= 1, ncols= 2, figsize= (30, 15))
+    else : fig = plt.gcf()
+    if type(title) != type(None) : plt.suptitle(title, fontsize= 35, fontweight= 'bold')
+    if type(xlabel) != type(None) : fig.text(0.5, 0.04, xlabel, ha='center', fontsize= 65)
+
+    RNA_idx = Spots.query("spots_type == '{0}'".format(spots_type)).index
+    Spots = Spots.copy().loc[RNA_idx,:]
+
+    Cell_df = update.removeCellsWithoutSpotsInPodies(Cell, Spots)
+    gene_list = list(Cell_df.groupby(['rna name'])["id"].count().sort_index().index)
+
+    #Color set
+    if "color" in kargs :
+        color_list = kargs["color"]
+        if len(color_list) == 1 : color_list *= len(gene_list)
+        elif isinstance(color_list, str) : color_list = [color_list]*len(gene_list)
+    else : 
+        color_list = get_colors_list(len(gene_list))
+
+    #linewidth set
+    if "linewidths" in kargs :
+        linewidths_list = kargs["linewidths"]
+        if len(linewidths_list) == 1 : linewidths_list *= len(gene_list)
+        elif isinstance(linewidths_list, (float,int)) : linewidths_list = [linewidths_list]*len(gene_list)
+    else : linewidths_list = [1]*len(gene_list)
+
+    #edgecolor set
+    if "edgecolors" in kargs :
+        edgecolors_list = kargs["edgecolors"]
+        if len(edgecolors_list) == 1 : edgecolors_list *= len(gene_list)
+        elif isinstance(edgecolors_list, str) : edgecolors_list = [edgecolors_list]*len(gene_list)
+    else : edgecolors_list = ['black']*len(gene_list)
+
+    red_genes = get.get_GenesWithlessThanXCells(Cell_df.query("cellular_cycle == 'g1'"),100,'id')
+    red_genes += get.get_GenesWithlessThanXCells(Cell_df.query("cellular_cycle == 'g2'"),100,'id')
+    red_index = [gene_list.index(gene) for gene in red_genes]
+    for idx in red_index :
+        edgecolors_list[idx] = 'red'
+        linewidths_list[idx] = 1.2
+
+
+    kargs["color"] = color_list
+    kargs["linewidths"] = linewidths_list
+    kargs["edgecolors"] = edgecolors_list
+    kargs["alpha"] = 0.7
+
+    plt.subplot(1,2,1)
+    title = "{0} spots per cell".format(spots_type)
+    G1G2_rna_per_cell(Cell=Cell_df, Spots=Spots, legend=True, title=title, **kargs)
+    plt.subplot(1,2,2)
+    G1G2_CellNumber(Cell=Cell_df, legend=True, **kargs)
+    handle1 = plt.scatter([],[], color= "white", linewidths= 1.5, edgecolor='black', label= 'Genes with more \nthan 100 cells computed')
+    handle2 = plt.scatter([],[], color= "white", linewidths= 2, edgecolor='red', label= 'Genes with less \nthan 100 cells computed')
+    handles = [handle1, handle2]
+    labels = ['Genes with more than 100 cells computed', 'Genes with less than 100 cells computed']
+    fig.legend(handles, labels, loc='upper left', prop={'size': 20})
+    
+    if type(path_output) != type(None) : save_plot(path_output, ext=ext)
+    if show : plt.show()
+    if close : plt.close()
 
 
 def G1G2_RnaNumberInPbody(Cell: pd.DataFrame, Spots: pd.DataFrame, 
@@ -307,18 +447,18 @@ def G1G2_RnaProportionInPbody(Cell: pd.DataFrame, Spots: pd.DataFrame,
     if 'rna name' not in Spots.columns : raise MissingColumnError("'rna name' column is missing from Spots DF : consider using update.AddRnaName")
     if 'cellular_cycle' not in Cell.columns : raise MissingColumnError("'cellular_cycle' column is missing Cell DF : consider using update.from_IntegratedSignal_spike_compute_CellularCycleGroup")
 
-    Spots_DF = pd.merge(Spots, Cell.loc[:,["id", "cellular_cycle"]], how= 'left', left_on= "CellId", right_on= 'id')
+    Spots_DF = pd.merge(Spots, Cell.loc[:,["id", "cellular_cycle"]], how= 'left', left_on= "CellId", right_on= 'id').drop('id_y', axis= 1).rename(columns= {'id_x' : 'id'})
     inPbody = Spots_DF.groupby(["rna name", "cellular_cycle", "CellId"])["PbodyId"].count()
-    Spots_DF["InPbody"] = Spots_DF["PbodyId"].isna()
-    total = Spots_DF.groupby(["rna name", "cellular_cycle", "CellId"])["InPbody"].sum()
-    proportion = inPbody/total
-    drop_idx = proportion[proportion == 0].index
-    proportion = proportion.drop(drop_idx, axis=0)
+    total = Spots_DF.groupby(["rna name", "cellular_cycle", "CellId"])["id"].count()
+    # proportion = inPbody/total
+    # drop_idx = proportion[proportion == 0].index
+    # proportion = proportion.drop(drop_idx, axis=0)
+    # assert all(proportion <= 1), "Error : proportion > 1 found while computing Spots proportion in Pbody"
 
-    Spots_DF = proportion
-    drop_idx = Spots_DF[Spots_DF == 0].index
-    Spots_DF = Spots_DF.drop(drop_idx)
-    gene_list = Spots_DF.sort_index().index.get_level_values(0).unique()
+    # Spots_DF = proportion
+    # drop_idx = Spots_DF[Spots_DF == 0].index
+    # Spots_DF = Spots_DF.drop(drop_idx)
+    gene_list = total.sort_index().index.get_level_values(0).unique()
 
     if reset : plt.figure(figsize=(20,20))
     
@@ -328,11 +468,16 @@ def G1G2_RnaProportionInPbody(Cell: pd.DataFrame, Spots: pd.DataFrame,
     annotation_list = []
     for gene, color, lw, edgecolor in zip(gene_list, kargs["color"], kargs["linewidths"], kargs["edgecolors"]) :
         marker = next(marker_gen)
-        DF = Spots_DF.loc[gene,:]
+        DF_total = total.loc[gene,:]
+        DF_inPbody= inPbody.loc[gene,:]
+        DF =DF_total#Spots_DF.loc[gene,:]
         index_lvl0 = DF.index.get_level_values(0).unique()
-        if "g1" in index_lvl0 : g1_mean = DF.loc["g1",:].mean()
+        if "g1" in index_lvl0 : 
+            g1_mean = DF_inPbody.loc["g1",:].sum() / DF_total.loc["g1",:].sum()
+            if g1_mean == np.inf : print("Mean equals inf : \n",DF.loc["g1",:])
         else : g1_mean = 0
-        if "g2" in index_lvl0 : g2_mean = DF.loc["g2",:].mean()
+        if "g2" in index_lvl0 : 
+            g2_mean = DF_inPbody.loc["g2",:].sum() / DF_total.loc["g2",:].sum()
         else : g2_mean = 0
         plt.scatter(x= g1_mean, y= g2_mean, color = color, label= gene, marker=marker, linewidths=lw, edgecolors= edgecolor, s=60, **kargs_copy)
         annotation_list.append(plt.text(x= g1_mean*0.98, y = g2_mean*1.02, s= gene, size= 7))
@@ -391,20 +536,20 @@ def G1G2_CellNumber(Cell: pd.DataFrame,
     if close : plt.close()
 
 
-def G1G2_Nucleus_rna(Cell: pd.DataFrame, Spots: pd.DataFrame, 
+def G1G2_rna_per_cell(Cell: pd.DataFrame, Spots: pd.DataFrame, 
                           xlabel= "G1", ylabel= "G2", title= "Mean rna proportion in Pbodies",legend=True, reset= False, close= False, show= False, path_output= None, ext ='png', **kargs) :
     
     if 'rna name' not in Cell.columns : raise MissingColumnError("'rna name' column is missing from Cell DF : consider using update.AddRnaName")
     if 'cellular_cycle' not in Cell.columns : raise MissingColumnError("'cellular_cycle' column is missing Cell DF : consider using update.from_IntegratedSignal_spike_compute_CellularCycleGroup")
 
-    Spots_DF = pd.merge(Spots, Cell.loc[:,["id", "cellular_cycle"]], how= 'left', left_on= "CellId", right_on= 'id')
-    inNucleus = Spots_DF.groupby(["rna name", "cellular_cycle", "CellId"])["InNucleus"].count()
-    gene_list = inNucleus.sort_index().index.get_level_values(0).unique()
+    Spots_DF = pd.merge(Spots, Cell.loc[:,["id", "cellular_cycle"]], how= 'left', left_on= "CellId", right_on= 'id').drop('id_y', axis= 1).rename(columns={'id_x' : 'id'})
+    Spots_DF = Spots_DF.groupby(["rna name", "cellular_cycle", "CellId"])["id"].count()
+    gene_list = Spots_DF.sort_index().index.get_level_values(0).unique()
 
     if reset : plt.figure(figsize=(20,20))
 
     kargs_copy = kargs.copy()
-    del kargs_copy["color"],kargs_copy["linewidths"],kargs_copy["edgecolors"]
+    del kargs_copy['color'], kargs_copy["edgecolors"], kargs_copy['linewidths']
 
     markers_gen = get_markers_generator()
     annotation_list = []
@@ -418,6 +563,104 @@ def G1G2_Nucleus_rna(Cell: pd.DataFrame, Spots: pd.DataFrame,
         else : g2_mean = 0
         plt.scatter(x= g1_mean, y= g2_mean, color = color, label= gene, linewidths=lw, marker=marker, edgecolors= edgecolor, s= 60, **kargs_copy)
         annotation_list.append(plt.text(x= g1_mean*0.98, y = g2_mean*1.01, s= gene, size= 10))
+    
+    if legend : plt.legend(ncols= 4)
+    hide_overlapping_annotations(*annotation_list)
+    plt.axis('square')
+    # plt.axis([0,4000,0,4000])
+    if type(xlabel) != type(None) : plt.xlabel(xlabel)
+    if type(ylabel) != type(None) : plt.ylabel(ylabel)
+    if type(title) != type(None) : plt.title(title)
+
+    if type(path_output) != type(None) : save_plot(path_output, ext=ext)
+    if show : plt.show()
+    if close : plt.close()
+
+def G1G2_cyto_spots_InPbody(Cell: pd.DataFrame, Spots: pd.DataFrame, 
+                          xlabel= "G1", ylabel= "G2", title= "Mean rna proportion in Pbodies",legend=True, reset= False, close= False, show= False, path_output= None, ext ='png', **kargs) :
+    
+    if 'rna name' not in Cell.columns : raise MissingColumnError("'rna name' column is missing from Cell DF : consider using update.AddRnaName")
+    if 'cellular_cycle' not in Cell.columns : raise MissingColumnError("'cellular_cycle' column is missing Cell DF : consider using update.from_IntegratedSignal_spike_compute_CellularCycleGroup")
+
+    Spots_DF = pd.merge(Spots, Cell.loc[:,["id", "cellular_cycle"]], how= 'left', left_on= "CellId", right_on= 'id').drop('id_y', axis= 1).rename(columns={'id_x' : 'id'})
+    Spots_DF["InCyto"] = 1 - ( Spots_DF["InNucleus"].astype(bool) | Spots_DF["PbodyId"].isna())
+    Spots_DF = Spots_DF.groupby(["rna name", "cellular_cycle", "CellId"])["InCyto"].sum()
+    gene_list = Spots_DF.sort_index().index.get_level_values(0).unique()
+
+    if reset : plt.figure(figsize=(20,20))
+
+    kargs_copy = kargs.copy()
+    del kargs_copy['color'], kargs_copy["edgecolors"], kargs_copy['linewidths']
+
+    markers_gen = get_markers_generator()
+    annotation_list = []
+    for gene, color, lw, edgecolor in zip(gene_list, kargs["color"], kargs["linewidths"], kargs["edgecolors"]) :
+        marker = next(markers_gen)
+        DF = Spots_DF.loc[gene,:]
+        index_lvl0 = DF.index.get_level_values(0).unique()
+        if "g1" in index_lvl0 : g1_mean = DF.loc["g1",:].mean()
+        else : g1_mean = 0
+        if "g2" in index_lvl0 : g2_mean = DF.loc["g2",:].mean()
+        else : g2_mean = 0
+        plt.scatter(x= g1_mean, y= g2_mean, color = color, label= gene, linewidths=lw, marker=marker, edgecolors= edgecolor, s= 60, **kargs_copy)
+        annotation_list.append(plt.text(x= g1_mean*0.98, y = g2_mean*1.01, s= gene, size= 10))
+    
+    if legend : plt.legend(ncols= 4)
+    hide_overlapping_annotations(*annotation_list)
+    plt.axis('square')
+    if type(xlabel) != type(None) : plt.xlabel(xlabel)
+    if type(ylabel) != type(None) : plt.ylabel(ylabel)
+    if type(title) != type(None) : plt.title(title)
+
+    if type(path_output) != type(None) : save_plot(path_output, ext=ext)
+    if show : plt.show()
+    if close : plt.close()
+
+
+def G1G2_cyto_spots_InPbody_proportion(Cell: pd.DataFrame, Spots: pd.DataFrame, 
+                          xlabel= "G1", ylabel= "G2", title= "Mean rna proportion in Pbodies",legend=True, reset= False, close= False, show= False, path_output= None, ext ='png', **kargs) :
+    
+    if 'rna name' not in Cell.columns : raise MissingColumnError("'rna name' column is missing from Cell DF : consider using update.AddRnaName")
+    if 'cellular_cycle' not in Cell.columns : raise MissingColumnError("'cellular_cycle' column is missing Cell DF : consider using update.from_IntegratedSignal_spike_compute_CellularCycleGroup")
+
+    Spots_DF = pd.merge(Spots, Cell.loc[:,["id", "cellular_cycle"]], how= 'left', left_on= "CellId", right_on= 'id').drop('id_y', axis= 1).rename(columns={'id_x' : 'id'})
+    Spots_DF["InCyto"] = 1 - ( Spots_DF["InNucleus"].astype(bool) | Spots_DF["PbodyId"].isna())
+    count = Spots_DF.groupby(["rna name", "cellular_cycle", "CellId"])["InCyto"].sum()
+    total = Spots_DF.query("InNucleus == 0").groupby(["rna name", "cellular_cycle", "CellId"])["id"].count()
+    Spots_DF = count/total
+    assert Spots_DF[Spots_DF > 1].empty, "Error : proportion > 1 found while computing cytoplasmic spots proportion in Pbody"
+    gene_list = Spots_DF.sort_index().index.get_level_values(0).unique()
+
+    if reset : plt.figure(figsize=(20,20))
+
+    kargs_copy = kargs.copy()
+    del kargs_copy['color'], kargs_copy["edgecolors"], kargs_copy['linewidths']
+
+    markers_gen = get_markers_generator()
+    annotation_list = []
+    for gene, color, lw, edgecolor in zip(gene_list, kargs["color"], kargs["linewidths"], kargs["edgecolors"]) :
+        marker = next(markers_gen)
+        DF = Spots_DF.loc[gene,:]
+        index_lvl0 = DF.index.get_level_values(0).unique()
+        if "g1" in index_lvl0 : g1_mean = DF.loc["g1",:].mean()
+        else : g1_mean = 0
+        if "g2" in index_lvl0 : g2_mean = DF.loc["g2",:].mean()
+        else : g2_mean = 0
+        plt.scatter(x= g1_mean, y= g2_mean, color = color, label= gene, linewidths=lw, marker=marker, edgecolors= edgecolor, s= 60, **kargs_copy)
+        annotation_list.append(plt.text(x= g1_mean*0.98, y = g2_mean*1.01, s= gene, size= 10))
+    
+    if legend : plt.legend(ncols= 4)
+    hide_overlapping_annotations(*annotation_list)
+    plt.axis('square')
+    if type(xlabel) != type(None) : plt.xlabel(xlabel)
+    if type(ylabel) != type(None) : plt.ylabel(ylabel)
+    if type(title) != type(None) : plt.title(title)
+
+    if type(path_output) != type(None) : save_plot(path_output, ext=ext)
+    if show : plt.show()
+    if close : plt.close()
+
+
 ## Base plot ##
 
 def plot(X: np.ndarray, Y: np.ndarray, xlabel= None, ylabel= None, title= None, reset= False, close= False, show= True, path_output= None, ext ='png', **kargs) :
@@ -513,66 +756,3 @@ def set_legend(labels, colors, column_number = 3, loc = None, **kargs) :
     
 
     plt.legend(ncol= column_number, loc=loc,)
-
-
-
-
-
-
-
-
-
-
-
-
-    ################### OBSOLETTE ######################
-"""
-
-
-
-def Malat_inNuc_asDapiIntensity(Acquisition: pd.DataFrame, Cell: pd.DataFrame, Spots, projtype = 'MIP', summarize_type= 'median', integrated_signal=True, plot_linear_regression= False,
-                                path_output= None, show = True, close= True, reset= True, ext= 'png', title = None, xlabel=None, ylabel= 'malat1 spots in nucleus', **kargs) :
-
-    #Projtype
-    if projtype.upper() == 'MIP' : X = "nucleus_mip_"
-    elif projtype.upper() == 'MEAN' : X = "nucleus_mean_"
-    else : raise ValueError("projtype should either be 'mip' or 'mean'.")
-
-    #Summarize type
-    if summarize_type.upper() == 'MEDIAN' : X += "median_signal"
-    elif summarize_type.upper() == 'MEAN' : X += "mean_signal"
-    else : raise ValueError("summarize_type should either be 'median' or 'mean'.")
-
-    Join_Cell = update.JoinCellAcquisition(Acquisition, Cell, Acquisition_columns= ["rna name"])
-    
-    if integrated_signal:
-        Join_Cell["integrated signal"] = (Join_Cell[X] * Join_Cell["nucleus area (nm^2)"])
-        X = "integrated signal"
-    
-    if xlabel == None : xlabel = X
-
-    rna_list = Join_Cell.value_counts("rna name")
-
-    if not "color" in kargs : 
-        color_df = pd.DataFrame({'rna name' : rna_list.index , 'color' : get_colors_list(len(rna_list))})
-        Join_Cell = pd.merge(left= Join_Cell, right= color_df, how= 'left', on= 'rna name')
-        kargs["color"] = Join_Cell["color"]
-
-    
-    kargs["label"] = Join_Cell["rna name"]
-
-    if plot_linear_regression :
-        
-        if reset : 
-            plt.figure(figsize=(20,10))
-            reset = False
-
-        slope, intercept = simple_linear_regression(X = Join_Cell[X], Y= Join_Cell['malat1 spots in nucleus'])
-        xmin = Join_Cell[X].min()
-        xmax = Join_Cell[X].max()
-        xrange = np.linspace(xmin,xmax, 100)
-        plt.plot(xrange, slope*xrange + intercept, label= 'Linear regression : {0}x + {1}'.format(round(slope,10), round(intercept,2)))
-
-
-    scatter(X= Join_Cell[X], Y= Join_Cell['malat1 spots in nucleus'], xlabel=xlabel, ylabel=ylabel, show=show, close=close, reset=reset, path_output=path_output, ext=ext, title=title, **kargs)
-"""
