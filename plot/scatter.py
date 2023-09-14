@@ -662,6 +662,61 @@ def G1G2_cyto_spots_InPbody_proportion(Cell: pd.DataFrame, Spots: pd.DataFrame,
 
 
 ## Base plot ##
+def Quantif_plot() : 
+    pass
+
+def G1G2_plot(Data : pd.Series,
+              xlabel = 'G1', ylabel= 'G2', title= None, legend= True, reset= False, close= False, show= False, path_output= None, ext ='png', **kargs): 
+    
+    if not isinstance(Data, pd.Series) : raise TypeError("Data argument must be a pd.Series type.")
+    if Data.index.nlevels != 3 : raise IndexError("Data argument index is expected to be a multi-index with nlevels = 3 : ['gene name', 'cellularcycle', 'CellId']. {0} levels were found".format(Data.index.nlevels))
+    for index_name in ['rna name', 'cellularcycle', 'CellId'] : 
+        if index_name not in Data.index.names : raise KeyError("{0} was not found in Data index.".format(index_name))
+    
+    gene_list = Data.sort_index().index.get_level_values(0).unique()
+
+    if reset : plt.figure(figsize=(20,20))
+
+    kargs_copy = kargs.copy()
+    if 'color' in kargs :
+        colors = iter(kargs['color'])
+        del kargs_copy['color']
+    else : colors = iter(get_colors_list(len(gene_list)))
+    
+    if not 'edgecolors' in kargs:
+        kargs['edgecolors'] = ['black'] * len(gene_list)
+    else : del kargs_copy["edgecolors"]
+    if not 'linewidths' in kargs :
+        kargs['linewidths'] = [1] * len(gene_list)
+    else : del kargs_copy['linewidths']
+
+    markers_gen = get_markers_generator()
+    annotation_list = []
+    for gene, color, lw, edgecolor in zip(gene_list, kargs["linewidths"], kargs["edgecolors"]) :
+        marker = next(markers_gen)
+        color =  next(colors)
+        DF = Data.loc[gene,:]
+        index_lvl0 = DF.index.get_level_values(0).unique()
+        if "g1" in index_lvl0 : g1_mean = DF.loc["g1",:].mean()
+        else : g1_mean = 0
+        if "g2" in index_lvl0 : g2_mean = DF.loc["g2",:].mean()
+        else : g2_mean = 0
+        plt.scatter(x= g1_mean, y= g2_mean, color = color, label= gene, linewidths=lw, marker=marker, edgecolors= edgecolor, s= 60, **kargs_copy)
+        annotation_list.append(plt.text(x= g1_mean*0.98, y = g2_mean*1.01, s= gene, size= 10))
+    
+    if legend : plt.legend(ncols= 4)
+    hide_overlapping_annotations(*annotation_list)
+    if 'axis' in kargs :
+        plt.axis(kargs['axis'])
+    else : plt.axis('square')
+    if type(xlabel) != type(None) : plt.xlabel(xlabel)
+    if type(ylabel) != type(None) : plt.ylabel(ylabel)
+    if type(title) != type(None) : plt.title(title)
+
+    if type(path_output) != type(None) : save_plot(path_output, ext=ext)
+    if show : plt.show()
+    if close : plt.close()
+
 
 def plot(X: np.ndarray, Y: np.ndarray, xlabel= None, ylabel= None, title= None, reset= False, close= False, show= True, path_output= None, ext ='png', **kargs) :
     #TODO does not function bc of label handling.

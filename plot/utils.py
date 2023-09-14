@@ -178,7 +178,7 @@ def get_hatch_generator():
     gen = itertools.cycle((marker for marker in hatchs))
     return gen
 
-def get_colors_list(size:int = 62) -> np.ndarray:
+def get_colors_list(size:int = 62) -> list:
     """
     Get a list of color from matplotlib.colors of length 'size'. max size 62
     """
