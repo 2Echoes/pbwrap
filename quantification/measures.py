@@ -208,12 +208,19 @@ def count_rna_close_pbody_list(list_pbody_mask: np.ndarray, spots_coords: 'list[
     counts = np.sum(count_map, axis= (2,1))
     return counts
 
-def count_rna_close_pbody_global(pbody_label: np.ndarray, spots_coords: 'list[tuple]', distance_nm: float, voxel_size: 'tuple[float]')-> int :
+def count_rna_close_pbody_global(pbody_label: np.ndarray, spots_coords: 'list[tuple]', distance_nm: float, voxel_size: 'tuple[float]', spot_type:str ='spot')-> dict :
     """
-    Count number of RNA (spots) closer than 'distance_nm' from a p-body (mask).
+    Count number of RNA (spots) closer than 'distance_nm' from a p-body (mask). 
+    Distance_nm argument can also be a list[float like] in such a case one measure will be computed for each element of the list. Therefor output will be a list of length = len(distance_nm)
+    
+    Returns
+    -------
+        count_dictionary : dictionary
+            dictionary with length = len(distance_nm) or 1 if distance_nm is float. Keys are element of distance_nm.
+            Such as {'distance1' : count_d1, 'distance2' : count_d2....}
     """
     
-    check_parameter(pbody_label = (np.ndarray), spots_coords = (list, np.ndarray), distance_nm = (int, float), voxel_size = (tuple, list))
+    check_parameter(pbody_label = (np.ndarray), spots_coords = (list, np.ndarray), distance_nm = (int, float, list), voxel_size = (tuple, list))
 
     pbody_mask = pbody_label.astype(bool)
     if pbody_mask.ndim != 2: raise ValueError("Unsupported p_body mask dimension. Only 2D arrays are supported.")
@@ -238,6 +245,14 @@ def count_rna_close_pbody_global(pbody_label: np.ndarray, spots_coords: 'list[tu
         z_coords, y_coords, x_coords,*_ = unzip(spots_coords)
         del z_coords,_
     rna_distance_map[y_coords, x_coords] = frompbody_distance_map[y_coords, x_coords] # This distance maps gives the distance of each RNA to the closest p-body
-    count_map = np.logical_and(rna_distance_map >= 0, rna_distance_map <= distance_nm)
-    Y_truth, X_truth = indices[0,count_map], indices[1,count_map]
-    return np.unique(pbody_label[Y_truth,X_truth], return_counts= True)
+    
+    if isinstance(distance_nm, (int, float)) : 
+        count_map = np.logical_and(rna_distance_map >= 0, rna_distance_map <= distance_nm)
+        Y_truth, X_truth = indices[0,count_map], indices[1,count_map]
+        return {str(distance_nm) : np.unique(pbody_label[Y_truth,X_truth], return_counts= True)}
+
+    else :
+        count_maps = [np.logical_and(rna_distance_map >= 0, rna_distance_map <= distance) for distance in distance_nm]
+        coords_truth = [(indices[0,count_map], indices[1,count_map],distance) for count_map, distance in zip(count_maps, distance_nm)]
+        print("")
+        return {"{0} {1} nm".format(spot_type, distance) : np.unique(pbody_label[Y_truth,X_truth], return_counts= True) for Y_truth, X_truth, distance in coords_truth}

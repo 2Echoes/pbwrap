@@ -7,14 +7,14 @@ from skimage.segmentation import find_boundaries
 from skimage.measure import regionprops_table
 from pbwrap.integrity import check_parameter
 
-def compute_Pbody(AcquisitionId: int, Pbody_label: np.ndarray, cell_label: np.ndarray, rna_coords, malat1_coords) :
+def compute_Pbody(AcquisitionId: int, Pbody_label: np.ndarray, cell_label: np.ndarray, rna_coords, malat1_coords, distance = [0, 100,200,400,600,800,1000,1500,2000]) :
     """
     Compute Pbody DF during analysis pipeline.
     Note : It is important that the Pbody_label given is the same as the one used during cells computation (fov).
     """
     Pbody_dim = Pbody_label.ndim
     cell_dim = cell_label.ndim
-    Pbody_dictionary = compute_Pbody_dictionary(Pbody_label, rna_coords, malat1_coords)
+    Pbody_dictionary = compute_Pbody_dictionary(Pbody_label, rna_coords, malat1_coords, distance=distance)
     nbre_pbody = len(Pbody_dictionary["label"])
     ids = np.arange(nbre_pbody)
     AcquisitionIds = [AcquisitionId] * nbre_pbody
@@ -32,12 +32,11 @@ def compute_Pbody(AcquisitionId: int, Pbody_label: np.ndarray, cell_label: np.nd
     
     if cell_dim == 2 : cell_labels = cell_label[Y,X]
     else : raise ValueError("Only 2D arrays are supported for Cell label")
-    DF_1000nm = pd.DataFrame(columns= ["label", "rna_closer_1000nm"], data=list(zip(*Pbody_dictionary["pbody_closer_than_1000_nm"]))) 
-    DF_1500nm = pd.DataFrame(columns= ["label", "rna_closer_1500nm"], data=list(zip(*Pbody_dictionary["pbody_closer_than_1500_nm"]))) 
-    DF_2000nm = pd.DataFrame(columns= ["label", "rna_closer_2000nm"], data=list(zip(*Pbody_dictionary["pbody_closer_than_2000_nm"])))
-
-    DF = pd.merge(DF_2000nm, DF_1500nm,how= 'left', on= 'label') 
-    DF = pd.merge(DF, DF_1000nm,how= 'left', on= 'label') 
+    DF = pd.DataFrame({'label' : Pbody_dictionary['label']})
+    for dist in distance :
+        DF = pd.merge(DF, pd.DataFrame(columns= ['label', 'rna {0}nm count'.format(dist)], data= zip(*Pbody_dictionary['rna {0} nm'.format(dist)])), how= 'left', on= 'label')
+        DF = pd.merge(DF, pd.DataFrame(columns= ['label', 'malat1 {0}nm count'.format(dist)], data= zip(*Pbody_dictionary['malat1 {0} nm'.format(dist)])), how= 'left', on= 'label')
+    DF = DF.fillna(0)
 
     res_DataFrame = pd.DataFrame({
         "id" : ids,
@@ -47,20 +46,18 @@ def compute_Pbody(AcquisitionId: int, Pbody_label: np.ndarray, cell_label: np.nd
         "area" : areas,
         "volume" : volumes,
         "label" : Pbody_dictionary["label"],
-        "cell_label" : cell_labels,
-        "rna_count" : Pbody_dictionary["rna_count"],
-        "malat1_count" : Pbody_dictionary["malat1_count"]
+        "cell_label" : cell_labels
     })
-    res_DataFrame = pd.merge(res_DataFrame, DF, 'left', on= 'label')
-    datashape_ref = Dataframe.newframe_Pbody()
-    check_samedatashape(res_DataFrame, datashape_ref)
-    res_DataFrame = res_DataFrame.query('cell_label != 0')
 
+    res_DataFrame = pd.merge(res_DataFrame, DF, 'left', on= 'label')
+    res_DataFrame = res_DataFrame.query('cell_label != 0')
+    datashape_ref = Dataframe.newframe_Pbody(distance=distance)
+    check_samedatashape(res_DataFrame, datashape_ref)
     return res_DataFrame
 
 
 
-def compute_Pbody_dictionary(Pbody_label: np.ndarray, rna_coords, malat_coords, voxelsize = (300,103,103)):
+def compute_Pbody_dictionary(Pbody_label: np.ndarray, rna_coords, malat_coords, distance, voxelsize = (300,103,103)):
     """
     From Pbody_label (fov) computes features and return dict object. 
     Each item is a list of feature where each element is the feature value for 1 region in the label.
@@ -79,15 +76,12 @@ def compute_Pbody_dictionary(Pbody_label: np.ndarray, rna_coords, malat_coords, 
 
     if not isinstance(Pbody_label, np.ndarray) : raise TypeError('Pbody_label should be of ndarray type. It is {0}'.format(type(Pbody_label)))
     Pbody_dictionary = regionprops_table(Pbody_label, properties= ['label', 'centroid','area','bbox'])
-    masks_list = [Pbody_label == label for label in Pbody_dictionary['label']]
-    rna_count = count_spots_in_masks_list(rna_coords, masks_list)
-    malat1_count = count_spots_in_masks_list(malat_coords, masks_list)
 
-    Pbody_dictionary["rna_count"] = rna_count
-    Pbody_dictionary["malat1_count"] = malat1_count
-    Pbody_dictionary["pbody_closer_than_1000_nm"] = count_rna_close_pbody_global(pbody_label= Pbody_label, spots_coords= rna_coords, distance_nm= 1000, voxel_size= voxelsize)
-    Pbody_dictionary["pbody_closer_than_1500_nm"] = count_rna_close_pbody_global(pbody_label= Pbody_label, spots_coords= rna_coords, distance_nm= 1500, voxel_size= voxelsize)
-    Pbody_dictionary["pbody_closer_than_2000_nm"] = count_rna_close_pbody_global(pbody_label= Pbody_label, spots_coords= rna_coords, distance_nm= 2000, voxel_size= voxelsize)
+    rna_count_dictionary = count_rna_close_pbody_global(pbody_label= Pbody_label, spots_coords= rna_coords, distance_nm= distance, voxel_size= voxelsize, spot_type= 'rna')
+    Pbody_dictionary.update(rna_count_dictionary)
+    malat1_count_dictionary = count_rna_close_pbody_global(pbody_label= Pbody_label, spots_coords= malat_coords, distance_nm= distance, voxel_size= voxelsize, spot_type= 'malat1')
+    Pbody_dictionary.update(malat1_count_dictionary)
+
 
     return Pbody_dictionary
 

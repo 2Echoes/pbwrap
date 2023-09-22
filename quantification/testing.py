@@ -4,7 +4,9 @@ import pbwrap.utils as utils
 import pbwrap.quantification.cell as cellquant
 import numpy as np
 from skimage.measure import regionprops_table
-from pbwrap.quantification.measures import count_spots_in_mask
+from pbwrap.quantification.measures import count_spots_in_mask, count_rna_close_pbody_global
+import time as t
+import pandas as pd
 
 """
 
@@ -27,35 +29,48 @@ l3 = [1,1,50,2,1]
 l4 = [1,1,25,3,1]
 l5 = [1,1,2,2,4]
 
-m1 = [0,0,0,0,0]
-m2 = [0,1,0,1,0]
-m3 = [0,1,1,1,0]
-m4 = [0,0,0,1,0]
-m5 = [1,0,0,0,0]
+m1 = [0,0,0,0,0,0,0,0]
+m2 = [0,1,0,1,0,3,3,0]
+m3 = [0,1,1,1,0,0,0,0]
+m4 = [0,0,0,1,0,0,4,0]
+m5 = [2,0,0,0,0,0,4,0]
 
 data = np.array([l1,l2,l3,l4,l5])
-mask = np.array([m1,m2,m3,m4,m5], dtype= bool)
+mask = np.array([m1,m2,m3,m4,m5], dtype= int)
 
 print('data\n',data)
 print("mask\n", ~mask)
 
-X = [1,3,1,2,3,3,0, 0, 2]
-Y = [1,1,2,2,2,3,4,0, 1]
+X = [1,3,1,2,3,3,0, 0,2,6,5]
+Y = [1,1,2,2,2,3,4,0,1,3,3]
+coords = list(zip(Y,X))
 print("coords in mask : \n",mask[Y,X])
 
-coords = list(zip(Y,X))
-coords_copy = coords.copy()
-print("coords :\n",coords)
+LEFT = pd.DataFrame({'id' : list(np.arange(9)) + [1], 'name' : ['a','b','c','d','e','f','g','h','u','j']})
+RIGHT = pd.DataFrame({'id' : np.random.randint(1,10,10), 'price' : np.random.randint(1,5,10)})
 
-for point in coords : 
-    if not mask[point[0],point[1]] : coords.remove(point)
+print(LEFT)
+print(RIGHT)
+print(pd.merge(LEFT,RIGHT, how='left', on= 'id', validate= 'one_to_many'))
 
-print("nbre de coords : ", len(coords))
-print("nbre de coords_copy : ", count_spots_in_mask(coords_copy, mask))
 
-X_array = np.array(X, dtype= int)[mask[Y,X]]
-Y_array = np.array(Y, dtype= int)[mask[Y,X]]
 
-print(X_array)
-print(Y_array)
-print(np.array(list(zip(Y_array, X_array))))
+
+
+#Testing measures.count_rna_close_pbody_global
+# distance = [0,1000]#,100,200,400,600,800,1000,1500,2000]
+# Pbody_dictionary = count_rna_close_pbody_global(mask, spots_coords= coords, distance_nm= distance, voxel_size=(100,100))
+# print(Pbody_dictionary)
+
+
+
+# DF = pd.DataFrame({'label' : [1,2,3,4]})
+# print(DF)
+# for dist in distance :
+#     print("Distance : ", dist)
+#     print("Res frame : ", Pbody_dictionary['spot {0} nm'.format(dist)])
+#     print("Res frame : \n", pd.DataFrame(columns= ['label', 'rna {0}nm count'.format(dist)], data= zip(*Pbody_dictionary['spot {0} nm'.format(dist)])))
+#     DF = pd.merge(DF, pd.DataFrame(columns= ['label', 'rna {0}nm count'.format(dist)], data= zip(*Pbody_dictionary['spot {0} nm'.format(dist)])), how= 'left', on= 'label')
+#     # DF = pd.merge(DF, pd.DataFrame(columns= ['label', 'malat1 {0}nm count'.format(dist)], data= Pbody_dictionary['malat1 {0} nm']), how= 'left', on= 'label')
+# DF = DF.fillna(0)
+# print(DF)
