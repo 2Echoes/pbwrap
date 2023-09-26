@@ -222,7 +222,6 @@ def count_rna_close_pbody_global(pbody_label: np.ndarray, spots_coords: 'list[tu
     
     check_parameter(pbody_label = (np.ndarray), spots_coords = (list, np.ndarray), distance_nm = (int, float, list), voxel_size = (tuple, list))
 
-    print("length when computing measure : ", len(spots_coords))
     if pbody_label.ndim != 2: raise ValueError("Unsupported p_body mask dimension. Only 2D arrays are supported.")
     if type(spots_coords) == np.ndarray : spots_coords = list(spots_coords)
     if len(voxel_size) == 3 :
@@ -233,7 +232,11 @@ def count_rna_close_pbody_global(pbody_label: np.ndarray, spots_coords: 'list[tu
         x_scale = voxel_size[1]
     else : raise ValueError("Incorrect voxel_size length should be either 2 or 3. {0} was given".format(len(voxel_size)))
 
-    if len(spots_coords) == 0 : return 0
+    if len(spots_coords) == 0 :
+        res = {
+            '{0} {1} nm'.format(spot_type, distance): pd.Series() for distance in distance_nm
+        }
+        return 0
     if len(spots_coords[0]) == 2 :
         y_coords, x_coords = unzip(spots_coords)
     elif len(spots_coords[0]) == 3 :
@@ -256,23 +259,21 @@ def count_rna_close_pbody_global(pbody_label: np.ndarray, spots_coords: 'list[tu
     #Counting
     if isinstance(distance_nm, (int, float)) : distance_nm = [distance_nm]
     count_maps = [np.logical_and(rna_distance_map >= 0, rna_distance_map <= distance) for distance in distance_nm]
-    res = []
-    for count_map in zip(count_maps) :
-        res.append(
-            pd.DataFrame(
-            columns= ['spots_coords', 'label'],
-            data = [((Y,X), pbody_label[indices[0,Y,X], indices[1,Y,X]]) for Y,X in zip(np.nonzero(count_map)[0],np.nonzero(count_map)[1])]
-            ).set_index(['spots_coords']).join(spots_number_frame, on= 'spots_coords').groupby('label')['count'].sum()
-        )
-    res = {'{0} {1} nm'.format(spot_type, distance):
+    # res = []
+    # for count_map in zip(count_maps) :
+    #     res.append(
+    #         pd.DataFrame(
+    #         columns= ['spots_coords', 'label'],
+    #         data = [((Y,X), pbody_label[indices[0,Y,X], indices[1,Y,X]]) for Y,X in zip(np.nonzero(count_map)[0],np.nonzero(count_map)[1])]
+    #         ).set_index(['spots_coords']).join(spots_number_frame, on= 'spots_coords').groupby('label')['count'].sum()
+    #     )
+    res = {
+        '{0} {1} nm'.format(spot_type, distance):
         pd.DataFrame(
         columns= ['spots_coords', 'label'],
         data = [((Y,X), pbody_label[indices[0,Y,X], indices[1,Y,X]]) for Y,X in zip(np.nonzero(count_map)[0],np.nonzero(count_map)[1])]
         ).set_index(['spots_coords']).join(spots_number_frame, on= 'spots_coords').groupby('label')['count'].sum()
-    for distance in distance_nm}
+    for count_map,distance in zip(count_maps, distance_nm)
+    }
 
-    # coords_truth = [(indices[0,count_map], indices[1,count_map], distance) for count_map, distance in zip(count_maps, distance_nm)]
-    # res = {"{0} {1} nm".format(spot_type, distance) : spots_number_frame.loc[list(zip(Y_truth,X_truth))].reset_index(drop=False).groupby(['label'])['count'].sum() for Y_truth, X_truth, distance in coords_truth}
-    # print(res[0])
     return res
-    # return {"{0} {1} nm".format(spot_type, distance) : np.unique(pbody_label[Y_truth,X_truth], return_counts= True) for Y_truth, X_truth, distance in coords_truth}
