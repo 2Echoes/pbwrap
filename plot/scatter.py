@@ -190,7 +190,7 @@ def DapiSignal_vs_CellNumber(Cell: pd.DataFrame, projtype= 'mean', summarize_typ
     plot(df["cell number"], df[Y], xlabel= xlabel, title= title, reset= reset, close= close, show= show, path_output= path_output, ext =ext, **kargs)
 
 
-def G1G2_SpotsInPbody_Quantif(Cell: pd.DataFrame, Spots: pd.DataFrame, spots_type= 'rna',
+def G1G2_SpotsInPbody_Quantif(Cell: pd.DataFrame, Spots: pd.DataFrame, Pbody: pd.DataFrame, spots_type= 'rna',
                           xlabel= None, title= None, reset= True, close= True, show= True, path_output= None, ext ='png', **kargs) :
     
     if 'cellular_cycle' not in Cell.columns : raise MissingColumnError("'cellular_cycle' column is missing Cell DF : consider using update.from_IntegratedSignal_spike_compute_CellularCycleGroup")
@@ -204,7 +204,9 @@ def G1G2_SpotsInPbody_Quantif(Cell: pd.DataFrame, Spots: pd.DataFrame, spots_typ
     Spots = Spots.copy().loc[RNA_idx,:]
     
     # Cell_df = update.removeCellsWithoutSpotsInPodies(Cell, Spots)
-    gene_list = list(Cell.groupby(['rna name'])["id"].count().sort_index().index)
+
+    Cell_df = pd.merge(Cell, Pbody.loc[:,['id']], how= 'inner', left_on= 'PbodyId', right_on='id').drop('id_y', axis= 1).rename(columns= {'id_x' : 'id'})
+    gene_list = list(Cell_df.groupby(['rna name'])["id"].count().sort_index().index)
     print(len(gene_list),gene_list)
     #Color set
     if "color" in kargs :
@@ -666,7 +668,25 @@ def Quantif_plot() :
     pass
 
 def G1G2_plot(Data : pd.Series,
-              xlabel = 'G1', ylabel= 'G2', title= None, legend= True, reset= False, close= False, show= False, path_output= None, ext ='png', **kargs): 
+              xlabel = 'G1', ylabel= 'G2', title= None, legend= True, reset= False, close= False, show= False, path_output= None, ext ='png', **kargs):
+
+    """
+    Makes a G1 versus G2 plot. Expected Data Input is a pandas Series with multi-index ['rna name', 'cellularcycle', 'CellId'].
+
+    Output a scatter plot with a point per gene with x value = Serie cell average for 'cellularcycle' = 'g1' and y value = Serie cell average for 'cellularcycle' = 'g2'.
+
+    Parameters
+    ----------
+        Data : pd.Series
+            Expected Data Input is a pandas Series with multi-index ['rna name', 'cellularcycle', 'CellId'].
+        ...
+
+        kargs :
+            edgecolors (list)
+            linewidths (list)
+            color (list)
+            axis [xmin, xmax, ymin, ymax] or ['square', 'tight', ...]
+    """ 
     
     if not isinstance(Data, pd.Series) : raise TypeError("Data argument must be a pd.Series type.")
     if Data.index.nlevels != 3 : raise IndexError("Data argument index is expected to be a multi-index with nlevels = 3 : ['gene name', 'cellularcycle', 'CellId']. {0} levels were found".format(Data.index.nlevels))
