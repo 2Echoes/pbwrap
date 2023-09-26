@@ -265,11 +265,10 @@ def count_rna_close_pbody_global(pbody_label: np.ndarray, spots_coords: 'list[tu
     
     if isinstance(distance_nm, (int, float)) : distance_nm = [distance_nm]
     count_maps = [np.logical_and(rna_distance_map >= 0, rna_distance_map <= distance) for distance in distance_nm]
-    print(np.nonzero(count_maps[0]))
-    quit()
 
     res = []
     for count_map, distance in zip(count_maps, distance_nm) :
+        print(np.nonzero(count_map))
         res.append(
             pd.DataFrame(
             columns= ['distance', 'spots_coords', 'label'],
