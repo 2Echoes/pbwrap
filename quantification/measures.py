@@ -252,8 +252,8 @@ def count_rna_close_pbody_global(pbody_label: np.ndarray, spots_coords: 'list[tu
     # print("label_frame :\n", label_frame)
     # spots_number_frame = pd.merge(spots_number_frame, label_frame, how= 'left', left_index=True, right_index= True, validate= 'many_to_one', indicator= True).dropna(subset= "label") 
     # Ce merge n'a pas de sens car on veut regarder dans le label les coords non pas des spots mais des indices càd les coords du pobody le plus proche du spot. Donc en gros on merge l'espace des coords avec l'espace des indices dont ça marche pas
-    assert '_right_only' not in spots_number_frame["_merge"]
-    del label_frame
+    # assert '_right_only' not in spots_number_frame["_merge"]
+    # del label_frame
     # spots_number_frame.groupby('label')['count'].sum()
     print(spots_number_frame)
 
