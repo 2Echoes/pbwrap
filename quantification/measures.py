@@ -236,7 +236,7 @@ def count_rna_close_pbody_global(pbody_label: np.ndarray, spots_coords: 'list[tu
         res = {
             '{0} {1} nm'.format(spot_type, distance): pd.Series() for distance in distance_nm
         }
-        return 0
+        return res
     if len(spots_coords[0]) == 2 :
         y_coords, x_coords = unzip(spots_coords)
     elif len(spots_coords[0]) == 3 :
