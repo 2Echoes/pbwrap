@@ -34,8 +34,8 @@ def compute_Pbody(AcquisitionId: int, Pbody_label: np.ndarray, cell_label: np.nd
     else : raise ValueError("Only 2D arrays are supported for Cell label")
     DF = pd.DataFrame({'label' : Pbody_dictionary['label']})
     for dist in distance :
-        DF = pd.merge(DF, pd.DataFrame(columns= ['label', 'rna {0}nm count'.format(dist)], data= zip(*Pbody_dictionary['rna {0} nm'.format(dist)])), how= 'left', on= 'label')
-        DF = pd.merge(DF, pd.DataFrame(columns= ['label', 'malat1 {0}nm count'.format(dist)], data= zip(*Pbody_dictionary['malat1 {0} nm'.format(dist)])), how= 'left', on= 'label')
+        DF = pd.merge(DF, pd.DataFrame(columns= ['label', 'rna {0}nm count'.format(dist)], data= zip(Pbody_dictionary['rna {0} nm'.format(dist)].index, Pbody_dictionary['rna {0} nm'.format(dist)])), how= 'left', on= 'label')
+        DF = pd.merge(DF, pd.DataFrame(columns= ['label', 'malat1 {0}nm count'.format(dist)], data= zip(Pbody_dictionary['malat1 {0} nm'.format(dist)].index, Pbody_dictionary['malat1 {0} nm'.format(dist)])), how= 'left', on= 'label')
     DF = DF.fillna(0)
 
     res_DataFrame = pd.DataFrame({

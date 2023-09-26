@@ -3,6 +3,7 @@ This submodule contains functions to compute features no matter the data layer.
 """
 
 import numpy as np
+import pandas as pd
 from bigfish.stack import check_parameter, check_array
 from .utils import unzip
 from scipy.ndimage import distance_transform_edt
@@ -187,7 +188,6 @@ def count_rna_close_pbody_list(list_pbody_mask: np.ndarray, spots_coords: 'list[
         y_scale = voxel_size[0]
         x_scale = voxel_size[1]
     else : raise ValueError("Incorrect voxel_size length should be either 2 or 3. {0} was given".format(len(voxel_size)))
-
     pbody_masks = np.array(list_pbody_mask)
     # frompbody_distance_map = distance_transform_edt(np.logical_not(pbody_masks), sampling= [0, y_scale, x_scale]) # 1e15 used to make the computation unrelated to the z axis which has no meaning here.
     frompbody_distance_map = np.array([distance_transform_edt(np.logical_not(pbody_mask), sampling= [y_scale, x_scale]) for pbody_mask in pbody_masks])
@@ -222,8 +222,8 @@ def count_rna_close_pbody_global(pbody_label: np.ndarray, spots_coords: 'list[tu
     
     check_parameter(pbody_label = (np.ndarray), spots_coords = (list, np.ndarray), distance_nm = (int, float, list), voxel_size = (tuple, list))
 
-    pbody_mask = pbody_label.astype(bool)
-    if pbody_mask.ndim != 2: raise ValueError("Unsupported p_body mask dimension. Only 2D arrays are supported.")
+    print("length when computing measure : ", len(spots_coords))
+    if pbody_label.ndim != 2: raise ValueError("Unsupported p_body mask dimension. Only 2D arrays are supported.")
     if type(spots_coords) == np.ndarray : spots_coords = list(spots_coords)
     if len(voxel_size) == 3 :
         y_scale = voxel_size[1]
@@ -233,8 +233,6 @@ def count_rna_close_pbody_global(pbody_label: np.ndarray, spots_coords: 'list[tu
         x_scale = voxel_size[1]
     else : raise ValueError("Incorrect voxel_size length should be either 2 or 3. {0} was given".format(len(voxel_size)))
 
-    frompbody_distance_map, indices = distance_transform_edt(np.logical_not(pbody_mask), sampling= [y_scale, x_scale], return_indices= True)
-    rna_distance_map = np.ones_like(pbody_mask) * -999
     if len(spots_coords) == 0 : return 0
     if len(spots_coords[0]) == 2 :
         y_coords, x_coords = unzip(spots_coords)
@@ -244,15 +242,31 @@ def count_rna_close_pbody_global(pbody_label: np.ndarray, spots_coords: 'list[tu
     else : 
         z_coords, y_coords, x_coords,*_ = unzip(spots_coords)
         del z_coords,_
+
+    #Constructing a frame to enable counting spots with same coordinates, to do so we will update label so that coordinates with X spots get the value [label] * X allowing to add X to the count of label when using np.unique later on.
+    spots_number_frame = pd.DataFrame({"plane_coords" : list(zip(y_coords,x_coords)), "id" : np.arange(len(y_coords))})
+    spots_number_frame = spots_number_frame.groupby(["plane_coords"])["id"].count().rename("count")
+    print("Spots_number_frame :\n", spots_number_frame[spots_number_frame > 1])
+    Y_non_zero, X_non_zero = np.nonzero(pbody_label) 
+    label_frame = pd.DataFrame({"label" : pbody_label[Y_non_zero,X_non_zero], "plane_coords" : list(zip(Y_non_zero,X_non_zero))}).set_index("plane_coords")
+    print("label_frame :\n", label_frame)
+    spots_number_frame = pd.merge(spots_number_frame, label_frame, how= 'left', left_index=True, right_index= True, validate= 'many_to_one', indicator= True).dropna(subset= "label") # Ce merge n'a pas de sens car on veut regarder dans le label les coords non pas des spots mais des indices càd les coords du pobody le plus proche du spot. Donc en gros on merge l'espace des coords avec l'espace des indices dont ça marche pas
+    assert '_right_only' not in spots_number_frame["_merge"]
+    del label_frame
+    # spots_number_frame.groupby('label')['count'].sum()
+    print(spots_number_frame)
+
+    shape = pbody_label.shape
+    pbody_mask = pbody_label.copy().astype(bool)
+    frompbody_distance_map, indices = distance_transform_edt(np.logical_not(pbody_mask), sampling= [y_scale, x_scale], return_indices= True)  #assert z_scale > y,x scale because pbody segmentation is done in 2D so we want to make sure the shortest distance to pbodies will always be found in the plane.
+    rna_distance_map = np.ones(shape) * -999
     rna_distance_map[y_coords, x_coords] = frompbody_distance_map[y_coords, x_coords] # This distance maps gives the distance of each RNA to the closest p-body
     
-    if isinstance(distance_nm, (int, float)) : 
-        count_map = np.logical_and(rna_distance_map >= 0, rna_distance_map <= distance_nm)
-        Y_truth, X_truth = indices[0,count_map], indices[1,count_map]
-        return {str(distance_nm) : np.unique(pbody_label[Y_truth,X_truth], return_counts= True)}
-
+    if isinstance(distance_nm, (int, float)) : distance_nm = [distance_nm]
     else :
         count_maps = [np.logical_and(rna_distance_map >= 0, rna_distance_map <= distance) for distance in distance_nm]
-        coords_truth = [(indices[0,count_map], indices[1,count_map],distance) for count_map, distance in zip(count_maps, distance_nm)]
-        print("")
-        return {"{0} {1} nm".format(spot_type, distance) : np.unique(pbody_label[Y_truth,X_truth], return_counts= True) for Y_truth, X_truth, distance in coords_truth}
+        coords_truth = [(indices[0,count_map], indices[1,count_map], distance) for count_map, distance in zip(count_maps, distance_nm)]
+        res = {"{0} {1} nm".format(spot_type, distance) : spots_number_frame.loc[list(zip(Y_truth,X_truth))].reset_index(drop=False).groupby(['label'])['count'].sum() for Y_truth, X_truth, distance in coords_truth}
+        print(res)
+        return res
+        # return {"{0} {1} nm".format(spot_type, distance) : np.unique(pbody_label[Y_truth,X_truth], return_counts= True) for Y_truth, X_truth, distance in coords_truth}
