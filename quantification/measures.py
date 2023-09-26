@@ -246,7 +246,7 @@ def count_rna_close_pbody_global(pbody_label: np.ndarray, spots_coords: 'list[tu
     #Constructing a frame to enable counting spots with same coordinates, to do so we will update label so that coordinates with X spots get the value [label] * X allowing to add X to the count of label when using np.unique later on.
     spots_number_frame = pd.DataFrame({"spots_coords" : list(zip(y_coords,x_coords)), "id" : np.arange(len(y_coords))})
     spots_number_frame = spots_number_frame.groupby(["spots_coords"])["id"].count().rename("count").reset_index(drop=False)
-    print("Spots_number_frame :\n", spots_number_frame[spots_number_frame > 1])
+    print("Spots_number_frame :\n", spots_number_frame)
     # Y_non_zero, X_non_zero = np.nonzero(pbody_label) 
     # label_frame = pd.DataFrame({"label" : pbody_label[Y_non_zero,X_non_zero], "label_coords" : list(zip(Y_non_zero,X_non_zero))}).set_index("label_coords")
     # print("label_frame :\n", label_frame)
