@@ -273,11 +273,12 @@ def count_rna_close_pbody_global(pbody_label: np.ndarray, spots_coords: 'list[tu
             pd.DataFrame(
             columns= ['distance', 'spots_coords', 'label'],
             data = [(distance, (Y,X), pbody_label[indices[0,Y,X], indices[1,Y,X]]) for Y,X in zip(np.nonzero(count_map)[0],np.nonzero(count_map)[1])]
-            ).set_index(['distance', 'spots_coords']).join(spots_number_frame, on= 'spots_coords')
+            ).set_index(['distance', 'spots_coords']).join(spots_number_frame, on= 'spots_coords').groupby('label')['count'].sum()
         )
 
     # coords_truth = [(indices[0,count_map], indices[1,count_map], distance) for count_map, distance in zip(count_maps, distance_nm)]
     # res = {"{0} {1} nm".format(spot_type, distance) : spots_number_frame.loc[list(zip(Y_truth,X_truth))].reset_index(drop=False).groupby(['label'])['count'].sum() for Y_truth, X_truth, distance in coords_truth}
     print(res[0])
+    quit()
     return res
     # return {"{0} {1} nm".format(spot_type, distance) : np.unique(pbody_label[Y_truth,X_truth], return_counts= True) for Y_truth, X_truth, distance in coords_truth}
