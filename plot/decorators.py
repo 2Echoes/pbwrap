@@ -191,7 +191,7 @@ def plot_distribution_percentile(percentile: float, color= 'red', anotate= False
             percentile_value = np.percentile(distribution, percentile)
             if percentile_value > 10000 : percentile_value_anot = np.format_float_scientific(percentile_value, 3)
             else : percentile_value_anot = percentile_value
-            plt.axis('tight')
+            # plt.axis('tight')
             xmin, xmax, ymin, ymax = plt.axis()
             X = [percentile_value] * len(distribution)
             Y = [ymin] *( len(distribution) - 1 )+ [ymax]

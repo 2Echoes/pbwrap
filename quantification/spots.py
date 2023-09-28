@@ -71,9 +71,6 @@ def compute_Spots_global(AcquisitionId, Cell_label, Nucleus_mask, Pbody_label, s
         if type(coordinates_list) != list : coordinates_list = list(coordinates_list)
         types.extend([spot_type] * len(coordinates_list))
         spots_coords.extend(coordinates_list)
-        print("Computing Spots table")
-        print('spots type : ', spot_type)
-        print('length : ',len(coordinates_list))
     
     nbre_spots = len(spots_coords)
     if nbre_spots == 0 : return newframe_Spots()
