@@ -312,7 +312,7 @@ def G1G2_Spots_Quantif(Cell: pd.DataFrame, Spots: pd.DataFrame, spots_type = 'rn
 
     plt.subplot(1,2,1)
     title = "{0} spots per cell".format(spots_type)
-    G1G2_rna_per_cell(Cell=Cell, Spots=Spots, legend=True, title=title, **kargs)
+    G1G2_spots_per_cell(Cell=Cell, Spots=Spots, spots_type= spots_type, legend=True, title=title, **kargs)
     plt.subplot(1,2,2)
     G1G2_CellNumber(Cell=Cell, legend=True, **kargs)
     fig = _G1G2_main_legend_layout(fig)
@@ -377,45 +377,17 @@ def G1G2_spots_per_cell(Cell: pd.DataFrame, Spots: pd.DataFrame, spots_type: str
               xlabel= xlabel, ylabel= ylabel, title= title, legend=legend, reset= reset, close= close, show= show, path_output= path_output, ext = ext, **kargs)
     
 
-def G1G2_cyto_spots_InPbody(Cell: pd.DataFrame, Spots: pd.DataFrame, 
+def G1G2_cyto_spots_InPbody(Cell: pd.DataFrame, Pbody: pd.DataFrame, spots_type: str, 
                           xlabel= "G1", ylabel= "G2", title= "Mean rna proportion in Pbodies",legend=True, reset= False, close= False, show= False, path_output= None, ext ='png', **kargs) :
-    
+    #TODO : Finish modification
     if 'rna name' not in Cell.columns : raise MissingColumnError("'rna name' column is missing from Cell DF : consider using update.AddRnaName")
     if 'cellular_cycle' not in Cell.columns : raise MissingColumnError("'cellular_cycle' column is missing Cell DF : consider using update.from_IntegratedSignal_spike_compute_CellularCycleGroup")
 
     Spots_DF = pd.merge(Spots, Cell.loc[:,["id", "cellular_cycle"]], how= 'left', left_on= "CellId", right_on= 'id').drop('id_y', axis= 1).rename(columns={'id_x' : 'id'})
     Spots_DF["InCyto"] = 1 - ( Spots_DF["InNucleus"].astype(bool) | Spots_DF["PbodyId"].isna())
     Spots_DF = Spots_DF.groupby(["rna name", "cellular_cycle", "CellId"])["InCyto"].sum()
-    gene_list = Spots_DF.sort_index().index.get_level_values(0).unique()
 
-    if reset : plt.figure(figsize=(20,20))
 
-    kargs_copy = kargs.copy()
-    del kargs_copy['color'], kargs_copy["edgecolors"], kargs_copy['linewidths']
-
-    markers_gen = get_markers_generator()
-    annotation_list = []
-    for gene, color, lw, edgecolor in zip(gene_list, kargs["color"], kargs["linewidths"], kargs["edgecolors"]) :
-        marker = next(markers_gen)
-        DF = Spots_DF.loc[gene,:]
-        index_lvl0 = DF.index.get_level_values(0).unique()
-        if "g1" in index_lvl0 : g1_mean = DF.loc["g1",:].mean()
-        else : g1_mean = 0
-        if "g2" in index_lvl0 : g2_mean = DF.loc["g2",:].mean()
-        else : g2_mean = 0
-        plt.scatter(x= g1_mean, y= g2_mean, color = color, label= gene, linewidths=lw, marker=marker, edgecolors= edgecolor, s= 60, **kargs_copy)
-        annotation_list.append(plt.text(x= g1_mean*0.98, y = g2_mean*1.01, s= gene, size= 10))
-    
-    if legend : plt.legend(ncols= 4)
-    hide_overlapping_annotations(*annotation_list)
-    plt.axis('square')
-    if type(xlabel) != type(None) : plt.xlabel(xlabel)
-    if type(ylabel) != type(None) : plt.ylabel(ylabel)
-    if type(title) != type(None) : plt.title(title)
-
-    if type(path_output) != type(None) : save_plot(path_output, ext=ext)
-    if show : plt.show()
-    if close : plt.close()
 
 
 def G1G2_cyto_spots_InPbody_proportion(Cell: pd.DataFrame, Spots: pd.DataFrame, 
