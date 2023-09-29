@@ -259,14 +259,6 @@ def count_rna_close_pbody_global(pbody_label: np.ndarray, spots_coords: 'list[tu
     #Counting
     if isinstance(distance_nm, (int, float)) : distance_nm = [distance_nm]
     count_maps = [np.logical_and(rna_distance_map >= 0, rna_distance_map <= distance) for distance in distance_nm]
-    # res = []
-    # for count_map in zip(count_maps) :
-    #     res.append(
-    #         pd.DataFrame(
-    #         columns= ['spots_coords', 'label'],
-    #         data = [((Y,X), pbody_label[indices[0,Y,X], indices[1,Y,X]]) for Y,X in zip(np.nonzero(count_map)[0],np.nonzero(count_map)[1])]
-    #         ).set_index(['spots_coords']).join(spots_number_frame, on= 'spots_coords').groupby('label')['count'].sum()
-    #     )
     res = {
         '{0} {1} nm'.format(spot_type, distance):
         pd.DataFrame(

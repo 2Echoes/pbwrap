@@ -7,7 +7,7 @@ from skimage.segmentation import find_boundaries
 from skimage.measure import regionprops_table
 from pbwrap.integrity import check_parameter
 
-def compute_Pbody(AcquisitionId: int, Pbody_label: np.ndarray, cell_label: np.ndarray, rna_coords, malat1_coords, distance = [0, 100,200,400,600,800,1000,1500,2000]) :
+def compute_Pbody(AcquisitionId: int, Pbody_label: np.ndarray, cell_label: np.ndarray, nucleus_mask: np.ndarray, rna_coords, malat1_coords, distance = [0, 100,200,400,600,800,1000,1500,2000]) :
     """
     Compute Pbody DF during analysis pipeline.
     Note : It is important that the Pbody_label given is the same as the one used during cells computation (fov).
@@ -20,7 +20,7 @@ def compute_Pbody(AcquisitionId: int, Pbody_label: np.ndarray, cell_label: np.nd
     AcquisitionIds = [AcquisitionId] * nbre_pbody
     CellIds = np.nan # Computed during 'CustomPandasFramework.Pbody_project.Pbody_AddCellFK' call
     centroids_coordinates = list(zip(*(np.array(Pbody_dictionary["centroid-{0}".format(n)]).round().astype(int) for n in range(0,Pbody_dim)))) 
-
+    InNucleus = nucleus_mask[Pbody_dictionary["centroid-0"], Pbody_dictionary["centroid-1"]]
     if Pbody_dim == 2 :
         areas  = Pbody_dictionary["area"]
         volumes = np.nan
@@ -46,7 +46,8 @@ def compute_Pbody(AcquisitionId: int, Pbody_label: np.ndarray, cell_label: np.nd
         "area" : areas,
         "volume" : volumes,
         "label" : Pbody_dictionary["label"],
-        "cell_label" : cell_labels
+        "cell_label" : cell_labels,
+        "InNucleus" : InNucleus
     })
 
     res_DataFrame = pd.merge(res_DataFrame, DF, 'left', on= 'label')
