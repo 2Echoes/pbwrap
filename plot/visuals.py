@@ -12,8 +12,60 @@ from skimage.segmentation import find_boundaries
 from .utils import format_array_scientific_notation, save_plot
 
 
-def output_spot_tiffvisual(channel, spots, path_output, dot_size = 3, rescale = True):
+def output_spot_tiffvisual(channel,spots_list, path_output, dot_size = 3, rescale = True):
     
+    """
+    Outputs a tiff image with one channel being {channel} and the other a mask containing dots where sports are located.
+    
+    Parameters
+    ----------
+        channel : np.ndarray
+            3D monochannel image
+        spots : list[np.ndarray] or np.ndarray
+            Spots arrays are ndarray where each element corresponds is a tuple(z,y,x) corresponding to 3D coordinate of a spot
+            To plot different spots on different channels a list of spots ndarray can be passed. 
+        path_output : str
+        dot_size : int
+            in pixels
+    """
+    
+    stack.check_parameter(channel = (np.ndarray), spots_list= (list, np.ndarray), path_output = (str), dot_size = (int))
+    stack.check_array(channel, ndim= [2,3])
+    if isinstance(spots_list, np.ndarray) : spots_list = [spots_list]
+
+    if channel.ndim == 3 : 
+        channel = stack.maximum_projection(channel)
+
+    im = np.zeros([1 + len(spots_list)] + list(channel.shape))
+    im[0,:,:] = channel
+
+    for level in range(1,len(spots_list) + 1) :
+        if len(level) == 0 : continue
+        else :
+            spots_mask = np.zeros_like(channel)
+            
+            #Unpacking spots
+            if len(level[0] == 2) :
+                Y,X = zip(*level)
+            elif len(level[0] == 3) :
+                Z,Y,X = zip(*level)
+                del Z
+            else :
+                Z,Y,X,*_ = zip(*level)
+                del Z,_
+            
+            #Reconstructing signal
+            spots_mask[Y,X] = 1
+            if dot_size > 1 : spots_mask = binary_dilation(spots_mask, iterations= dot_size-1)
+            spots_mask = stack.rescale(np.array(spots_mask, dtype = channel.dtype))
+            im[level] = spots_mask
+
+    if rescale : channel = stack.rescale(channel, channel_to_stretch= 0)
+    stack.save_image(im, path_output, extension= 'tif')
+
+
+def output_spot_tiffvisual_old(channel, spots, path_output, dot_size = 3, rescale = True):
+    #Obselete delete if pipeline is working
     """
     Outputs a tiff image with one channel being {channel} and the other a mask containing dots where sports are located.
     
@@ -52,6 +104,7 @@ def output_spot_tiffvisual(channel, spots, path_output, dot_size = 3, rescale = 
 
     if rescale : channel = stack.rescale(channel, channel_to_stretch= 0)
     stack.save_image(im, path_output, extension= 'tif')
+
 
 
 

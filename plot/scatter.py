@@ -338,6 +338,53 @@ def G1G2_Spots_Quantif(Cell: pd.DataFrame, Spots: pd.DataFrame, spots_type = 'rn
     if show : plt.show()
     if close : plt.close()
 
+    
+def G1G2_KIF1C_plateQuantif(Spots_list: 'list[pd.DataFrame]', plate_list : 'list[str]', spots_type : str,
+                            xlabel= None, title= None, reset= True, close= True, show= True, path_output= None, ext ='png', **kargs) :
+    """
+    Here plate name is equivalent to rna name (code speaking) in other plots.
+    """
+
+    if len(Spots_list) != len(plate_list) : raise ValueError("Spots_list and plate_list length must match.")
+
+    for idx, name in enumerate(plate_list) :
+        if not isinstance(Spots_list[idx], (pd.DataFrame)) : raise TypeError("All elements of Spots_list must be  of pandas DataFrames type.")
+        if not 'rna name' in Spots_list[idx].columns : raise KeyError("rna name column wasn't found in at least one Spots DataFrame.")
+        if not 'cellular_cycle' in Spots_list[idx].columns : raise KeyError("cellular_cycle column wasn't found in at least one Spots DataFrame.")
+        query = Spots_list[idx].query("`rna name`!= 'KIF1C'")
+        if not query.empty :
+            Spots_list[idx] = Spots_list[idx].drop(query.index, axis= 0)
+        del query
+        Spots_list[idx]["rna name"] = [name] * len(Spots_list[idx])
+
+    Spots_frame = pd.concat([Spots_list], axis= 0)
+    Spots_Series: pd.Series = Spots_frame.groupby(['rna name', 'cellular_cycle', 'CellId'])["id"].count().rename('count')
+    gene_outlier_dict = {
+        'Df' : Spots_frame,
+        'number' : 100,
+        'pk' : 'CellId'
+        }
+    fig,_,kargs = _G1G2_main_legend_layout(plate_list, gene_outlier_dict,
+                             xlabel= xlabel, title= title, reset= reset, close= close, show= show, path_output= path_output, ext =ext, **kargs)
+
+    plt.subplot(1,2,1)
+    title = "KIF1C spots total"
+    serie = Spots_Series.groupby(level=[0,1]).count()
+    G1G2_plot(serie, title=title)
+    plt.subplot(1,2,2)
+    title = "KIF1C mean spots number per cell"
+    serie = Spots_Series
+    G1G2_plot(serie, title=title)
+    plt.subplot(1,2,3)
+    title = "Number of cells computed"
+    serie = Spots_Series.groupby(level=[0,1]).count()
+    G1G2_plot(serie, title=title)
+
+    fig = _G1G2_main_legend_layout(fig)
+    
+    if type(path_output) != type(None) : save_plot(path_output, ext=ext)
+    if show : plt.show()
+    if close : plt.close()
 
 
 def G1G2_RnaNumberInPbody(Cell: pd.DataFrame, Pbody: pd.DataFrame, spot_measure,
@@ -365,25 +412,6 @@ def G1G2_RnaProportionInPbody(Cell: pd.DataFrame, Pbody: pd.DataFrame, Spots: pd
 
     G1G2_plot(SpotsProportion_in_pbodies,
               xlabel= xlabel, ylabel= ylabel, title= title, legend=legend, reset= reset, close= close, show= show, path_output= path_output, ext = ext, **kargs)
-
-
-def G1G2_KIF1C_plateQuantif(Spots_list: 'list[pd.DataFrame]', plate_list : 'list[str]') :
-
-    if len(Spots_list) != len(plate_list) : raise ValueError("Spots_list and plate_list length must match.")
-
-    for idx, name in enumerate(plate_list) :
-        if not isinstance(Spots_list[idx], (pd.DataFrame)) : raise TypeError("All elements of Spots_list must be  of pandas DataFrames type.")
-        if not 'rna name' in Spots_list[idx].columns : raise KeyError("rna name column wasn't found in at least one Spots DataFrame.")
-        query = Spots_list[idx].query("`rna name`!= 'KIF1C'")
-        if not query.empty :
-            Spots_list[idx] = Spots_list[idx].drop(query.index, axis= 0)
-        del query
-        Spots_list[idx]["plate_name"] = [name] * len(Spots_list[idx])
-
-    Spots_groupedframe = pd.concat([Spots_list], axis= 0).groupby(["plate_name", "CellId"])
-
-    pass
-
 
 
 
