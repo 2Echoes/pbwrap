@@ -3,6 +3,7 @@ This submodules groups all function related to scatter plots making from base pl
 """
 import numpy as np
 import pandas as pd
+import warnings
 import CustomPandasFramework.PBody_project.update as update
 import CustomPandasFramework.PBody_project.get as get
 import matplotlib.pyplot as plt
@@ -339,32 +340,25 @@ def G1G2_Spots_Quantif(Cell: pd.DataFrame, Spots: pd.DataFrame, spots_type = 'rn
     if close : plt.close()
 
     
-def G1G2_KIF1C_plateQuantif(Spots_list: 'list[pd.DataFrame]', plate_list : 'list[str]', spots_type : str,
+def G1G2_KIF1C_plateQuantif(Spots_dataframe: pd.DataFrame, spots_type : str,
                             xlabel= None, title= None, reset= True, close= True, show= True, path_output= None, ext ='png', **kargs) :
     """
     Here plate name is equivalent to rna name (code speaking) in other plots.
     """
-
-    if len(Spots_list) != len(plate_list) : raise ValueError("Spots_list and plate_list length must match.")
-
-    for idx, name in enumerate(plate_list) :
-        if not isinstance(Spots_list[idx], (pd.DataFrame)) : raise TypeError("All elements of Spots_list must be  of pandas DataFrames type.")
-        if not 'rna name' in Spots_list[idx].columns : raise KeyError("rna name column wasn't found in at least one Spots DataFrame.")
-        if not 'cellular_cycle' in Spots_list[idx].columns : raise KeyError("cellular_cycle column wasn't found in at least one Spots DataFrame.")
-        query = Spots_list[idx].query("`rna name`!= 'KIF1C'")
-        if not query.empty :
-            Spots_list[idx] = Spots_list[idx].drop(query.index, axis= 0)
-        del query
-        Spots_list[idx]["rna name"] = [name] * len(Spots_list[idx])
-
-    Spots_frame = pd.concat([Spots_list], axis= 0)
+    if 'plate name' not in Spots_dataframe : raise KeyError("Spots dataframe is missing `plate name`column.")
+    if 'rna name' in Spots_dataframe : 
+        warnings.warn("rna name column was found within DataFrame, this is not supposed to happened when computing KIF1C variability. It has been dropped but you shoud investigate if behavior is as expected.")
+        Spots_dataframe.drop("rna name", axis= 1)
+    type_idx = Spots_dataframe.query('type == "{0}"'.format(spots_type))
+    Spots_frame = Spots_dataframe.loc[type_idx,:]
+    Spots_frame = Spots_frame.rename(columns={"plate name" : 'rna name'})
     Spots_Series: pd.Series = Spots_frame.groupby(['rna name', 'cellular_cycle', 'CellId'])["id"].count().rename('count')
     gene_outlier_dict = {
         'Df' : Spots_frame,
         'number' : 100,
         'pk' : 'CellId'
         }
-    fig,_,kargs = _G1G2_main_legend_layout(plate_list, gene_outlier_dict,
+    fig,_,kargs = _G1G2_main_legend_layout(list(Spots_Series.index.get_level_values(0).unique()), gene_outlier_dict,
                              xlabel= xlabel, title= title, reset= reset, close= close, show= show, path_output= path_output, ext =ext, **kargs)
 
     plt.subplot(1,2,1)
@@ -435,7 +429,7 @@ def G1G2_spots_per_cell(Cell: pd.DataFrame, Spots: pd.DataFrame, spots_type: str
     if 'cellular_cycle' not in Cell.columns : raise MissingColumnError("'cellular_cycle' column is missing Cell DF : consider using update.from_IntegratedSignal_spike_compute_CellularCycleGroup")
     if spots_type not in ['rna', 'malat1'] : raise ValueError("Unsupported spot type : {0}. Expected values are 'rna' or 'malat1'.".format(spots_type))
 
-    spots_type_idx = Spots.query("type == {0}".format(spots_type))
+    spots_type_idx = Spots.query('type == "{0}"'.format(spots_type))
     Spots_DF = pd.merge(Spots.loc[spots_type_idx, :], Cell.loc[:,["id", "cellular_cycle"]], how= 'left', left_on= "CellId", right_on= 'id').drop('id_y', axis= 1).rename(columns={'id_x' : 'id'})
     Spots_DF = Spots_DF.groupby(["rna name", "cellular_cycle", "CellId"])["id"].count()
     G1G2_plot(Spots_DF,
@@ -448,7 +442,7 @@ def G1G2_cyto_spots_InPbody(Cell: pd.DataFrame, Spots: pd.DataFrame, spots_type:
     if 'rna name' not in Cell.columns : raise MissingColumnError("'rna name' column is missing from Cell DF : consider using update.AddRnaName")
     if 'cellular_cycle' not in Cell.columns : raise MissingColumnError("'cellular_cycle' column is missing Cell DF : consider using update.from_IntegratedSignal_spike_compute_CellularCycleGroup")
 
-    type_index = Spots.query('type == {0}'.format(spots_type)).index
+    type_index = Spots.query('type == "{0}"'.format(spots_type)).index
     Spots_DF = pd.merge(Spots.loc[type_index, :], Cell.loc[:,["id", "cellular_cycle"]], how= 'left', left_on= "CellId", right_on= 'id').drop('id_y', axis= 1).rename(columns={'id_x' : 'id'})
     Spots_DF["InCyto"] = 1 - ( Spots_DF["InNucleus"].astype(bool) | Spots_DF["PbodyId"].isna())
     Spots_DF = Spots_DF.groupby(["rna name", "cellular_cycle", "CellId"])["InCyto"].sum()
@@ -463,7 +457,7 @@ def G1G2_cyto_spots_InPbody_proportion(Cell: pd.DataFrame, Spots: pd.DataFrame, 
     if 'rna name' not in Cell.columns : raise MissingColumnError("'rna name' column is missing from Cell DF : consider using update.AddRnaName")
     if 'cellular_cycle' not in Cell.columns : raise MissingColumnError("'cellular_cycle' column is missing Cell DF : consider using update.from_IntegratedSignal_spike_compute_CellularCycleGroup")
 
-    type_index = Spots.query('type == {0}'.format(spots_type)).index
+    type_index = Spots.query('type == "{0}"'.format(spots_type)).index
     Spots_DF = pd.merge(Spots.loc[type_index, :], Cell.loc[:,["id", "cellular_cycle"]], how= 'left', left_on= "CellId", right_on= 'id').drop('id_y', axis= 1).rename(columns={'id_x' : 'id'})
     Spots_DF["InCyto"] = 1 - ( Spots_DF["InNucleus"].astype(bool) | Spots_DF["PbodyId"].isna())
     count = Spots_DF.groupby(["rna name", "cellular_cycle", "CellId"])["InCyto"].sum()
@@ -480,7 +474,7 @@ def G1G2_total_spotnumber(Cell: pd.DataFrame, Spots : pd.DataFrame, spots_type,
     if 'rna name' not in Cell.columns : raise MissingColumnError("'rna name' column is missing from Cell DF : consider using update.AddRnaName")
     if 'cellular_cycle' not in Cell.columns : raise MissingColumnError("'cellular_cycle' column is missing Cell DF : consider using update.from_IntegratedSignal_spike_compute_CellularCycleGroup")
 
-    type_index = Spots.query('type == {0}'.format(spots_type)).index
+    type_index = Spots.query('type == "{0}"'.format(spots_type)).index
     Spots_DF = pd.merge(Spots.loc[type_index, :], Cell.loc[:,["id", "cellular_cycle"]], how= 'left', left_on= "CellId", right_on= 'id').drop('id_y', axis= 1).rename(columns={'id_x' : 'id'})
     Spots_DF = Spots_DF.groupby(['rna name', 'cellular_cycle'])['id'].count()
     G1G2_plot(Spots_DF,
