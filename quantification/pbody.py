@@ -20,7 +20,7 @@ def compute_Pbody(AcquisitionId: int, Pbody_label: np.ndarray, cell_label: np.nd
     AcquisitionIds = [AcquisitionId] * nbre_pbody
     CellIds = np.nan # Computed during 'CustomPandasFramework.Pbody_project.Pbody_AddCellFK' call
     centroids_coordinates = list(zip(*(np.array(Pbody_dictionary["centroid-{0}".format(n)]).round().astype(int) for n in range(0,Pbody_dim)))) 
-    InNucleus = nucleus_mask[Pbody_dictionary["centroid-0"], Pbody_dictionary["centroid-1"]]
+    InNucleus = nucleus_mask[Pbody_dictionary["centroid-0"].round().astype(int), Pbody_dictionary["centroid-1"].round().astype(int)]
     if Pbody_dim == 2 :
         areas  = Pbody_dictionary["area"]
         volumes = np.nan
