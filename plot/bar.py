@@ -5,11 +5,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pbwrap.data.getdata as gdata
+import CustomPandasFramework.PBody_project.update as update
+import CustomPandasFramework.PBody_project.views as views
 from .utils import save_plot
-
-########################
-##### RESULT PLOTS #####
-########################
 
 def threshold(Acquisition: pd.DataFrame, rna_list:'list[str]' = None, path_output= None, show = True, close= True, ext= 'png', title = None) :
     
@@ -20,7 +18,6 @@ def threshold(Acquisition: pd.DataFrame, rna_list:'list[str]' = None, path_outpu
     threshold_list = [] 
     std_list = []
     for rna in rna_list :
-        print(rna)
         threshold_list += [Acquisition[Acquisition["rna name"] == rna].loc[:,"RNA spot threshold"].mean()]
         std_list += [Acquisition[Acquisition["rna name"] == rna].loc[:,"RNA spot threshold"].std()]
 
@@ -45,6 +42,37 @@ def P_body_detect_inside_nucleus(Cell: pd.DataFrame, path_output= None, show = T
 
 
 ## DAPI ##
+def CellularCycle_classification(Cell_list, plate_list, cellular_cycle_classifier= update.from_IntegratedSignal_spike_compute_CellularCycleGroup,
+                                 title: str='Celular_cycle repartition from plate to plate', xlabel:str= 'plate', ylabel:str= 'proportion', path_output= None, ext='png', show= True, close= True, width = 0.8, error_width = 3) :
+    """
+    Computes Cellular cycle repartion on a each plates of plate_list using ``cellular_cycle_classifier`` and creates bar graph to compare overall distributions.
+
+    Parameters
+    ----------
+        Cell_list : list[pd.DataFrames]
+        plate_list : list['str']
+        cellular_cycle_classifier : func 
+            Must add 'cellular_cycle' key to a Cell DataFrame.
+    """
+    
+    Cell_frames = (cellular_cycle_classifier(Cell) for Cell in Cell_list)
+    view_list = (views.CellularCycle_distribution_view(frame) for frame in Cell_frames)
+    dictionary_list = [views.CellularCycle_distribution_overallmeasure(view) for view in view_list]
+    
+    #Unpacking results
+    g1_values = [di['g1_mean'] for di in dictionary_list]
+    g1_std = [di['g1_std'] for di in dictionary_list]
+    g2_values = [di['g2_mean'] for di in dictionary_list]
+    g2_std = [di['g2_std'] for di in dictionary_list]
+    S_values = [di['s_mean'] for di in dictionary_list]
+    S_std = [di['s_std'] for di in dictionary_list]
+
+    gene_bar_plot(rna_list= plate_list, values= [g1_values, g2_values, S_values], errors= [g1_std, g2_std, S_std], legend= ['g1', 'g2', 's'],
+                  title=title, xlabel=xlabel, ylabel= ylabel, path_output=path_output, ext=ext, show=show, close=close, width=width, error_width=error_width)
+
+    
+
+
 
 def DapiSignal_InfValue(Acquisition:pd.DataFrame, Cell:pd.DataFrame, max_value: float, gene_list=None, projtype= 'mean', summarize_type = 'median', path_output= None, show = True,close= True, ext= 'png', title: str = None):
     """
@@ -117,11 +145,6 @@ def spots_per_cell(Acquisition: pd.DataFrame, Cell: pd.DataFrame, spot_type = 'r
     fig = gene_bar_plot(rna_list, threshold_list, std_list, title= title, path_output= path_output, ext=ext, show=show, close= close)
 
 
-def cluster_per_cell() :
-    pass #TODO
-
-
-
 def cytoRNA_proportion_in_pbody(detection_view:pd.DataFrame, gene_list: 'list[str]' = None, path_output= None, show = True, close=True, ext= 'png', title = "Nucleus RNA proportion inside P-bodies"):
 
     if gene_list == None : gene_list = detection_view.index.get_level_values(1).unique()
@@ -164,7 +187,7 @@ def RNA_proportion_in_pbody(detection_view: pd.DataFrame, gene_list: 'list[str]'
 
 
 
-def RNApercentage_in_nucleus(detection_view: pd.DataFrame, gene_list: 'list[str]' = None, plot_in_and_out_bars= True, path_output= None, show = True, close= True, ext= 'png', title = None) :
+def RNApercentage_in_nucleus(detection_view: pd.DataFrame, gene_list: 'list[str]' = None, plot_in_and_out_bars= True, ylabel= 'rna proportion inside nucleus', path_output= None, show = True, close= True, ext= 'png', title = None) :
 
     if gene_list == None : gene_list = detection_view.index.get_level_values(1).unique()
     std_list= []
@@ -177,7 +200,7 @@ def RNApercentage_in_nucleus(detection_view: pd.DataFrame, gene_list: 'list[str]
         mean_list.append(mean)
         std_list.append(std)
 
-    fig = gene_bar_plot(gene_list, mean_list, std_list, title= title,ylabel="Proportion of cytoplasmic rna detected inside P-bodies.",
+    fig = gene_bar_plot(gene_list, mean_list, std_list, title= title, ylabel=ylabel,
                          path_output= path_output, ext=ext, show=show, close= close)
 
 def total_cell_number(Acquisition: pd.DataFrame,xlabel=None, ylabel= "Cell number", path_output= None, show = True, close= True, ext= 'png', title = "Computed cell number") :

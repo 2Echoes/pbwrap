@@ -152,7 +152,7 @@ def rna_in_pbodies(Pbody: pd.DataFrame, bins=20, auto_bins= True, path_output= N
 
         plot_idx +=1
         color = next(colors)
-        distribution = df.loc[gene, "rna_count"]
+        distribution = df.loc[gene, "rna 0nm count"]
         pbody_number = len(distribution)
         
         if auto_bins :

@@ -39,26 +39,26 @@ def output_spot_tiffvisual(channel,spots_list, path_output, dot_size = 3, rescal
     im = np.zeros([1 + len(spots_list)] + list(channel.shape))
     im[0,:,:] = channel
 
-    for level in range(1,len(spots_list) + 1) :
-        if len(level) == 0 : continue
+    for level in range(len(spots_list)) :
+        if len(spots_list[level]) == 0 : continue
         else :
             spots_mask = np.zeros_like(channel)
             
             #Unpacking spots
-            if len(level[0] == 2) :
-                Y,X = zip(*level)
-            elif len(level[0] == 3) :
-                Z,Y,X = zip(*level)
+            if len(spots_list[level][0]) == 2 :
+                Y,X = zip(*spots_list[level])
+            elif len(spots_list[level][0]) == 3 :
+                Z,Y,X = zip(*spots_list[level])
                 del Z
             else :
-                Z,Y,X,*_ = zip(*level)
+                Z,Y,X,*_ = zip(*spots_list[level])
                 del Z,_
             
             #Reconstructing signal
             spots_mask[Y,X] = 1
             if dot_size > 1 : spots_mask = binary_dilation(spots_mask, iterations= dot_size-1)
             spots_mask = stack.rescale(np.array(spots_mask, dtype = channel.dtype))
-            im[level] = spots_mask
+            im[level + 1] = spots_mask
 
     if rescale : channel = stack.rescale(channel, channel_to_stretch= 0)
     stack.save_image(im, path_output, extension= 'tif')
