@@ -173,7 +173,7 @@ def plot_spots(spots, color= 'red', dot_size= 1):
 
 
 
-def G1_G2_labeller(result_tables_path:str, grouping, input_path:str, output_path:str, gene_list:'list[str]'=None ) :
+def G1_G2_labeller(result_tables_path:str, grouping, input_path:str, output_path:str, gene_list:'list[str]'=None,**function_kargs) :
     """
     
     """
@@ -195,7 +195,7 @@ def G1_G2_labeller(result_tables_path:str, grouping, input_path:str, output_path
         path = output_path + "{0}/".format(gene)
         os.makedirs(path, exist_ok= True)
         gene_Cell_index = Cell.query("`rna name` == '{0}'".format(gene)).index
-        gene_Cell = grouping(Cell.loc[gene_Cell_index,:])
+        gene_Cell = grouping(Cell.loc[gene_Cell_index,:], **function_kargs)
 
     
     #Path    
