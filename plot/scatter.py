@@ -217,8 +217,11 @@ def G1G2_SpotsInPbody_Quantif(Cell: pd.DataFrame, Pbody: pd.DataFrame, Spots: pd
 
     if 'cellular_cycle' not in Cell.columns : raise MissingColumnError("'cellular_cycle' column is missing Cell DF : consider using update.from_IntegratedSignal_spike_compute_CellularCycleGroup")
     if distance_SpotPbody not in get.get_pbody_spot_distance_parameters(Pbody) : raise ValueError("value passed for 'distance_SpotPbody' was not computed during analysis. Please choose one amongst {0}".format(get.get_pbody_spot_distance_parameters(Pbody)))
-
+    
     #Data management init
+    SpotsType_idx = Spots.query("spots_type == '{0}'".format(spots_type)).index
+    Spots_df = Spots.loc[SpotsType_idx,:]
+    
     spot_measure = '{0} {1}nm count'.format(spots_type, distance_SpotPbody)
     Cellids = pd.merge(Cell, Pbody.loc[:,['id', 'CellId']], how= 'inner', left_on= 'id', right_on='CellId').drop('id_y', axis= 1).rename(columns= {'id_x' : 'id'}).value_counts(subset='CellId').index #CellId with Pbody inside
     keep_ix = Cell.query("id in {0}".format(list(Cellids))).index
@@ -238,7 +241,7 @@ def G1G2_SpotsInPbody_Quantif(Cell: pd.DataFrame, Pbody: pd.DataFrame, Spots: pd
     G1G2_RnaNumberInPbody(Cell=Cell_df, Pbody=Pbody, spot_measure=spot_measure, legend=True, title=title, **kargs)
     plt.subplot(1,3,2)
     title = "Mean {0} proportion in Pbodies".format(spots_type)
-    G1G2_RnaProportionInPbody(Cell=Cell_df, Pbody=Pbody, Spots=Spots, spot_measure=spot_measure, legend=True, title=title, **kargs)
+    G1G2_RnaProportionInPbody(Cell=Cell_df, Pbody=Pbody, Spots=Spots_df, spot_measure=spot_measure, legend=True, title=title, **kargs)
     ax = plt.subplot(1,3,3)
     G1G2_PbodiesPerCell(Cell=Cell_df, Pbody=Pbody, legend=True, **kargs)
 
@@ -365,15 +368,15 @@ def G1G2_KIF1C_plateQuantif(Spots_dataframe: pd.DataFrame, spots_type : str,
     plt.subplot(1,3,1)
     title = "KIF1C spots total"
     serie = Spots_Series.groupby(level=[0,1]).count()
-    G1G2_plot(serie, title=title, axis= 'square')
+    G1G2_plot(serie, title=title)
     plt.subplot(1,3,2)
     title = "KIF1C mean spots number per cell"
     serie = Spots_Series
-    G1G2_plot(serie, title=title,axis= 'square')
+    G1G2_plot(serie, title=title)
     plt.subplot(1,3,3)
     title = "Number of cells computed"
     serie = Spots_Series.groupby(level=[0,1]).count()
-    G1G2_plot(serie, title=title,axis= 'square')
+    G1G2_plot(serie, title=title)
 
     fig = _G1G2_main_legend_layout(fig)
     
@@ -387,7 +390,7 @@ def G1G2_RnaNumberInPbody(Cell: pd.DataFrame, Pbody: pd.DataFrame, spot_measure,
 
     if 'rna name' not in Pbody.columns : raise MissingColumnError("'rna name' column is missing from Spots DF : consider using update.AddRnaName")
 
-    Pbody_DF = pd.merge(Pbody, Cell.loc[:,["id", "cellular_cycle"]], how= 'left', left_on= "CellId", right_on= 'id').rename(columns={"id_x" : "id"}).drop("id_y", axis=1)
+    Pbody_DF = pd.merge(Pbody, Cell.loc[:,["id", "cellular_cycle"]], how= 'inner', left_on= "CellId", right_on= 'id').rename(columns={"id_x" : "id"}).drop("id_y", axis=1)
     Pbody_DF = Pbody_DF.groupby(["rna name", "cellular_cycle", "CellId"])[spot_measure].sum().rename(spot_measure)
 
     G1G2_plot(Pbody_DF,
@@ -399,8 +402,8 @@ def G1G2_RnaProportionInPbody(Cell: pd.DataFrame, Pbody: pd.DataFrame, Spots: pd
     if 'rna name' not in Spots.columns : raise MissingColumnError("'rna name' column is missing from Spots DF : consider using update.AddRnaName")
     if 'cellular_cycle' not in Cell.columns : raise MissingColumnError("'cellular_cycle' column is missing Cell DF : consider using update.from_IntegratedSignal_spike_compute_CellularCycleGroup")
 
-    Spots_DF = pd.merge(Spots, Cell.loc[:,["id", "cellular_cycle"]], how= 'left', left_on= "CellId", right_on= 'id').drop('id_y', axis= 1).rename(columns= {'id_x' : 'id'})
-    Pbody_DF = pd.merge(Pbody, Cell.loc[:,["id", "cellular_cycle"]], how= 'left', left_on= "CellId", right_on= 'id').rename(columns={"id_x" : "id"}).drop("id_y", axis=1)
+    Spots_DF = pd.merge(Spots, Cell.loc[:,["id", "cellular_cycle"]], how= 'inner', left_on= "CellId", right_on= 'id').drop('id_y', axis= 1).rename(columns= {'id_x' : 'id'})
+    Pbody_DF = pd.merge(Pbody, Cell.loc[:,["id", "cellular_cycle"]], how= 'inner', left_on= "CellId", right_on= 'id').rename(columns={"id_x" : "id"}).drop("id_y", axis=1)
     Spots_in_pbodies = Pbody_DF.groupby(["rna name", "cellular_cycle", "CellId"])[spot_measure].sum().rename(spot_measure)
     Spots_total = Spots_DF.groupby(["rna name", "cellular_cycle", "CellId"])["id"].count()
     SpotsProportion_in_pbodies = Spots_in_pbodies / Spots_total

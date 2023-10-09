@@ -53,7 +53,7 @@ def _Layout_Quantif_plots(gene_list, gene_outlier_dict:dict =None, xlabel= None,
 
         for key in ['Df', 'number', 'pk'] :
             if key not in gene_outlier_dict.keys() : raise KeyError('{0} key not found in gene_outlier_dict')
-        Df = gene_outlier_dict['Df']
+        Df = gene_outlier_dict['Df'].sort_values(['rna name'])
         number = gene_outlier_dict['number']
         pk = gene_outlier_dict['pk']
 
@@ -81,7 +81,7 @@ def _G1G2_main_legend_layout(fig) :
 
     return fig
 
-def G1G2_plot(Data : pd.Series,
+def G1G2_plot(Data : pd.Series, plot_X_equal_Y_line= True,
               xlabel = 'G1', ylabel= 'G2', title= None, legend= True, reset= False, close= False, show= False, path_output= None, ext ='png', **kargs):
 
     """
@@ -143,9 +143,16 @@ def G1G2_plot(Data : pd.Series,
     
     if legend : plt.legend(ncols= 4)
     hide_overlapping_annotations(*annotation_list)
-    if 'axis' in kargs :
-        plt.axis(kargs['axis'])
-    else : plt.axis('square')
+
+    # if 'axis' in kargs :
+    #     plt.axis(kargs['axis'])
+    # else :
+    xmin,xmax,ymin,ymax = plt.axis('square')
+    plt.axis([0,xmax,0,ymax])
+    if plot_X_equal_Y_line :
+        X = [0, xmax]
+        plt.plot(X,X,'b')
+
     if type(xlabel) != type(None) : plt.xlabel(xlabel)
     if type(ylabel) != type(None) : plt.ylabel(ylabel)
     if type(title) != type(None) : plt.title(title)
