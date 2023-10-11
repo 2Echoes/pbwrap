@@ -178,12 +178,13 @@ def get_hatch_generator():
     gen = itertools.cycle((marker for marker in hatchs))
     return gen
 
-def get_colors_list(size:int = 62) -> list:
+def get_colors_list(size:int = 100) -> list:
     """
-    Get a list of color from matplotlib.colors of length 'size'. max size 62
+    Get a list of color from matplotlib.colors of length 'size'.
+    100 different shade in the library
     """
     if not isinstance(size, int) : raise TypeError("size should be an int, it is a {0}".format(type(size)))
-    if size > 62 or size < 1 : raise ValueError("Size is only supported between 1 and 62")
+    if size < 1 : raise ValueError("Size should be >= 1")
 
     red = _get_red_colors()
     yellow = _get_yellow_colors()
@@ -197,8 +198,17 @@ def get_colors_list(size:int = 62) -> list:
     grey = _get_grey_colors()
 
     color_list = list(sum([*zip_longest(red, green, blue, black, orange, purple, grey, yellow, brown, pink)],()))
+    length = len(color_list)
     while None in color_list : color_list.remove(None)
-    return color_list[:size]
+    if size > length :
+        iteration = ceil(size / length)
+        return (color_list * iteration)[:size]
+        # print("length :" , length)
+        # print("len returned : ", len(color_list * iteration))
+        # print("size :" , size)
+        # print("iteration :", iteration)return (color_list * iteration)[:size]
+
+    return (color_list)[:size]
 
 
 def _get_red_colors() :

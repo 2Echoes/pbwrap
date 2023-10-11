@@ -16,6 +16,8 @@ def _Layout_Quantif_plots(gene_list, gene_outlier_dict:dict =None, xlabel= None,
         fig, ax, modified kargs.
 
     """
+    if len(gene_list) == 0 : raise ValueError("gene_list is empty.")
+
     if 'figsize' in kargs :
         figsize = kargs['figsize']
     else :
@@ -118,7 +120,7 @@ def G1G2_plot(Data : pd.Series, plot_X_equal_Y_line= True,
         del kargs_copy['color']
     else : colors = iter(get_colors_list(len(gene_list)))
     
-    if not 'edgecolors' in kargs:
+    if not 'edgecolors' in kargs :
         kargs['edgecolors'] = ['black'] * len(gene_list)
     else : del kargs_copy["edgecolors"]
     if not 'linewidths' in kargs :
@@ -144,11 +146,11 @@ def G1G2_plot(Data : pd.Series, plot_X_equal_Y_line= True,
     if legend : plt.legend(ncols= 4)
     hide_overlapping_annotations(*annotation_list)
 
-    # if 'axis' in kargs :
-    #     plt.axis(kargs['axis'])
-    # else :
-    xmin,xmax,ymin,ymax = plt.axis('square')
-    plt.axis([0,xmax,0,ymax])
+    if 'axis' in kargs :
+        plt.axis(kargs['axis'])
+    else :
+        xmin,xmax,ymin,ymax = plt.axis('square')
+        plt.axis([0,xmax,0,ymax])
     if plot_X_equal_Y_line :
         X = [0, xmax]
         plt.plot(X,X,'b')
