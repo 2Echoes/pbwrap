@@ -83,7 +83,7 @@ def _G1G2_main_legend_layout(fig) :
 
     return fig
 
-def G1G2_plot(Data : pd.Series, plot_X_equal_Y_line= True,
+def G1G2_plot(Data : pd.Series, plot_X_equal_Y_line= True, cellular_cycle_x = 'g1', cellular_cycle_y = 'g2',
               xlabel = 'G1', ylabel= 'G2', title= None, legend= True, reset= False, close= False, show= False, path_output= None, ext ='png', **kargs):
 
     """
@@ -134,11 +134,11 @@ def G1G2_plot(Data : pd.Series, plot_X_equal_Y_line= True,
         color =  next(colors)
         DF = Data.loc[gene,:]
         index_lvl0 = DF.index.get_level_values(0).unique()
-        if "g1" in index_lvl0  and level == 3 : g1_mean = DF.loc["g1",:].mean()
-        elif "g1" in index_lvl0  and level == 2 : g1_mean = DF.loc["g1"].mean()
+        if cellular_cycle_x in index_lvl0  and level == 3 : g1_mean = DF.loc[cellular_cycle_x,:].mean()
+        elif cellular_cycle_x in index_lvl0  and level == 2 : g1_mean = DF.loc[cellular_cycle_x].mean()
         else : g1_mean = 0
-        if "g2" in index_lvl0 and level == 3 : g2_mean = DF.loc["g2",:].mean()
-        elif "g2" in index_lvl0  and level == 2 : g2_mean = DF.loc["g2"].mean()
+        if cellular_cycle_y in index_lvl0 and level == 3 : g2_mean = DF.loc[cellular_cycle_y,:].mean()
+        elif cellular_cycle_y in index_lvl0  and level == 2 : g2_mean = DF.loc[cellular_cycle_y].mean()
         else : g2_mean = 0
         plt.scatter(x= g1_mean, y= g2_mean, color = color, label= gene, linewidths=lw, marker=marker, edgecolors= edgecolor, s= 60, **kargs_copy)
         annotation_list.append(plt.text(x= g1_mean*0.98, y = g2_mean*1.01, s= gene, size= 10))
