@@ -84,7 +84,7 @@ def _G1G2_main_legend_layout(fig) :
     return fig
 
 def G1G2_plot(Data : pd.Series, plot_X_equal_Y_line= True, cellular_cycle_x = 'g1', cellular_cycle_y = 'g2',
-              xlabel = 'G1', ylabel= 'G2', title= None, legend= True, reset= False, close= False, show= False, path_output= None, ext ='png', **kargs):
+              title= None, legend= True, reset= False, close= False, show= False, path_output= None, ext ='png', **kargs):
 
     """
     Makes a G1 versus G2 plot. Expected Data Input is a pandas Series with multi-index ['rna name', 'cellular_cycle', 'CellId'].
@@ -155,8 +155,8 @@ def G1G2_plot(Data : pd.Series, plot_X_equal_Y_line= True, cellular_cycle_x = 'g
         X = [0, xmax]
         plt.plot(X,X,'b')
 
-    if type(xlabel) != type(None) : plt.xlabel(xlabel)
-    if type(ylabel) != type(None) : plt.ylabel(ylabel)
+    plt.xlabel(cellular_cycle_x.upper())
+    plt.ylabel(cellular_cycle_y.upper())
     if type(title) != type(None) : plt.title(title)
 
     if type(path_output) != type(None) : save_plot(path_output, ext=ext)
