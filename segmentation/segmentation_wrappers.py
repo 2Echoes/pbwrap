@@ -305,7 +305,7 @@ def random_walker_segmentation(image, percentile_down = 99.5, percentile_up = 99
 
 
 
-def watershed_segmentation(image, label, peaks_min_distance= 3 ):
+def watershed_segmentation(image, label=None, peaks_min_distance= 3, inv_image = False ):
     #TODO : Add sampling [3,1,1] or [anisotropy, 1, 1] in case of 3D segmentation.
     #TODO : Unused
     """Performs watershed segmentation using scipy algorithm. 
@@ -325,13 +325,15 @@ def watershed_segmentation(image, label, peaks_min_distance= 3 ):
     """
 
     stack.check_parameter(image = (np.ndarray), peaks_min_distance = (int))
+    if inv_image :
+        image = np.invert(image)
 
     distance = ndi.distance_transform_edt(image)
     #distance = distance_transform(image, label)
-    coords = peak_local_max(distance, footprint=np.ones((3, 3)), labels=label, min_distance = peaks_min_distance)
+    coords = peak_local_max(distance, footprint=np.ones((3, 3)), min_distance = peaks_min_distance) #labels = label
     mask_water = np.zeros(distance.shape, dtype=bool)
     mask_water[tuple(coords.T)] = True
     markers, _ = ndi.label(mask_water)
-    label = watershed(-distance, markers, mask=label)
+    res = watershed(-distance, markers, compactness= 100) #mask = label
 
-    return label
+    return res
