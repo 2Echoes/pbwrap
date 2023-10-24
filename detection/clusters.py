@@ -72,9 +72,11 @@ def cluster_detection(spots, voxel_size, radius = 350, nb_min_spots = 4, keys_to
     if isinstance(keys_to_compute, str) : keys_to_compute = [keys_to_compute]
     elif isinstance(keys_to_compute, list) : pass
     else : raise TypeError("Wrong type for keys_to_compute. Should be list[str] or str. It is {0}".format(type(keys_to_compute)))
-
+    if len(spots) == 0 :
+        return {key : [] for key in keys_to_compute}
+    else : res = {}
     clustered_spots, clusters = detection.detect_clusters(spots, voxel_size= voxel_size, radius= radius, nb_min_spots= nb_min_spots)
-    res = {}
+
 
     if 'clustered_spots' in keys_to_compute :
         res['clustered_spots'] = clustered_spots

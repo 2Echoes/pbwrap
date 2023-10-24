@@ -360,7 +360,7 @@ def G1G2_CytoSpotsInPbody_Quantif(Cell: pd.DataFrame, Spots: pd.DataFrame, Pbody
     RNA_idx = Spots.query("spots_type == '{0}'".format(spots_type)).index
     Spots_df = Spots.loc[RNA_idx,:]
     
-    # Cell_df = update.removeCellsWithoutSpotsInPodies(Cell, Spots)
+    Cell_df = update.removeCellsWithoutSpotsInPodies(Cell, Spots)
     Cell_df = Cell
     gene_list = list(Cell_df.groupby(['rna name'])["id"].count().sort_index().index)
     gene_outlier_dict = {
