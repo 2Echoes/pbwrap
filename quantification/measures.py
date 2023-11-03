@@ -7,7 +7,9 @@ import pandas as pd
 from bigfish.stack import check_parameter, check_array
 from .utils import unzip
 from scipy.ndimage import distance_transform_edt
-
+from scipy.ndimage import binary_dilation
+from scipy.signal import fftconvolve
+from ..utils import check_parameter
 
 def compute_signalmetrics(signal:np.ndarray, mask: np.ndarray) :
     """Compute 'min', 'max', '1 percentile', '9 percentile', 'mean', 'std' and 'median' value from signal ignoring pixels not in mask.
@@ -168,14 +170,7 @@ def count_rna_close_pbody(pbody_mask: np.ndarray, spots_coords: 'list[tuple]', d
     # count_map = rna_distance_map[rna_distance_map >= 0] <= distance_nm
     count_map = np.logical_and(rna_distance_map >= 0, rna_distance_map <= distance_nm)
     count = np.sum(count_map, axis= 1)
-    
-    # values,count = np.unique(count_map, return_counts= True)
-    # if not True in values : 
-    #     count = 0
-    # else:
-    #     index = list(values).index(True)
-    #     count = count[index]
-    
+
     return count
 
 
@@ -269,3 +264,124 @@ def count_rna_close_pbody_global(pbody_label: np.ndarray, spots_coords: 'list[tu
     }
 
     return res
+
+
+
+def reconstruct_boolean_signal(image_shape, spot_list: list):
+    signal = np.zeros(image_shape, dtype= bool)
+    Z, Y, X = list(zip(*spot_list))
+    signal[Z,Y,X] = True
+
+    return signal
+
+
+
+def spots_colocalisation(image_shape, spot_list1:list, spot_list2:list, distance: float, voxel_size)-> int :
+    """
+    Return number of spots from spot_list1 located closer(large) than distance to at least one spot of spot_list2.
+
+    Parameters
+    ----------
+        image_shape : tuple
+        spot_list1 : list
+        spot_list2 : list
+        distance : nanometer
+            distance in nanometer.
+        voxel_size : (z,y,x) tuple
+    """
+
+    if len(image_shape) != 3 : raise ValueError("Image shape length should be 3 : (Z,Y,X)")
+    if len(spot_list1) == 0 or len(spot_list2) == 0 : return np.NaN
+
+    signal2 = reconstruct_boolean_signal(image_shape, spot_list2)
+    mask = np.logical_not(signal2)
+    distance_map = distance_transform_edt(mask, sampling= voxel_size)
+    Z,Y,X = zip(*spot_list1)
+
+    count = (distance_map[Z,Y,X] <= distance).sum()
+    return count
+
+def cluster_localisation(clusters_dataframe: pd.DataFrame) :
+    return clusters_dataframe["spot_number"].sum()
+
+
+
+###Attempt at counting number of spots within given radius of a pixel, for all pixels
+def _reconstruct_spot_signal(image_shape, spot_list: list):
+    """
+    Create a map where each pixel value correspond to the number of spots located in this position.
+    """
+    signal = np.zeros(image_shape, dtype= int)
+    unique_list, counts = np.unique(spot_list, return_counts= True, axis=0)
+    Z, Y, X = list(zip(*unique_list))
+    signal[Z,Y,X] = counts
+
+    return signal
+
+
+def _create_counting_kernel(radius_nm, voxel_size) :
+
+    max_pixel_distance = int(max(nanometer_to_pixel(radius_nm, voxel_size)))
+    kernel = np.ones(shape=(2*max_pixel_distance+1 ,2*max_pixel_distance+1, 2*max_pixel_distance+1)) #always odd number so middle is always at [pixel_radius-1, pixel_radius-1, pixel_radius-1]
+    kernel[max_pixel_distance, max_pixel_distance, max_pixel_distance] = 0
+    kernel = distance_transform_edt(kernel, sampling= voxel_size) <= radius_nm
+    
+    return kernel.astype(int)
+
+
+def _spot_count_map(spots_array, radius_px, voxel_size) :
+    """
+    Create a map where each pixel value correspond to the number of spots closer than radius to the position.
+    """
+
+    kernel = _create_counting_kernel(radius_px, voxel_size)
+    map = fftconvolve(spots_array, kernel, mode= 'same')
+
+    return np.round(map).astype(int)
+
+    
+def nanometer_to_pixel(value, scale) :
+    if isinstance(scale, (float,int)) : scale = [scale]
+    if isinstance(value, (float,int)) : value = [value]*len(scale)
+    if len(value) != len(scale) : raise ValueError("value and scale must have the same dimensionality")
+
+    return list(np.array(value) / np.array(scale))
+    
+
+def spots_colocalisation_à_rename(spots_list, anchor_list, radius_nm, image_shape, voxel_size)->int :
+
+    """
+    Compute the number of spots from spots_list closer than radius to a spot from anchor_list. Each spots_list spots will be counted as many times as there are anchors close enough.
+    Note that the radius in nm is converted to pixel using voxel size, and rounded to the closest int value.
+    
+    Example in 2D
+    --------
+
+    >>> Anchors         Spots           Radius (2px)    Count
+    >>> 0 0 0 0 0 0     0 X 0 0 X 0       1             0 1 0 0 0 0
+    >>> 0 X 0 0 0 0     X 0 0 X 0 0     1 1 1           1 0 0 0 0 0
+    >>> 0 X 0 0 0 0     X X 0 0 0 0       1             1 2 0 0 0 0     --> 5
+    >>> 0 0 0 0 X 0     0 0 X 0 0 0                     0 0 0 0 0 0
+    >>> 0 0 0 0 0 0     0 0 0 X 0 0                     0 0 0 0 0 0
+
+    Parameters
+    ----------
+    spots_list : list
+    anchor_list : list
+    radius_nm : int, float
+    image_shape : tuple (Z, Y, X)
+    voxel_size : tuple (Z, Y, X)
+    
+    """
+
+    check_parameter(spots_list= (list), anchor_list= (list), radius_nm = (int, float), image_shape= (tuple,list), voxel_size= (tuple, list))
+    if len(image_shape) != 3 : raise ValueError("Only 3D colocalisation is supported, 'image_shape' should be (Z,Y,X).")
+    if len(voxel_size) != 3 : raise ValueError("Only 3D colocalisation is supported, 'voxel_size' should be (Z,Y,X).")
+    if voxel_size[1] != voxel_size[2] : raise ValueError("Unsupported anisotropy in xy plan. (yscale != xscale)")
+    if len(spots_list) == 0 or len(anchor_list) == 0 : return 0
+
+    anchor_array = _reconstruct_spot_signal(image_shape=image_shape, spot_list=anchor_list)
+    count_map = _spot_count_map(anchor_array, radius_px=radius_nm, voxel_size=voxel_size)
+    Z,Y,X = list(zip(*spots_list))
+
+    return np.sum(count_map[Z,Y,X])
