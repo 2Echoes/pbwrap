@@ -86,7 +86,7 @@ def Malat_inNuc_asDapiIntensity(Cell: pd.DataFrame, Spots: pd.DataFrame, plot_li
     #data sorting
     malat1_idx = Spots.query("spots_type == 'malat1'").index
     Spots_df = Spots.loc[malat1_idx, ['rna name', 'id', 'CellId', 'InNucleus']]
-    if "IntegratedSignal" not in Cell.columns : signal_df = update.compute_IntegratedSignal(Cell).loc[:, ['rna name', "id", "IntegratedSignal"]].dropna(subset= 'cellular_cycle').rename(columns={'id' : 'CellId'}).set_index(['rna name', 'CellId']).sort_index()
+    if "IntegratedSignal" not in Cell.columns : signal_df = update.compute_IntegratedSignal(Cell).loc[:, ['rna name', "id", "IntegratedSignal"]].rename(columns={'id' : 'CellId'}).set_index(['rna name', 'CellId']).sort_index()
     else : signal_df = Cell.loc[:, ["rna name", "id", "IntegratedSignal"]].rename(columns={'id' : 'CellId'}).set_index(['rna name', 'CellId']).sort_index()
 
     malat1_grouper = Spots_df.groupby(["rna name", "CellId"])
