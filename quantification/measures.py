@@ -348,7 +348,7 @@ def nanometer_to_pixel(value, scale) :
     return list(np.array(value) / np.array(scale))
     
 
-def spots_colocalisation_à_rename(spots_list, anchor_list, radius_nm, image_shape, voxel_size)->int :
+def spots_multicolocalisation(spots_list, anchor_list, radius_nm, image_shape, voxel_size)->int :
 
     """
     Compute the number of spots from spots_list closer than radius to a spot from anchor_list. Each spots_list spots will be counted as many times as there are anchors close enough.
