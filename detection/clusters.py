@@ -22,6 +22,8 @@ def _compute_clustered_spots_dataframe(clustered_spots) :
         ,"y" : y
         ,"x" : x
     })
+    null_idx = df[df['cluster_id'] == -1].index
+    df.loc[null_idx, 'cluster_id'] = np.NaN
 
     return df
 
