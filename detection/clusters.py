@@ -91,3 +91,20 @@ def cluster_detection(spots, voxel_size, radius = 350, nb_min_spots = 4, keys_to
         res['clusters_dataframe'] = _compute_cluster_dataframe(clusters)
 
     return res
+
+def get_centroids_list(clusters_array: np.ndarray) :
+    """
+    clusters_list should be a np.ndarray with shape = (clusters_number, 5 or 4) depending if 3D or 2D clusters : z,y,x, spot_number_in_cluster,cluster_index.
+    """
+
+    if not isinstance(clusters_array, np.ndarray) : raise TypeError("clusters_array should be of type np.ndarray, it is {0}".format(type(clusters_array)))
+    if clusters_array.shape[1] == 5 : dim = 3
+    elif clusters_array.shape[1] == 4 : dim = 2
+    else : raise ValueError("Expected shape for clusters_array is clusters_number, 5 or 4) depending if 3D or 2D clusters : z,y,x, spot_number_in_cluster,cluster_index. It is {0}".format(clusters_array.shape))
+
+    if dim == 3 :
+        z, y, x, spot_number, index = zip(*clusters_array)
+        return list(zip(z,y,x))
+    else :
+        y, x, spot_number, index = zip(*clusters_array)
+        return list(zip(y,x))
