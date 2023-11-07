@@ -348,7 +348,7 @@ def nanometer_to_pixel(value, scale) :
     return list(np.array(value) / np.array(scale))
     
 
-def spots_multicolocalisation(spots_list, anchor_list, radius_nm, image_shape, voxel_size)->int :
+def spots_multicolocalisation(spots_list, anchor_list, radius_nm, image_shape, voxel_size) :
 
     """
     Compute the number of spots from spots_list closer than radius to a spot from anchor_list. Each spots_list spots will be counted as many times as there are anchors close enough.
@@ -372,6 +372,9 @@ def spots_multicolocalisation(spots_list, anchor_list, radius_nm, image_shape, v
     image_shape : tuple (Z, Y, X)
     voxel_size : tuple (Z, Y, X)
     
+    Returns
+    -------
+    Returns the list of neighbouring spot number to 'spots_list'.
     """
 
     check_parameter(spots_list= (list), anchor_list= (list), radius_nm = (int, float), image_shape= (tuple,list), voxel_size= (tuple, list))
@@ -384,4 +387,4 @@ def spots_multicolocalisation(spots_list, anchor_list, radius_nm, image_shape, v
     count_map = _spot_count_map(anchor_array, radius_px=radius_nm, voxel_size=voxel_size)
     Z,Y,X = list(zip(*spots_list))
 
-    return np.sum(count_map[Z,Y,X])
+    return list(count_map[Z,Y,X])
