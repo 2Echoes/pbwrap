@@ -111,20 +111,24 @@ def spot_decomposition_nobckgrndrmv(image, spots, spot_radius, voxel_size_nm, al
         max_grid=max_grid)
 
     # simulate gaussian mixtures
-    spots_in_regions, _ = detection.simulate_gaussian_mixture(
-        image= image,
-        candidate_regions=regions_to_decompose,
-        voxel_size= voxel_size_nm,
-        sigma=(sigma_z, sigma_yx, sigma_yx),
-        amplitude=amplitude,
-        background=background,
-        precomputed_gaussian=precomputed_gaussian)
+    try :
+        spots_in_regions, _ = detection.simulate_gaussian_mixture(
+            image= image,
+            candidate_regions=regions_to_decompose,
+            voxel_size= voxel_size_nm,
+            sigma=(sigma_z, sigma_yx, sigma_yx),
+            amplitude=amplitude,
+            background=background,
+            precomputed_gaussian=precomputed_gaussian)
+    
+    except ValueError :
+        raise NoSpotError("No dense regions have been found for deconvolution.")
+    except Exception  as error :
+        raise error
 
     spots_postdecomp = np.concatenate((spots_out_regions, spots_in_regions[:, :3]), axis=0)
 
     return spots_postdecomp
-
-
 
 
 def mono_threshold_detect_spots(image,
