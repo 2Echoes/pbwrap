@@ -1,9 +1,35 @@
+import signal
 import bigfish.stack as stack
 import bigfish.detection as detection
 from bigfish.detection.spot_detection import local_maximum_detection, get_object_radius_pixel, _get_candidate_thresholds, spots_thresholding, _get_spot_counts
 from ..errors import NoSpotError
 import numpy as np
 from types import GeneratorType
+from pbwrap.integrity import detectiontimeout_handler
+from pbwrap.errors import DetectionTimeOutError, NoSpotError
+
+def cluster_deconvolution(image, spots, spot_radius, voxel_size, alpha, beta, timer= 0) :
+    """
+    Wrapper handling time out during deconvolution.
+    --> `pbwrap.detection.spot_decomposition_nobckgrndrmv`
+    """
+    signal.signal(signal.SIGALRM, detectiontimeout_handler) #Initiating timeout handling
+    # im = stack.gaussian_filter(image, 1)
+
+    try :
+        signal.alarm(timer)
+        spots_postdecomp = spot_decomposition_nobckgrndrmv(image, spots, spot_radius, voxel_size_nm=voxel_size, alpha= alpha, beta= beta)
+    except DetectionTimeOutError :
+        print(" \033[91mCluster deconvolution timeout...\033[0m")
+        spots_postdecomp = []
+    except NoSpotError :
+        print(" No dense regions to deconvolute.")
+        spots_postdecomp = spots
+    except Exception as error :
+        raise error
+    finally :
+        signal.alarm(0)
+    return spots_postdecomp
 
 
 def spot_decomposition_nobckgrndrmv(image, spots, spot_radius, voxel_size_nm, alpha= 0.5, beta= 1):
