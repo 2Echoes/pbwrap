@@ -94,19 +94,15 @@ def cluster_detection(spots, voxel_size, radius = 350, nb_min_spots = 4, keys_to
 
     return res
 
-def get_centroids_list(clusters_array: np.ndarray) :
+def get_centroids_list(clusters_df) :
+
     """
-    clusters_list should be a np.ndarray with shape = (clusters_number, 5 or 4) depending if 3D or 2D clusters : z,y,x, spot_number_in_cluster,cluster_index.
+    clusters_list should be a pd.DataFrame with ['z', 'y', 'x'] or ['y', 'x'] keys.
     """
 
-    if not isinstance(clusters_array, np.ndarray) : raise TypeError("clusters_array should be of type np.ndarray, it is {0}".format(type(clusters_array)))
-    if clusters_array.shape[1] == 5 : dim = 3
-    elif clusters_array.shape[1] == 4 : dim = 2
-    else : raise ValueError("Expected shape for clusters_array is clusters_number, 5 or 4) depending if 3D or 2D clusters : z,y,x, spot_number_in_cluster,cluster_index. It is {0}".format(clusters_array.shape))
+    if 'y' in clusters_df.columns and 'x' in clusters_df.columns :
+        if 'z' in clusters_df.columns : keys = [clusters_df['z'], clusters_df['y'], clusters_df['x']]
+        else : keys = [clusters_df['y'], clusters_df['x']]
+    else : raise ValueError("Expected keys : ['z', 'y', 'x'] or ['y', 'x']")
 
-    if dim == 3 :
-        z, y, x, spot_number, index = zip(*clusters_array)
-        return list(zip(z,y,x))
-    else :
-        y, x, spot_number, index = zip(*clusters_array)
-        return list(zip(y,x))
+    return list(zip(*keys))

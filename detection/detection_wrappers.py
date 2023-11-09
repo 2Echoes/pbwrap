@@ -1,9 +1,35 @@
+import signal
 import bigfish.stack as stack
 import bigfish.detection as detection
 from bigfish.detection.spot_detection import local_maximum_detection, get_object_radius_pixel, _get_candidate_thresholds, spots_thresholding, _get_spot_counts
 from ..errors import NoSpotError
 import numpy as np
 from types import GeneratorType
+from pbwrap.integrity import detectiontimeout_handler
+from pbwrap.errors import DetectionTimeOutError, NoSpotError
+
+def cluster_deconvolution(image, spots, spot_radius, voxel_size, alpha, beta, timer= 0) :
+    """
+    Wrapper handling time out during deconvolution.
+    --> `pbwrap.detection.spot_decomposition_nobckgrndrmv`
+    """
+    signal.signal(signal.SIGALRM, detectiontimeout_handler) #Initiating timeout handling
+    # im = stack.gaussian_filter(image, 1)
+
+    try :
+        signal.alarm(timer)
+        spots_postdecomp = spot_decomposition_nobckgrndrmv(image, spots, spot_radius, voxel_size_nm=voxel_size, alpha= alpha, beta= beta)
+    except DetectionTimeOutError :
+        print(" \033[91mCluster deconvolution timeout...\033[0m")
+        spots_postdecomp = []
+    except NoSpotError :
+        print(" No dense regions to deconvolute.")
+        spots_postdecomp = spots
+    except Exception as error :
+        raise error
+    finally :
+        signal.alarm(0)
+    return spots_postdecomp
 
 
 def spot_decomposition_nobckgrndrmv(image, spots, spot_radius, voxel_size_nm, alpha= 0.5, beta= 1):
@@ -111,20 +137,24 @@ def spot_decomposition_nobckgrndrmv(image, spots, spot_radius, voxel_size_nm, al
         max_grid=max_grid)
 
     # simulate gaussian mixtures
-    spots_in_regions, _ = detection.simulate_gaussian_mixture(
-        image= image,
-        candidate_regions=regions_to_decompose,
-        voxel_size= voxel_size_nm,
-        sigma=(sigma_z, sigma_yx, sigma_yx),
-        amplitude=amplitude,
-        background=background,
-        precomputed_gaussian=precomputed_gaussian)
+    try :
+        spots_in_regions, _ = detection.simulate_gaussian_mixture(
+            image= image,
+            candidate_regions=regions_to_decompose,
+            voxel_size= voxel_size_nm,
+            sigma=(sigma_z, sigma_yx, sigma_yx),
+            amplitude=amplitude,
+            background=background,
+            precomputed_gaussian=precomputed_gaussian)
+    
+    except ValueError :
+        raise NoSpotError("No dense regions have been found for deconvolution.")
+    except Exception  as error :
+        raise error
 
     spots_postdecomp = np.concatenate((spots_out_regions, spots_in_regions[:, :3]), axis=0)
 
     return spots_postdecomp
-
-
 
 
 def mono_threshold_detect_spots(image,
