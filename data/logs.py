@@ -44,6 +44,21 @@ class error_log(log) :
 
 
 class parameter_log(log) :
+    """
+    Empty log is created when constructor is called. Then use self.write to update.
+
+    Parameters
+    ----------
+    name : str
+        Name used for the txt filename.
+    path : str
+        fullpath to save location.
+
+    Methods
+    -------
+        add_parameters(*parameters)
+        write()
+    """
     def __init__(self, name, path,) -> None:
         super().__init__(name,path)
         self.parameters = {}
