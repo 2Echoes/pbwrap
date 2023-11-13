@@ -199,7 +199,6 @@ def compute_Cell(acquisition_id, cell, Pbody_Acquisition:pd.DataFrame, dapi, cel
     cell_mask: np.ndarray = cell["cell_mask"]
     nuc_mask = cell["nuc_mask"] 
     rna_coord = cell["rna_coord"]
-    foci_coord = cell["foci"]
 
     if "transcription_site" in cell.keys() :
         ts_coord = cell["transcription_site"]

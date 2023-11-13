@@ -96,6 +96,7 @@ def cluster_detection(spots, voxel_size, radius = 350, nb_min_spots = 4, keys_to
 
     return res
 
+
 def get_centroids_list(clusters_df) :
 
     """
