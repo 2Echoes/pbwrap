@@ -68,6 +68,8 @@ def compute_Spots_global(AcquisitionId, Cell_label, Nucleus_mask, Pbody_label, s
     types = []
     spots_coords = []
     for spot_type, coordinates_list in spots_dictionary.items() :
+        if len(coordinates_list) == 0 : continue
+        elif len(coordinates_list[0]) == 0 : continue
         if type(coordinates_list) != list : coordinates_list = list(coordinates_list)
         types.extend([spot_type] * len(coordinates_list))
         spots_coords.extend(coordinates_list)

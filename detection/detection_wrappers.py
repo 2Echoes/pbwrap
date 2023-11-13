@@ -106,6 +106,7 @@ def spot_decomposition_nobckgrndrmv(image, spots, spot_radius, voxel_size_nm, al
 
     #Spot decomposition    
     if len(spots) == 0 : return spots
+    elif len(spots[0]) == 0 : return spots
     # reference spot
     reference_spot = detection.build_reference_spot(
         image=image,

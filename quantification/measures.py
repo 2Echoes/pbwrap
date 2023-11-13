@@ -227,10 +227,11 @@ def count_rna_close_pbody_global(pbody_label: np.ndarray, spots_coords: 'list[tu
         x_scale = voxel_size[1]
     else : raise ValueError("Incorrect voxel_size length should be either 2 or 3. {0} was given".format(len(voxel_size)))
 
+    res = {'{0} {1} nm'.format(spot_type, distance): pd.Series(dtype= float) for distance in distance_nm}
+
     if len(spots_coords) == 0 :
-        res = {
-            '{0} {1} nm'.format(spot_type, distance): pd.Series(dtype= float) for distance in distance_nm
-        }
+        return res
+    elif len(spots_coords[0]) == 0 :
         return res
     elif len(spots_coords[0]) == 2 :
         y_coords, x_coords = unzip(spots_coords)
