@@ -11,7 +11,7 @@ from bigfish.stack import check_parameter
 
 
 def _compute_clustered_spots_dataframe(clustered_spots) :
-
+    if len(clustered_spots) == 0 : return pd.DataFrame(columns= ["id", "cluster_id", "z", "y", "x"])
     z, y ,x, cluster_index = list(zip(*clustered_spots))
     ids = np.arange(len(clustered_spots))
 
@@ -28,6 +28,7 @@ def _compute_clustered_spots_dataframe(clustered_spots) :
     return df
 
 def _compute_cluster_dataframe(clusters) :
+    if len(clusters) == 0 : return pd.DataFrame(columns= ["id", "z", "y", "x", "spot_number"])
     z, y, x, spots_number, cluster_index = list(zip(*clusters))
 
     df = pd.DataFrame({
@@ -75,7 +76,8 @@ def cluster_detection(spots, voxel_size, radius = 350, nb_min_spots = 4, keys_to
     elif isinstance(keys_to_compute, list) : pass
     else : raise TypeError("Wrong type for keys_to_compute. Should be list[str] or str. It is {0}".format(type(keys_to_compute)))
     if len(spots) == 0 :
-        return {key : [] for key in keys_to_compute}
+        res = {'clustered_spots' : [], 'clusters' : [], 'clustered_spots_dataframe' : pd.DataFrame(columns= ["id", "cluster_id", "z", "y", "x"]), 'clusters_dataframe' : ["id", "z", "y", "x", "spot_number"]}
+        return {key : res[key] for key in keys_to_compute}
     else : res = {}
     clustered_spots, clusters = detection.detect_clusters(spots, voxel_size= voxel_size, radius= radius, nb_min_spots= nb_min_spots)
 
