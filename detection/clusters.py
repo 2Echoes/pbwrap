@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import bigfish.detection as detection
 from bigfish.stack import check_parameter
-
+from ..utils import nanometer_to_pixel
 
 
 
@@ -111,14 +111,19 @@ def get_centroids_list(clusters_df) :
     return list(zip(*keys))
 
 
-def remove_artifact(deconvoluted_spots, artifact_radius, voxel_size , spot_density = 40) :
+def _compute_critical_spot_number(xy_pixel_radius, z_pixel_radius, density) :
+    res = 4/3*np.pi*np.square(xy_pixel_radius)*z_pixel_radius*density/100
+    return int(round(res))
+
+
+def remove_artifact(deconvoluted_spots, artifact_radius, voxel_size , spot_density = 20) :
     """
-    Artifact are detected as clusters of radius 'artifact_size' and with an average density 'spot_density' of spot within the cluster.
+    Artifact are detected as spherical clusters of radius 'artifact_size' and with an average density 'spot_density' of spot within the cluster.
     All spots within the artifact are then removed from deconvoluted_spos.
     
     Critical number of spot is computed as :
     >>> (total_pixel_approximation) * spot_density /100
-    >>> with total_pixe_approximation = pi*(artifact_radius)² ~rounded to unity
+    >>> with total_pixel_approximation = 4/3*pi*(artifact_radius_xy)²*artifact_radius_z ~rounded to unity
 
     Parameters
     ----------
@@ -131,5 +136,12 @@ def remove_artifact(deconvoluted_spots, artifact_radius, voxel_size , spot_densi
             in range ]0,100]
     """
     
-    critical_spot_number = np.pi * np.square()
-    artifacts = cluster_detection(deconvoluted_spots, voxel_size=voxel_size, radius= artifact_radius, )
+    z_pixel_radius , xy_pixel_radius = nanometer_to_pixel([artifact_radius, artifact_radius], scale= voxel_size[:2])
+    critical_spot_number = _compute_critical_spot_number(xy_pixel_radius=xy_pixel_radius, z_pixel_radius=z_pixel_radius, density=spot_density)
+    artifacts_df:pd.DataFrame = cluster_detection(deconvoluted_spots, voxel_size=voxel_size, radius= artifact_radius, nb_min_spots=critical_spot_number, keys_to_compute= ['clusters_dataframe'])['clusters_dataframe']
+    drop_index = artifacts_df[artifacts_df["cluster_id"].isna()].index
+    artifacts_df = artifacts_df.drop(drop_index, axis= 0)
+
+    clean_spots = get_centroids_list(artifacts_df)
+
+    return np.array(clean_spots, dtype= int)
