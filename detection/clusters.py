@@ -109,3 +109,27 @@ def get_centroids_list(clusters_df) :
     else : raise ValueError("Expected keys : ['z', 'y', 'x'] or ['y', 'x']")
 
     return list(zip(*keys))
+
+
+def remove_artifact(deconvoluted_spots, artifact_radius, voxel_size , spot_density = 40) :
+    """
+    Artifact are detected as clusters of radius 'artifact_size' and with an average density 'spot_density' of spot within the cluster.
+    All spots within the artifact are then removed from deconvoluted_spos.
+    
+    Critical number of spot is computed as :
+    >>> (total_pixel_approximation) * spot_density /100
+    >>> with total_pixe_approximation = pi*(artifact_radius)² ~rounded to unity
+
+    Parameters
+    ----------
+        deconvoluted_spots : np.ndarray(z,y,x)
+            A dense region decomposition is highly recommended prior to this function
+        artifact_radius : int
+            in nm
+        voxel_size : tuple (z,y,x)
+        spot_density : float 
+            in range ]0,100]
+    """
+    
+    critical_spot_number = np.pi * np.square()
+    artifacts = cluster_detection(deconvoluted_spots, voxel_size=voxel_size, radius= artifact_radius, )
