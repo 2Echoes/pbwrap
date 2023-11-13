@@ -67,3 +67,11 @@ def show_process_time(func):
             return res
         return inner
     return wrapper
+
+
+def nanometer_to_pixel(value, scale) :
+    if isinstance(scale, (float,int)) : scale = [scale]
+    if isinstance(value, (float,int)) : value = [value]*len(scale)
+    if len(value) != len(scale) : raise ValueError("value and scale must have the same dimensionality")
+
+    return list(np.array(value) / np.array(scale))

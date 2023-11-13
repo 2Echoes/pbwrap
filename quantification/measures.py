@@ -10,6 +10,7 @@ from scipy.ndimage import distance_transform_edt
 from scipy.ndimage import binary_dilation
 from scipy.signal import fftconvolve
 from ..utils import check_parameter
+from ..utils import nanometer_to_pixel as utils_nanometer_to_pixel
 
 def compute_signalmetrics(signal:np.ndarray, mask: np.ndarray) :
     """Compute 'min', 'max', '1 percentile', '9 percentile', 'mean', 'std' and 'median' value from signal ignoring pixels not in mask.
@@ -322,7 +323,7 @@ def _reconstruct_spot_signal(image_shape, spot_list: list):
 
 def _create_counting_kernel(radius_nm, voxel_size) :
 
-    max_pixel_distance = int(max(nanometer_to_pixel(radius_nm, voxel_size)))
+    max_pixel_distance = int(max(utils_nanometer_to_pixel(radius_nm, voxel_size)))
     kernel = np.ones(shape=(2*max_pixel_distance+1 ,2*max_pixel_distance+1, 2*max_pixel_distance+1)) #always odd number so middle is always at [pixel_radius-1, pixel_radius-1, pixel_radius-1]
     kernel[max_pixel_distance, max_pixel_distance, max_pixel_distance] = 0
     kernel = distance_transform_edt(kernel, sampling= voxel_size) <= radius_nm
@@ -342,6 +343,7 @@ def _spot_count_map(spots_array, radius_px, voxel_size) :
 
     
 def nanometer_to_pixel(value, scale) :
+    print('depreciated : function moved to pbwrap.utils')
     if isinstance(scale, (float,int)) : scale = [scale]
     if isinstance(value, (float,int)) : value = [value]*len(scale)
     if len(value) != len(scale) : raise ValueError("value and scale must have the same dimensionality")
