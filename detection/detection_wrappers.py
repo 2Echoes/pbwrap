@@ -1,6 +1,7 @@
 import signal
 import bigfish.stack as stack
 import bigfish.detection as detection
+import pbwrap.preprocessing as preprocessing
 from bigfish.detection.spot_detection import local_maximum_detection, get_object_radius_pixel, _get_candidate_thresholds, spots_thresholding, _get_spot_counts
 from ..errors import NoSpotError
 import numpy as np
@@ -8,17 +9,17 @@ from types import GeneratorType
 from pbwrap.integrity import detectiontimeout_handler
 from pbwrap.errors import DetectionTimeOutError, NoSpotError
 
-def cluster_deconvolution(image, spots, spot_radius, voxel_size, alpha, beta, timer= 0) :
+def cluster_deconvolution(image, spots, spot_radius, voxel_size, alpha, beta, sigma=5, timer= 0) :
     """
-    Wrapper handling time out during deconvolution.
+    Wrapper handling time out during deconvolution and preprocessing with gaussian background removal --> sigma defines the kernel size if 0 then no denoising is performed.
     --> `pbwrap.detection.spot_decomposition_nobckgrndrmv`
     """
     signal.signal(signal.SIGALRM, detectiontimeout_handler) #Initiating timeout handling
-    # im = stack.gaussian_filter(image, 1)
-
     try :
+        if sigma > 0 : im = preprocessing.remove_mean_gaussian_background(image, sigma=sigma)
+        else : im = image
         signal.alarm(timer)
-        spots_postdecomp = spot_decomposition_nobckgrndrmv(image, spots, spot_radius, voxel_size_nm=voxel_size, alpha= alpha, beta= beta)
+        spots_postdecomp = spot_decomposition_nobckgrndrmv(im, spots, spot_radius, voxel_size_nm=voxel_size, alpha= alpha, beta= beta)
     except DetectionTimeOutError :
         print(" \033[91mCluster deconvolution timeout...\033[0m")
         spots_postdecomp = []

@@ -29,7 +29,7 @@ def remove_mean_gaussian_background(image, sigma = 5):
         image_no_background = np.round(image_no_background)
         image_no_background = np.array(image_no_background, dtype= image.dtype)
     
-    else : raise Exception("Incorrect image dimension. Dimension should be either 2 or 3.")   
+    else : raise ValueError("Incorrect image dimension. Dimension should be either 2 or 3.")   
 
     return image_no_background
 
