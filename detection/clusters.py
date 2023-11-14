@@ -146,6 +146,8 @@ def remove_artifact(deconvoluted_spots, artifact_radius, voxel_size , spot_densi
     
     check_parameter(deconvoluted_spots= (np.ndarray), artifact_radius = (float, int), voxel_size = (tuple, list), spot_density = (int,float))
     if spot_density <= 0 or spot_density > 100 : raise ValueError("Spot density must be in range ]0,100]. Current value is {0}".format(spot_density))
+    if len(deconvoluted_spots) == 0 : return deconvoluted_spots
+
     critical_spot_number = _compute_critical_spot_number(radius_nm= artifact_radius, voxel_size=voxel_size, density=spot_density)
     artifacts_df:pd.DataFrame = cluster_detection(deconvoluted_spots, voxel_size=voxel_size, radius= artifact_radius, nb_min_spots=critical_spot_number, keys_to_compute= ['clustered_spots_dataframe'])['clustered_spots_dataframe']
     drop_index = artifacts_df[~artifacts_df["cluster_id"].isna()].index

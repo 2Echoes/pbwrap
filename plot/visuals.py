@@ -302,3 +302,21 @@ def reconstruct_boolean_signal(image_shape, spot_list: list) :
 
     return signal
 
+def dapi_artifact_overlay(dapi_channel, spots_array, path_out):
+    
+    proj = stack.maximum_projection(dapi_channel)
+    nucleus_mask = segmentation.Nucleus_segmentation(proj, use_gpu= True, model_type= 'nuclei').astype(bool)
+    artifact_signal = proj.copy()
+    nucleus_signal = np.zeros_like(proj)
+    artifact_signal[nucleus_mask] = 0
+    nucleus_signal[nucleus_mask] = 1
+    artifact_signal = stack.rescale(artifact_signal, channel_to_stretch= 0)
+    nucleus_signal = stack.rescale(nucleus_signal, channel_to_stretch= 0)
+    
+    RGB = np.zeros(dtype = dapi_channel.dtype, shape= (*proj.shape, 3))
+    Z, Y, X = list(zip(*spots_array))
+    RGB[:,:,0][Y, X] = 1
+    RGB[:,:,0] = stack.rescale(RGB[:,:,0])
+    RGB[:,:,1] = stack.rescale(artifact_signal)
+    RGB[:,:,2] = stack.rescale(nucleus_signal)
+    stack.save_image(RGB, path=path_out, extension= 'tiff')
