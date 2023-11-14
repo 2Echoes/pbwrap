@@ -5,8 +5,9 @@ Submodule aiming to handle functions around bigfish cluster detection.
 import numpy as np
 import pandas as pd
 import bigfish.detection as detection
+from scipy.ndimage import distance_transform_edt
 from bigfish.stack import check_parameter
-
+from ..utils import nanometer_to_pixel
 
 
 
@@ -22,6 +23,8 @@ def _compute_clustered_spots_dataframe(clustered_spots) :
         ,"y" : y
         ,"x" : x
     })
+
+    # df[df['cluster_id'] == -1]['cluster_id'] = np.NaN
     null_idx = df[df['cluster_id'] == -1].index
     df.loc[null_idx, 'cluster_id'] = np.NaN
 
@@ -109,3 +112,44 @@ def get_centroids_list(clusters_df) :
     else : raise ValueError("Expected keys : ['z', 'y', 'x'] or ['y', 'x']")
 
     return list(zip(*keys))
+
+
+def _compute_critical_spot_number(radius_nm, voxel_size, density) :
+    
+    max_pixel_distance = int(max(nanometer_to_pixel(radius_nm, voxel_size)))
+    kernel = np.ones(shape=(2*max_pixel_distance+1 ,2*max_pixel_distance+1, 2*max_pixel_distance+1)) #always odd number so middle is always at [pixel_radius-1, pixel_radius-1, pixel_radius-1]
+    kernel[max_pixel_distance, max_pixel_distance, max_pixel_distance] = 0
+    kernel = distance_transform_edt(kernel, sampling= voxel_size) <= radius_nm
+
+    return int(round(kernel.sum() * density/100))
+
+def remove_artifact(deconvoluted_spots, artifact_radius, voxel_size , spot_density = 2) :
+
+    """
+    Artifact are detected as spherical clusters of radius 'artifact_size' and with an average density 'spot_density' of spot within the cluster.
+    All spots within the artifact are then removed from deconvoluted_spos.
+    
+    Critical number of spot is computed as :
+    >>> (total_pixel_approximation) * spot_density /100
+    >>> with total_pixel_approximation = 4/3*pi*(artifact_radius_xy)²*artifact_radius_z ~rounded to unity
+
+    Parameters
+    ----------
+        deconvoluted_spots : np.ndarray(z,y,x)
+            A dense region decomposition is highly recommended prior to this function
+        artifact_radius : int
+            in nm
+        voxel_size : tuple (z,y,x)
+        spot_density : float 
+            in range ]0,100]
+    """
+    
+    check_parameter(deconvoluted_spots= (np.ndarray), artifact_radius = (float, int), voxel_size = (tuple, list), spot_density = (int,float))
+    if spot_density <= 0 or spot_density > 100 : raise ValueError("Spot density must be in range ]0,100]. Current value is {0}".format(spot_density))
+    critical_spot_number = _compute_critical_spot_number(radius_nm= artifact_radius, voxel_size=voxel_size, density=spot_density)
+    artifacts_df:pd.DataFrame = cluster_detection(deconvoluted_spots, voxel_size=voxel_size, radius= artifact_radius, nb_min_spots=critical_spot_number, keys_to_compute= ['clustered_spots_dataframe'])['clustered_spots_dataframe']
+    drop_index = artifacts_df[~artifacts_df["cluster_id"].isna()].index
+    artifacts_df = artifacts_df.drop(drop_index, axis= 0)
+
+    clean_spots = get_centroids_list(artifacts_df)
+    return np.array(clean_spots, dtype= int)
