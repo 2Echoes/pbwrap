@@ -202,11 +202,11 @@ def compute_Cell(acquisition_id, cell, Pbody_Acquisition:pd.DataFrame, dapi, cel
 
     if "transcription_site" in cell.keys() :
         ts_coord = cell["transcription_site"]
-    else : ts_coord = []
+    else : ts_coord = np.array([], dtype= np.int64)
 
     if "foci" in cell.keys() :
         foci_coord = cell["foci"]
-    else : foci_coord = []
+    else : foci_coord = np.array([], dtype= np.int64)
 
     if "malat1_coord" in cell.keys() :
         malat1_coord = cell["malat1_coord"]
