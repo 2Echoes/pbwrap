@@ -5,6 +5,7 @@ Submodule aiming to handle functions around bigfish cluster detection.
 import numpy as np
 import pandas as pd
 import bigfish.detection as detection
+from scipy.ndimage import distance_transform_edt
 from bigfish.stack import check_parameter
 from ..utils import nanometer_to_pixel
 
@@ -111,12 +112,17 @@ def get_centroids_list(clusters_df) :
     return list(zip(*keys))
 
 
-def _compute_critical_spot_number(xy_pixel_radius, z_pixel_radius, density) :
-    res = 4/3*np.pi*np.square(xy_pixel_radius)*z_pixel_radius*density/100
-    return int(round(res))
+def _compute_critical_spot_number(radius_nm, voxel_size, density) :
+    
+    max_pixel_distance = int(max(nanometer_to_pixel(radius_nm, voxel_size)))
+    kernel = np.ones(shape=(2*max_pixel_distance+1 ,2*max_pixel_distance+1, 2*max_pixel_distance+1)) #always odd number so middle is always at [pixel_radius-1, pixel_radius-1, pixel_radius-1]
+    kernel[max_pixel_distance, max_pixel_distance, max_pixel_distance] = 0
+    kernel = distance_transform_edt(kernel, sampling= voxel_size) <= radius_nm
 
+    return kernel.sum() * density/100
 
 def remove_artifact(deconvoluted_spots, artifact_radius, voxel_size , spot_density = 20) :
+    
     """
     Artifact are detected as spherical clusters of radius 'artifact_size' and with an average density 'spot_density' of spot within the cluster.
     All spots within the artifact are then removed from deconvoluted_spos.
@@ -136,8 +142,7 @@ def remove_artifact(deconvoluted_spots, artifact_radius, voxel_size , spot_densi
             in range ]0,100]
     """
     
-    z_pixel_radius , xy_pixel_radius = nanometer_to_pixel([artifact_radius, artifact_radius], scale= voxel_size[:2])
-    critical_spot_number = _compute_critical_spot_number(xy_pixel_radius=xy_pixel_radius, z_pixel_radius=z_pixel_radius, density=spot_density)
+    critical_spot_number = _compute_critical_spot_number(radius_nm= artifact_radius, voxel_size=voxel_size, density=spot_density)
     artifacts_df:pd.DataFrame = cluster_detection(deconvoluted_spots, voxel_size=voxel_size, radius= artifact_radius, nb_min_spots=critical_spot_number, keys_to_compute= ['clusters_dataframe'])['clusters_dataframe']
     drop_index = artifacts_df[artifacts_df["cluster_id"].isna()].index
     artifacts_df = artifacts_df.drop(drop_index, axis= 0)
