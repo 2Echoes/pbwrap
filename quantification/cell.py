@@ -202,15 +202,15 @@ def compute_Cell(acquisition_id, cell, Pbody_Acquisition:pd.DataFrame, dapi, cel
 
     if "transcription_site" in cell.keys() :
         ts_coord = cell["transcription_site"]
-    else : ts_coord = np.array([], dtype= np.int64)
+    else : ts_coord = np.empty(shape=(0,0), dtype= np.int64)
 
     if "foci" in cell.keys() :
         foci_coord = cell["foci"]
-    else : foci_coord = np.array([], dtype= np.int64)
+    else : foci_coord = np.empty(shape=(0,0), dtype= np.int64)
 
     if "malat1_coord" in cell.keys() :
         malat1_coord = cell["malat1_coord"]
-    else : malat1_coord = np.array([],dtype=np.int64)
+    else : malat1_coord = np.empty(shape=(0,0), dtype= np.int64)
 
     smfish = cell["smfish"]
     min_y, min_x, max_y, max_x = cell["bbox"]
