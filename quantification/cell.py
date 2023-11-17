@@ -327,6 +327,8 @@ def extract_cell(cell_label,
         check_nuc_in_cell=True):
     
     """
+    wrapper : remove from other coords empty spot list
+
     Extract cell-level results for an image.
 
     The function gathers different segmentation and detection results obtained
