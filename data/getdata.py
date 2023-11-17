@@ -194,6 +194,7 @@ def from_rna_get_Cells(rna: 'list[str]', Cell: pd.DataFrame, Acquisition: pd.Dat
 
 
 def _get_varname(var):
+    print("Warning : depreciation. This get_datetime function should be called from CustomPandasFramework")
     #To be used  within a function.
     callers_local_vars = inspect.currentframe().f_back.f_back.f_locals.items()
     return [var_name for var_name, var_val in callers_local_vars if var_val is var][0]
@@ -201,4 +202,5 @@ def _get_varname(var):
 
 
 def get_datetime():
+    print("Warning : depreciation. This get_datetime function should be called from CustomPandasFramework")
     return dt.datetime.now().strftime("%Y%m%d_%H-%M-%S")
