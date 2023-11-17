@@ -184,6 +184,12 @@ def pbody_segmentation(egfp, sigma = 2, threshold= None, thresh_penalty= 1, smal
     return egfp_label
 
 
+def centrosome_segmentation(centrosome_channel) :
+    pass
+
+
+# ============================================
+# Algo
 
 
 
