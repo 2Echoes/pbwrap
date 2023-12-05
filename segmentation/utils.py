@@ -63,12 +63,34 @@ def get_histogramm_highest_varation_value(array, bins= None):
     count,values = np.histogram(array, bins= bins)
     gradient = np.gradient(count)
     gradient[gradient < 0] = 0
-    max_derivative_index = next(get_elmtindex(np.abs(gradient).max(), list(np.abs(gradient))))
+    max_derivative_index = list(np.abs(gradient)).index(np.abs(gradient).max())
     res = values[max_derivative_index]
 
     return res
 
+def auto_LoG_threshold(data: np.ndarray, bins= None) :
+    """
+    Looks for a threshold discriminating the spike around maximum of the LoG histogram from the highest values of the histogram.
+    """
+    if data.ndim != 1 : data = data.flatten()
+    if bins == None:
+        if data.dtype == float :
+            bins = 100 #2 decimals precision
 
+        else:
+            bins = int(data.max() - data.min())
+
+
+
+    count,values = np.histogram(data, bins= bins)
+    values = values[:len(values)-1]
+    spike = values[count == count.max()][0]
+    gradient = np.gradient(count)
+    gradient[values <= spike] = -1
+    var_change = gradient[gradient > 0][0]
+    change_position = list(gradient).index(var_change)
+    
+    return values[change_position]
 
 
 
@@ -362,8 +384,6 @@ def relabelling(current_label, label_giving) :
  
 
 def from2Dlabel_to3Dlabel(labels, maximal_distance= 20) :
-    #TOPNOTE : 
-    # Hey again, so this is what you might be interested in. I'll try to sump up the algorithm from memory
     # First of all the algorithm reconstruct the 3D image starting from z = 0. So first step is to label z=0, this label will then be used to computed z = z+1 label etc..
     # Loop : 
     #   1. Compute centroids coordinates for each label at z
@@ -420,23 +440,3 @@ def from2Dlabel_to3Dlabel(labels, maximal_distance= 20) :
         label3D[z,:,:] = relabelling(labels[z], label_giving)
 
     return label3D
-
-
-def get_elmtindex(elmt,List) :
-    """Returns index (position) of elmt in list
-    
-    Parameters
-    ----------
-        elmt : any
-        list : list
-    Returns
-    -------
-        res : int
-    """
-
-    check_parameter(List = (list))
-
-    for idx in range(0,len(List)) :
-        if List[idx] == elmt : yield idx
-    
-    raise Exception("Could not find elmt in List")
