@@ -10,3 +10,4 @@ from .control_plots import plot_labels, plot_detection_steps, plot_cell
 from .control_plots import save_plot
 from .visuals import output_spot_tiffvisual, nucleus_signal_control, dapi_artifact_overlay
 from .utils import get_colors_list, hist_maximum
+from .histogram import histogram
