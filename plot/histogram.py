@@ -16,7 +16,7 @@ from math import sqrt, floor
 ########################
 
 
-def dapi_signal(Cell, projtype= 'mean', summarize_type = 'mean', path_output= None, show = True, ext= 'png', title: str = None, bins= 500, auto_bins= True, **axis_boundaries) :
+def dapi_signal(Cell, projtype= 'mean', summarize_type = 'mean', path_output= None, show = True, ext= 'png', title: str = None, bins= 500, auto_bins= True, alpha=0.5, **axis_boundaries) :
     """
     From the Maximum Intensity Projection (MIP) or Mean projection computes the histogram of integrated signal within cells (signal*nucleus area).
     Signal can be chosen from mean or median.
@@ -60,7 +60,7 @@ def dapi_signal(Cell, projtype= 'mean', summarize_type = 'mean', path_output= No
 
      
 
-    distribution = histogram(dapi_signal, xlabel=xlabel, ylabel= ylabel, path_output=path_output, show=show, ext=ext, title=title, bins=bins, **axis_boundaries)
+    distribution = histogram(dapi_signal, xlabel=xlabel, ylabel= ylabel, path_output=path_output, show=show, ext=ext, title=title, bins=bins,alpha=alpha, **axis_boundaries)
     return distribution
 
 def dapi_density(Cell, projtype= 'MIP', summarize_type = 'median', path_output= None, show = True, ext= 'png', title: str = None, bins= 500, **axis_boundaries) :
@@ -185,7 +185,7 @@ def RawData(DataFrame:pd.DataFrame, variable_name:str, color='blue', label:str=N
 #######################
 
 
-def histogram(data: 'list[float]', color= 'blue', label:str = None, xlabel= 'distribution', ylabel= 'count', path_output= None, show = True, close= True, reset= True, ext= 'png', title: str = None, bins= 500, ticks_number= 21, disable_axis= False, **axis_boundaries) :
+def histogram(data: 'list[float]', color= 'blue', label:str = None, xlabel= 'distribution', ylabel= 'count', path_output= None, show = True, close= True, reset= True, ext= 'png', title: str = None, bins= 500, alpha=0.5, ticks_number= 21, disable_axis= False, **axis_boundaries) :
     """
     Base function for histograms plotting. Returns data array used for distribution histogram plot.
     
@@ -211,18 +211,11 @@ def histogram(data: 'list[float]', color= 'blue', label:str = None, xlabel= 'dis
     data = data[~np.logical_or(np.isnan(data),np.isinf(data))] # ~ = not
     if reset : fig = plt.figure(figsize= (20,10))
     else : fig = plt.gcf()
-    hist = plt.hist(data, bins= bins, color= color, label= label, edgecolor= 'white', lw=1, alpha= 0.5)
+    hist = plt.hist(data, bins= bins, color= color, label= label, edgecolor= 'white', lw=1, alpha= alpha)
     if not disable_axis : 
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
         if label != None : plt.legend()
-
-        #Axis boundaries
-        ax = fig.gca()
-        # axis_bound = hist_set_axis_boundaries(ax, data, hist, **axis_boundaries)
-        # Axis ticks
-        # set_axis_ticks(axis_bound, ticks_number)
-
 
         if title != None : plt.title(title)
     if path_output != None : save_plot(path_output, ext)
