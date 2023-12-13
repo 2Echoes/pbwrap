@@ -304,7 +304,8 @@ def detect_spots(
         show_advancement= False):
 
     """
-    Pbwrap : In addition to original code we added : 
+    Pbwrap : In addition to original code we added :
+        images --> accept generator 
         threshold_penalty : float-like
             float which is multiplied with the automatic threshold setting.
         crop_zstack : list, tuple

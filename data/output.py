@@ -3,6 +3,8 @@ from .getdata import _get_varname
 from CustomPandasFramework.computer_interface import get_datetime
 
 def print_parameters(path_out, *parameters, printDateTime= True):
+    print("Warning : depreciation. This get_datetime function should be called from CustomPandasFramework")
+
     """
     Print parameters into a .txt file
     
@@ -39,6 +41,8 @@ def print_parameters(path_out, *parameters, printDateTime= True):
 
 
 def print_dict(dic: dict, path_out):
+    print("Warning : depreciation. This get_datetime function should be called from CustomPandasFramework")
+
     check_parameter(path_out = (str), dic = (dict))
     if path_out[len(path_out) -1] == '/' : path_out += 'dic.txt'
     elif path_out[len(path_out)-4 : len(path_out)] != '.txt' : path_out += '.txt'
@@ -53,5 +57,7 @@ def print_dict(dic: dict, path_out):
     dict_file.close()
 
 def dict_to_lines(di : dict) :
+    print("Warning : depreciation. This get_datetime function should be called from CustomPandasFramework")
+
     for key, value in di.items() : 
         yield "{0} : {1}\n".format(key, value)

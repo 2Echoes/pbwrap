@@ -131,28 +131,43 @@ from .utils import unzip
 from bigfish.classification import compute_features, get_features_name
 from .measures import count_spots_in_mask, compute_mask_area, compute_signalmetrics
 from pbwrap.utils import from_label_get_centeroidscoords
+<<<<<<< HEAD
  
 
 
 def compute_Cell(acquisition_id, cell, Pbody_Acquisition:pd.DataFrame, dapi, cell_label, voxel_size = (300,103,103)):
+=======
+# 
+# 
+def compute_Cell(acquisition_id, cell, dapi, cell_label, Pbody_Acquisition:pd.DataFrame=None, voxel_size = (300,103,103)):
+>>>>>>> 31d6128e229bad189ec6d2ba4a7a4c5d986f84ec
     """
-    Returns DataFrame with expected Cell datashape containing all cell level features. Features are computed using bigFish built in functions.
-    # 
+    Returns DataFrame with expected Cell datashape containing all cell level features. 
+    Features are computed using bigFish built in functions.
+    
+
     Parameters
     ----------
-        acquisition_id : int
-            Unique identifier for current acquisition.
-        cell_id : int 
-            Unique identifier for current cell.
-        cell : dict
-            Dictionary computed from bigFish.multistack.extract_cell
-    # 
+    acquisition_id : int
+        Unique identifier for current acquisition.
+    cell : dict
+        Dictionary computed from bigFish.multistack.extract_cell
+    dapi :  np.ndarray(ndim=3)
+        raw dapi signal.
+    cell_label : np.ndarray(ndim= 2, dtype= int)
+        complete fov cell labeling.
+    Pbody_Acquisition : pd.DataFrame
+        for Pbody pipeline. Computed with quant.compute_Pbody
+    voxel_size : tuple (z,y,x)
+        microscope scale factors
+    
+    
     Returns
     -------
         new_Cell : pd.Dataframe
     """
     #Integrity checks
-    check_parameter(acquisition_id = (int), cell = (dict), voxel_size = (tuple, list), dapi = (np.ndarray), Pbody_Acquisition = (pd.DataFrame))
+    check_parameter(acquisition_id = (int), cell = (dict), voxel_size = (tuple, list), dapi = (np.ndarray), Pbody_Acquisition = (pd.DataFrame, type(None)))
     check_array(dapi, ndim=3)
 # 
 
@@ -175,11 +190,16 @@ def compute_Cell(acquisition_id, cell, Pbody_Acquisition:pd.DataFrame, dapi, cel
         malat1_coord = cell["malat1_coord"]
     else : malat1_coord = np.empty(shape=(0,0), dtype= np.int64)
 
+    if "centrosome_coord" in cell.keys() :
+        centrosome_coord = cell["centrosome_coord"]
+        has_centrosome = True
+    else : centrosome_coord = None; has_centrosome = False
+
     smfish = cell["smfish"]
     min_y, min_x, max_y, max_x = cell["bbox"]
     label = cell["cell_id"] # is the label of this cell in cell_label
-    
-    if Pbody_Acquisition.query('cell_label == {0}'.format(label)).loc[:,"centroid_coordinates"].empty :
+
+    if Pbody_Acquisition.query('cell_label == {0}'.format(label)).loc[:,"centroid_coordinates"].empty or type(Pbody_Acquisition) == type(None):
         Y_abs, X_abs = np.array([]), np.array([])
         Y, X = np.array([]), np.array([])
 
@@ -195,11 +215,12 @@ def compute_Cell(acquisition_id, cell, Pbody_Acquisition:pd.DataFrame, dapi, cel
     pbody_centroids = np.array(list(zip(Y, X)))
     pbody_num = count_spots_in_mask(pbody_centroids, cell_mask)
     has_pbody = pbody_num > 0
+    assert not has_pbody or not has_centrosome, "Compute cell doesn't support both p-bodies and centrosome input."
 
     #BigFish built in features
     if not has_pbody:
-        features, features_names = compute_features(cell_mask= cell_mask, nuc_mask= nuc_mask, ndim= 3, rna_coord= rna_coord, smfish= smfish, foci_coord= foci_coord, voxel_size_yx= voxel_size_yx,
-        compute_centrosome=False,
+        features, features_names = compute_features(cell_mask= cell_mask, nuc_mask= nuc_mask, ndim= 3, rna_coord= rna_coord, smfish= smfish, foci_coord= foci_coord, centrosome_coord=centrosome_coord, voxel_size_yx= voxel_size_yx,
+        compute_centrosome=has_centrosome,
         compute_distance=True,
         compute_intranuclear=True,
         compute_protrusion=True,
@@ -257,8 +278,6 @@ def compute_Cell(acquisition_id, cell, Pbody_Acquisition:pd.DataFrame, dapi, cel
         count_pbody_nucleus = np.NaN
         count_pbody_cytoplasm = np.NaN
 
-
-
     #Adding custom features to DataFrames
     features.extend([malat1_spot_in_nuc, malat1_spot_in_cyto, cluster_number,nucleus_area_px,nucleus_area_nm,
                          pbody_num, count_pbody_nucleus, count_pbody_cytoplasm])
@@ -272,7 +291,7 @@ def compute_Cell(acquisition_id, cell, Pbody_Acquisition:pd.DataFrame, dapi, cel
     datashape_ref = DataFrame.newframe_Cell()
     new_Cell = pd.DataFrame(data= [data], columns= header)
     new_Cell["plot index"] = np.NaN
-    if not has_pbody :
+    if not has_pbody  and not has_centrosome:
         for feature in get_features_name(names_features_centrosome= True) :
             new_Cell[feature] = np.NaN
     check_samedatashape(new_Cell, datashape_ref) # Ensure datashape stability along different runs
@@ -290,6 +309,8 @@ def extract_cell(cell_label,
         check_nuc_in_cell=True):
     
     """
+    wrapper : remove from other coords empty spot list
+
     Extract cell-level results for an image.
 
     The function gathers different segmentation and detection results obtained
