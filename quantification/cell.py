@@ -11,7 +11,7 @@ from skimage.measure import regionprops_table
 from bigfish.stack import mean_projection, maximum_projection, check_parameter, check_array
 from .utils import unzip
 from bigfish.classification import compute_features, get_features_name
-from .measures import count_spots_in_mask, compute_mask_area, compute_signalmetrics
+from .measures import count_spots_in_mask, compute_mask_area, nucleus_signal_metrics, compute_signalmetrics
 
 """
 
@@ -65,41 +65,6 @@ def compute_Nucleus(cell: dict, dapi, voxel_size, acquisition_id) :
     new_Cell = pd.DataFrame(columns= new_Cell_columns, data= [data])
 
     return new_Cell
-
-def nucleus_signal_metrics(cell, channel, projtype = 'mip', use_cell_mask= False) :
-    """
-    Returns dict containing signal related measures : 'min', 'max', '1 percentile', '9 percentile', 'mean' and 'median'.
-      Computed from channel signal in cell's nucleus mask. Signal measures are computed from 2D cell, so channel is projected z-wise according to projtype (provided channel is 3D).
-    
-        Parameters
-        ----------
-            cell : dict
-                Dictionary computed from bigFish.multistack.extract_cell
-            channel : np.ndarray
-                Channel from which intensity is computed
-            projtype : str
-                can either be 'mip' or 'mean'.
-
-        Returns
-        -------
-            mean_sig : float
-        
-    """
-    min_y, min_x, max_y, max_x = cell["bbox"]
-    channel_cropped = channel[:, min_y:max_y, min_x:max_x]
- 
-
-    if channel.ndim == 3 :
-        if projtype == 'mip' : 
-            channel_crop_proj = maximum_projection(channel_cropped)
-        elif projtype == 'mean' :
-            channel_crop_proj = mean_projection(channel_cropped)
-    
-    if use_cell_mask : nucleus_mask = cell["cell_mask"]
-    else : nucleus_mask = cell["nuc_mask"]
-
-    metrics = compute_signalmetrics(channel_crop_proj, nucleus_mask)
-    return metrics
 
 
 
@@ -376,11 +341,13 @@ def extract_cell(cell_label,
 
     """
 
-    others_coord_copy = others_coord.copy()
-
-    for key, val in others_coord.items() :
-        if len(val) == 0 : del others_coord_copy[key]
-        elif key == 'malat1_coord' and len(val[0]) == 0 : del others_coord_copy[key]
+    if type(others_coord) != type(None) :
+        others_coord_copy = others_coord.copy()
+    
+        for key, val in others_coord.items() :
+            if len(val) == 0 : del others_coord_copy[key]
+            elif key == 'malat1_coord' and len(val[0]) == 0 : del others_coord_copy[key]
+    else : others_coord_copy = None
 
 
     fov_results = multistack.extract_cell(cell_label= cell_label, 

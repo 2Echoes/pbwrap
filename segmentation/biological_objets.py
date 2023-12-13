@@ -83,8 +83,8 @@ def centrosome_segmentation_candidate_regions(image, centrosome_size, voxel_size
     im_log = stack.log_filter(image, sigma= centrosome_gaussian_size)
     flat_log = im_log.flatten()
     threshold = auto_LoG_threshold(flat_log) * threshold_penalty
-    mask = thresholding(image, threshold)
+    mask = thresholding(im_log, threshold)
     mask = remove_small_objects(mask, round(centrosome_pixel_volume / 2**3)) # removing objects smaller than the half of expected centrosome
-    labels = ndi.label(mask)
+    labels,_ = ndi.label(mask)
 
     return labels

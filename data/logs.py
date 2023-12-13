@@ -1,5 +1,6 @@
-from .getdata import get_datetime, _get_varname
+from .getdata import _get_varname
 from .output import dict_to_lines
+from CustomPandasFramework.computer_interface import get_datetime
 import pandas as pd
 
 class log :

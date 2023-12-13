@@ -4,10 +4,10 @@ This submodule contains functions to compute features no matter the data layer.
 
 import numpy as np
 import pandas as pd
+import bigfish.stack as stack
 from bigfish.stack import check_parameter, check_array
 from .utils import unzip
 from scipy.ndimage import distance_transform_edt
-from scipy.ndimage import binary_dilation
 from scipy.signal import fftconvolve
 from ..utils import check_parameter
 from ..utils import nanometer_to_pixel as utils_nanometer_to_pixel
@@ -138,6 +138,43 @@ def compute_mask_area(mask: np.ndarray, unit: str = 'px', voxel_size: tuple= Non
     else : res = pixel_number * y_dim * x_dim
 
     return res
+
+def nucleus_signal_metrics(cell, channel, projtype = 'mip', use_cell_mask= False) :
+    """
+    Returns dict containing signal related measures : 'min', 'max', '1 percentile', '9 percentile', 'mean' and 'median'.
+      Computed from channel signal in cell's nucleus mask. Signal measures are computed from 2D cell, so channel is projected z-wise according to projtype (provided channel is 3D).
+    
+        Parameters
+        ----------
+            cell : dict
+                Dictionary computed from bigFish.multistack.extract_cell
+            channel : np.ndarray
+                Channel from which intensity is computed
+            projtype : str
+                can either be 'mip' or 'mean'.
+
+        Returns
+        -------
+            mean_sig : float
+        
+    """
+    min_y, min_x, max_y, max_x = cell["bbox"]
+    channel_cropped = channel[:, min_y:max_y, min_x:max_x]
+ 
+
+    if channel.ndim == 3 :
+        if projtype == 'mip' : 
+            channel_crop_proj = stack.maximum_projection(channel_cropped)
+        elif projtype == 'mean' :
+            channel_crop_proj = stack.mean_projection(channel_cropped)
+    
+    if use_cell_mask : nucleus_mask = cell["cell_mask"]
+    else : nucleus_mask = cell["nuc_mask"]
+
+    metrics = compute_signalmetrics(channel_crop_proj, nucleus_mask)
+    return metrics
+
+
 
 def count_rna_close_pbody(pbody_mask: np.ndarray, spots_coords: 'list[tuple]', distance_nm: float, voxel_size: 'tuple[float]')-> int :
     """

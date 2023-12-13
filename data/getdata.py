@@ -199,6 +199,3 @@ def _get_varname(var):
     return [var_name for var_name, var_val in callers_local_vars if var_val is var][0]
 
 
-
-def get_datetime():
-    return dt.datetime.now().strftime("%Y%m%d_%H-%M-%S")

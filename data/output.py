@@ -1,5 +1,6 @@
 from bigfish.stack import check_parameter
-from .getdata import get_datetime, _get_varname
+from .getdata import _get_varname
+from CustomPandasFramework.computer_interface import get_datetime
 
 def print_parameters(path_out, *parameters, printDateTime= True):
     """
