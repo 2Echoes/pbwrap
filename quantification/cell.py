@@ -131,16 +131,9 @@ from .utils import unzip
 from bigfish.classification import compute_features, get_features_name
 from .measures import count_spots_in_mask, compute_mask_area, compute_signalmetrics
 from pbwrap.utils import from_label_get_centeroidscoords
-<<<<<<< HEAD
- 
-
-
-def compute_Cell(acquisition_id, cell, Pbody_Acquisition:pd.DataFrame, dapi, cell_label, voxel_size = (300,103,103)):
-=======
 # 
 # 
 def compute_Cell(acquisition_id, cell, dapi, cell_label, Pbody_Acquisition:pd.DataFrame=None, voxel_size = (300,103,103)):
->>>>>>> 31d6128e229bad189ec6d2ba4a7a4c5d986f84ec
     """
     Returns DataFrame with expected Cell datashape containing all cell level features. 
     Features are computed using bigFish built in functions.
