@@ -102,9 +102,7 @@ def _centrosome_cell_quant(cell, voxel_size, dapi_stack, acquisition_id, centros
     
     centrosome_coords = detect_centrosome(cell=cell, centrosome_presegmentation= centrosome_presegmentation)
     centrosome_number = len(centrosome_coords)
-    print("centrosome coords :\n",centrosome_coords)
-    print("bbox\n",cell['bbox'])
-    print("cell shape\n", cell['cell_mask'].shape)
+
     if centrosome_number == 0 : raise QuantificationError("No centrosome found")
     else :
         try :
