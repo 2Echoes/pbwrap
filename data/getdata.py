@@ -198,12 +198,3 @@ def _get_varname(var):
     #To be used  within a function.
     callers_local_vars = inspect.currentframe().f_back.f_back.f_locals.items()
     return [var_name for var_name, var_val in callers_local_vars if var_val is var][0]
-
-
-<<<<<<< HEAD
-=======
-
-def get_datetime():
-    print("Warning : depreciation. This get_datetime function should be called from CustomPandasFramework")
-    return dt.datetime.now().strftime("%Y%m%d_%H-%M-%S")
->>>>>>> 31d6128e229bad189ec6d2ba4a7a4c5d986f84ec
