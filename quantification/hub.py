@@ -107,8 +107,12 @@ def _centrosome_cell_quant(cell, voxel_size, dapi_stack, acquisition_id, centros
     print("cell shape\n", cell['cell_mask'].shape)
     if centrosome_number == 0 : raise QuantificationError("No centrosome found")
     else :
-        cell_res = _main_cell_quant(cell=cell, voxel_size=voxel_size, dapi_stack=dapi_stack, acquisition_id=acquisition_id, compute_centrosome= True, centrosome_coords=centrosome_coords)
-        cell_res.at[0, "centrosome_number"] = centrosome_number
-        centrosome_coords = tuple([tuple(coords) for coords in centrosome_coords])
-        cell_res["centrosome_coords"] = (tuple([tuple(coords) for coords in centrosome_coords]),)
+        try :
+            cell_res = _main_cell_quant(cell=cell, voxel_size=voxel_size, dapi_stack=dapi_stack, acquisition_id=acquisition_id, compute_centrosome= True, centrosome_coords=centrosome_coords)
+            cell_res.at[0, "centrosome_number"] = centrosome_number
+            centrosome_coords = tuple([tuple(coords) for coords in centrosome_coords])
+            cell_res["centrosome_coords"] = (tuple([tuple(coords) for coords in centrosome_coords]),)
+        except IndexError as error :
+            print("centrosome coords : ", centrosome_coords)
+            raise error
         return cell_res
