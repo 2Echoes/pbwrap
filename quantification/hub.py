@@ -112,6 +112,6 @@ def _centrosome_cell_quant(cell, voxel_size, dapi_stack, acquisition_id, centros
         cell_res = _main_cell_quant(cell=cell, voxel_size=voxel_size, dapi_stack=dapi_stack, acquisition_id=acquisition_id, compute_centrosome= True, centrosome_coords=centrosome_coords_2d)
         cell_res.at[0, "centrosome_number"] = centrosome_number
         centrosome_coords = tuple([tuple(coords) for coords in centrosome_coords])
-        cell_res["centrosome_coords"] = (np.array([tuple(coords) for coords in centrosome_coords], dtype= int),)
+        cell_res["centrosome_coords"] = (tuple([tuple(coords) for coords in centrosome_coords], dtype= int),)
 
         return cell_res
