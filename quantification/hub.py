@@ -110,7 +110,7 @@ def _centrosome_cell_quant(cell, voxel_size, dapi_stack, acquisition_id, centros
             cell_res.at[0, "centrosome_number"] = centrosome_number
             print([tuple(coords) for coords in centrosome_coords])
             centrosome_coords = tuple([tuple(coords) for coords in centrosome_coords])
-            cell_res["centrosome_coords"] = np.array([tuple(coords) for coords in centrosome_coords], dtype= int)
+            cell_res["centrosome_coords"] = (np.array([tuple(coords) for coords in centrosome_coords], dtype= int),)
             print(cell_res)
         except IndexError as error :
             print("centrosome coords : ", centrosome_coords)
