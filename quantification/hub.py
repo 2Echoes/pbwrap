@@ -102,18 +102,16 @@ def _centrosome_cell_quant(cell, voxel_size, dapi_stack, acquisition_id, centros
     
     centrosome_coords = detect_centrosome(cell=cell, centrosome_presegmentation= centrosome_presegmentation)
     # Note : it appears bigfish centrosome features only work with 2D coords, while it accepts 3D coords only 2D measures are computed and worse it fails to remove the z dimension properly (as of today's version)
-    # Then we have to remove the z coords
+    # --> we have to remove the z coords
     centrosome_coords_2d = centrosome_coords[:,1:]
     centrosome_number = len(centrosome_coords)
 
     if centrosome_number == 0 : raise QuantificationError("No centrosome found")
     else :
-        try :
-            cell_res = _main_cell_quant(cell=cell, voxel_size=voxel_size, dapi_stack=dapi_stack, acquisition_id=acquisition_id, compute_centrosome= True, centrosome_coords=centrosome_coords_2d)
-            cell_res.at[0, "centrosome_number"] = centrosome_number
-            centrosome_coords = tuple([tuple(coords) for coords in centrosome_coords])
-            cell_res["centrosome_coords"] = (np.array([tuple(coords) for coords in centrosome_coords], dtype= int),)
-        except IndexError as error :
-            print("centrosome coords : ", centrosome_coords)
-            raise error
+        
+        cell_res = _main_cell_quant(cell=cell, voxel_size=voxel_size, dapi_stack=dapi_stack, acquisition_id=acquisition_id, compute_centrosome= True, centrosome_coords=centrosome_coords_2d)
+        cell_res.at[0, "centrosome_number"] = centrosome_number
+        centrosome_coords = tuple([tuple(coords) for coords in centrosome_coords])
+        cell_res["centrosome_coords"] = (np.array([tuple(coords) for coords in centrosome_coords], dtype= int),)
+
         return cell_res
