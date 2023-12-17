@@ -1,7 +1,7 @@
+import time
 import numpy as np
 from skimage.measure import regionprops_table
-from bigfish.stack import check_parameter
-import time
+from bigfish.stack import check_parameter, mean_filter
 
 def from_label_get_centeroidscoords(label):
     """Returns dict{"label", "centroid"}"""
@@ -128,3 +128,5 @@ def gaussian_kernel_size(object_size_nm, voxel_size, width= 'FWHM') :
 
 def compute_voxel_volume(voxel) : 
     return np.array(voxel).prod()
+
+
