@@ -203,10 +203,6 @@ def get_colors_list(size:int = 100) -> list:
     if size > length :
         iteration = ceil(size / length)
         return (color_list * iteration)[:size]
-        # print("length :" , length)
-        # print("len returned : ", len(color_list * iteration))
-        # print("size :" , size)
-        # print("iteration :", iteration)return (color_list * iteration)[:size]
 
     return (color_list)[:size]
 

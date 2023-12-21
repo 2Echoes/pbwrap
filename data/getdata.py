@@ -1,5 +1,4 @@
 import pandas as pd
-import datetime as dt
 import re, inspect
 import CustomPandasFramework.operations as dataOp
 from bigfish.stack import check_parameter,read_image
@@ -190,11 +189,3 @@ def from_rna_get_Cells(rna: 'list[str]', Cell: pd.DataFrame, Acquisition: pd.Dat
     join_frame = join_frame.drop(axis= 0, index= drop_index)
 
     return join_frame
-
-
-
-def _get_varname(var):
-    print("Warning : depreciation. This get_datetime function should be called from CustomPandasFramework")
-    #To be used  within a function.
-    callers_local_vars = inspect.currentframe().f_back.f_back.f_locals.items()
-    return [var_name for var_name, var_val in callers_local_vars if var_val is var][0]
