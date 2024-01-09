@@ -79,7 +79,7 @@ def cluster_detection(spots, voxel_size, radius = 350, nb_min_spots = 4, keys_to
     elif isinstance(keys_to_compute, list) : pass
     else : raise TypeError("Wrong type for keys_to_compute. Should be list[str] or str. It is {0}".format(type(keys_to_compute)))
     if len(spots) == 0 :
-        res = {'clustered_spots' : [], 'clusters' : [], 'clustered_spots_dataframe' : pd.DataFrame(columns= ["id", "cluster_id", "z", "y", "x"]), 'clusters_dataframe' : ["id", "z", "y", "x", "spot_number"]}
+        res = {'clustered_spots' : [], 'clusters' : [], 'clustered_spots_dataframe' : pd.DataFrame(columns= ["id", "cluster_id", "z", "y", "x"]), 'clusters_dataframe' : pd.DataFrame(columns= ["id", "z", "y", "x", "spot_number"])}
         return {key : res[key] for key in keys_to_compute}
     else : res = {}
     clustered_spots, clusters = detection.detect_clusters(spots, voxel_size= voxel_size, radius= radius, nb_min_spots= nb_min_spots)
