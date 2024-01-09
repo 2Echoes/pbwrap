@@ -113,6 +113,10 @@ def get_centroids_list(clusters_df) :
 
     return list(zip(*keys))
 
+def get_centroids_array(cluster_df) :
+
+    return np.array(get_centroids_list(cluster_df), dtype= int)
+
 
 def _compute_critical_spot_number(radius_nm, voxel_size, density) :
     
