@@ -238,12 +238,12 @@ def _compute_threshold_parameters(ndim, voxel_size, spot_radius, minimum_distanc
     return log_kernel_size, minimum_distance
 
 
-def compute_auto_threshold(images, voxel_size=None, spot_radius=None, log_kernel_size=None, minimum_distance=None, im_number= 15) :
+def compute_auto_threshold(images, voxel_size=None, spot_radius=None, log_kernel_size=None, minimum_distance=None, im_number= 15, crop_zstack= None) :
     """
     Compute bigfish auto threshold efficiently for list of images. In case on large set of images user can set im_number to only consider a random subset of image for threshold computation.
     """
     # check parameters
-    stack.check_parameter(images = (list, np.ndarray, GeneratorType), voxel_size=(int, float, tuple, list, type(None)),spot_radius=(int, float, tuple, list, type(None)),log_kernel_size=(int, float, tuple, list, type(None)),minimum_distance=(int, float, tuple, list, type(None)), im_number = int)
+    stack.check_parameter(images = (list, np.ndarray, GeneratorType), voxel_size=(int, float, tuple, list, type(None)),spot_radius=(int, float, tuple, list, type(None)),log_kernel_size=(int, float, tuple, list, type(None)),minimum_distance=(int, float, tuple, list, type(None)), im_number = int, crop_zstack= (type(None), tuple))
 
     # if one image is provided we enlist it
     if not isinstance(images, list):
@@ -268,10 +268,10 @@ def compute_auto_threshold(images, voxel_size=None, spot_radius=None, log_kernel
     #Building a giant 3D array containing all information for threshold selection -> cheating detection.automated_threshold_setting that doesn't take lists and doesn't use spatial information.
     log_kernel_size, minimum_distance = _compute_threshold_parameters(ndim, voxel_size, spot_radius, minimum_distance, log_kernel_size)
     images_filtered = np.concatenate(
-        [stack.log_filter(image, sigma= log_kernel_size) for image in images],
+        [stack.log_filter(image[crop_zstack[0]: crop_zstack[1]], sigma= log_kernel_size) for image in images],
          axis= ndim -1)
     max_masks = np.concatenate(
-        [detection.local_maximum_detection(image, min_distance= minimum_distance) for image in images],
+        [detection.local_maximum_detection(image[crop_zstack[0]: crop_zstack[1]], min_distance= minimum_distance) for image in images],
          axis= ndim -1)
     threshold = detection.automated_threshold_setting(images_filtered, max_masks)
 
