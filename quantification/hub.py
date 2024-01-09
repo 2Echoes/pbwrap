@@ -145,7 +145,7 @@ def _clusters_quant(cell: dict, clusters_coords_key= 'clusters_coords', clustere
         "nucleus_cluster_number" : [sum(nucleus_mask[clusters_coords])],
         "clustered_spots_number" : [clustered_spots_number],
         "unclustered_spots_number" : [unclustered_spots_number],
-        "clustered_spots_fraction" : [clustered_spots/unclustered_spots_number]
+        "clustered_spots_fraction" : [clustered_spots_number/(clustered_spots_number + unclustered_spots_number)]
     })
 
     return res
