@@ -17,7 +17,6 @@ class log :
 
 
 class error_log(log) :
-    print("Warning : depreciation. This get_datetime function should be called from CustomPandasFramework")
 
     def __init__(self, name, path) -> None:
         super().__init__(name, path)
@@ -47,7 +46,6 @@ class error_log(log) :
 
 
 class parameter_log(log) :
-    print("Warning : depreciation. This get_datetime function should be called from CustomPandasFramework")
 
     """
     Empty log is created when constructor is called. Then use self.write to update.
@@ -84,7 +82,6 @@ class parameter_log(log) :
 
 
 class run_log(log) :
-    print("Warning : depreciation. This get_datetime function should be called from CustomPandasFramework")
     def __init__(self, name, path) -> None:
         super().__init__(name, path)
         self.sucess_count = 0
