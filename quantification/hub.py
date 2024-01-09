@@ -117,7 +117,11 @@ def _centrosome_cell_quant(cell, voxel_size, dapi_stack, acquisition_id, centros
         cell_res["centrosome_coords"] = (tuple([tuple(coords) for coords in centrosome_coords]),)
         clusters_quant = _clusters_quant(cell)
 
+        print("BEFORE\n", cell_res)
+        
         cell_res = pd.concat([cell_res, clusters_quant], axis= 1)
+
+        print("AFTER\n",cell_res)
 
         return cell_res
 
