@@ -178,6 +178,19 @@ def get_hatch_generator():
     gen = itertools.cycle((marker for marker in hatchs))
     return gen
 
+
+def make_color_frame(labels : 'list[str]') :
+    """
+    Return a color df where labels are passed in index and unique columns 'colors' contains color values. 
+    """
+
+    color_df = pd.DataFrame({
+        'labels' : labels,
+        'colors' : get_colors_list(len(labels))
+    })
+    
+    return color_df.set_index('labels')
+
 def get_colors_list(size:int = 100) -> list:
     """
     Get a list of color from matplotlib.colors of length 'size'.
