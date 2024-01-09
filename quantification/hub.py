@@ -117,7 +117,7 @@ def _centrosome_cell_quant(cell, voxel_size, dapi_stack, acquisition_id, centros
         clusters_quant = _clusters_quant(cell)
         print(cell_res.columns)
         print(clusters_quant.columns)
-        # cell_res = pd.concat([cell_res, clusters_quant], axis= 1).reset_index(drop=True)
+        cell_res = pd.concat([cell_res, clusters_quant], axis= 1).reset_index(drop=True)
 
         return cell_res
 
@@ -132,7 +132,6 @@ def _clusters_quant(cell: dict, clusters_coords_key= 'clusters_coords', clustere
     unclustered_spots = cell.get(unclustered_spots_key)
 
     clusters_coords = cell.get(clusters_coords_key)
-    # clusters_coords = [(coords[1], coords[2]) for coords in cell.get(clusters_coords_key)]
     Z,Y,X = zip(*clusters_coords)
 
     nucleus_mask = cell.get("nuc_mask")
