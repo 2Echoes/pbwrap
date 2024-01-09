@@ -101,8 +101,10 @@ def _main_cell_quant(cell, voxel_size, dapi_stack, acquisition_id, compute_centr
 def _centrosome_cell_quant(cell, voxel_size, dapi_stack, acquisition_id, centrosome_presegmentation) :
     
     centrosome_coords = detect_centrosome(cell=cell, centrosome_presegmentation= centrosome_presegmentation)
+
     # Note : it appears bigfish centrosome features only work with 2D coords, while it accepts 3D coords only 2D measures are computed and worse it fails to remove the z dimension properly (as of today's version)
     # --> we have to remove the z coords
+    # TODO : open pull request on github
     centrosome_coords_2d = centrosome_coords[:,1:]
     centrosome_number = len(centrosome_coords)
 
@@ -113,5 +115,37 @@ def _centrosome_cell_quant(cell, voxel_size, dapi_stack, acquisition_id, centros
         cell_res.at[0, "centrosome_number"] = centrosome_number
         centrosome_coords = tuple([tuple(coords) for coords in centrosome_coords])
         cell_res["centrosome_coords"] = (tuple([tuple(coords) for coords in centrosome_coords]),)
+        clusters_quant = _clusters_quant(cell)
+
+        cell_res = pd.concat([cell_res, clusters_quant], axis= 1)
 
         return cell_res
+
+def _clusters_quant(cell: dict, clusters_coords_key= 'clusters_coords', clustered_spots_key = 'clustered_spots', unclustered_spots_key = 'unclustered_spots') :
+
+    """
+    Keys : cluster_number, nucleus_cluster_number, clustered_spots_number, unclustered_spots_number, clustered_spots_fraction
+    """
+
+    ymin, xmin, ymax, xmax = cell.get('bbox')
+    clustered_spots = cell.get(clustered_spots_key)
+    unclustered_spots = cell.get(unclustered_spots_key)
+    clusters_coords = [(coords[0] - ymin, coords[1] - xmin) for coords in cell.get(clusters_coords_key)]
+    nucleus_mask = cell.get("nuc_mask")
+
+    if type(clustered_spots) == type(None) : raise KeyError("clustered_spots array not found in extracted cells")
+    if type(unclustered_spots) == type(None) : raise KeyError("unclustered_spots array not found in extracted cells")
+    if type(clusters_coords) == type(None) : raise KeyError("clusters_coords array not found in extracted cells")
+
+    clustered_spots_number = len(clustered_spots)
+    unclustered_spots_number = len(unclustered_spots)
+
+    res = pd.DataFrame({
+        "cluster_number" : [len(clusters_coords)],
+        "nucleus_cluster_number" : [sum(nucleus_mask[clusters_coords])],
+        "clustered_spots_number" : [clustered_spots_number],
+        "unclustered_spots_number" : [unclustered_spots_number],
+        "clustered_spots_fraction" : [clustered_spots/unclustered_spots_number]
+    })
+
+    return res
