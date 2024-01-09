@@ -132,7 +132,11 @@ def _clusters_quant(cell: dict, clusters_coords_key= 'clusters_coords', clustere
     unclustered_spots = cell.get(unclustered_spots_key)
     print(cell.get(clusters_coords_key))
     clusters_coords = cell.get(clusters_coords_key)
-    # clusters_coords = [(coords[1] - ymin, coords[2] - xmin) for coords in cell.get(clusters_coords_key)]
+    # clusters_coords = [(coords[1], coords[2]) for coords in cell.get(clusters_coords_key)]
+    Z,Y,X = zip(*clusters_coords)
+    print(Z)
+    print(Y)
+    print(X)
     nucleus_mask = cell.get("nuc_mask")
 
     if type(clustered_spots) == type(None) : raise KeyError("clustered_spots array not found in extracted cells")
@@ -144,7 +148,7 @@ def _clusters_quant(cell: dict, clusters_coords_key= 'clusters_coords', clustere
 
     res = pd.DataFrame({
         "cluster_number" : [len(clusters_coords)],
-        "nucleus_cluster_number" : [sum(nucleus_mask[clusters_coords])],
+        "nucleus_cluster_number" : [sum(nucleus_mask[Y,X])],
         "clustered_spots_number" : [clustered_spots_number],
         "unclustered_spots_number" : [unclustered_spots_number],
         "clustered_spots_fraction" : [clustered_spots_number/(clustered_spots_number + unclustered_spots_number)]
