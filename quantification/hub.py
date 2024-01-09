@@ -131,7 +131,8 @@ def _clusters_quant(cell: dict, clusters_coords_key= 'clusters_coords', clustere
     clustered_spots = cell.get(clustered_spots_key)
     unclustered_spots = cell.get(unclustered_spots_key)
     print(cell.get(clusters_coords_key))
-    clusters_coords = [(coords[1] - ymin, coords[2] - xmin) for coords in cell.get(clusters_coords_key)]
+    clusters_coords = cell.get(clusters_coords_key)
+    # clusters_coords = [(coords[1] - ymin, coords[2] - xmin) for coords in cell.get(clusters_coords_key)]
     nucleus_mask = cell.get("nuc_mask")
 
     if type(clustered_spots) == type(None) : raise KeyError("clustered_spots array not found in extracted cells")
