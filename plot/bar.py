@@ -7,7 +7,10 @@ import pandas as pd
 import pbwrap.data.getdata as gdata
 import CustomPandasFramework.PBody_project.update as update
 import CustomPandasFramework.PBody_project.views as views
-from .utils import save_plot
+from .utils import save_plot, check_parameter
+from itertools import chain
+from matplotlib.container import BarContainer
+from matplotlib.patches import Rectangle
 
 def threshold(Acquisition: pd.DataFrame, rna_list:'list[str]' = None, path_output= None, show = True, close= True, ext= 'png', title = None) :
     
@@ -22,7 +25,6 @@ def threshold(Acquisition: pd.DataFrame, rna_list:'list[str]' = None, path_outpu
         std_list += [Acquisition[Acquisition["rna name"] == rna].loc[:,"RNA spot threshold"].std()]
 
     fig = gene_bar_plot(rna_list, threshold_list, errors= std_list, title= title, ylabel= "mean threshold", path_output= path_output, ext=ext, show=show, close= close)
-
 
 ## P-Body ##
 def P_body_detect_inside_nucleus(Cell: pd.DataFrame, path_output= None, show = True, close = True, ext= 'png', title: str = None) :
@@ -215,6 +217,91 @@ def total_cell_number(Acquisition: pd.DataFrame,xlabel=None, ylabel= "Cell numbe
 #######################
 ###### BASE PLOT ######
 #######################
+    
+def bar_plot(ax: plt.Axes, data, errors=None,
+            labels=None, colors=None, xlabel=None, ylabel=None, title=None, y_axis=None,
+            multi_bar_plot= False, 
+            **kwargs
+            ) :
+    
+    #Parameters check
+    check_parameter(ax = plt.Axes, 
+                    data = (list, tuple, np.ndarray, pd.DataFrame, pd.Series, pd.Index), errors = (list, tuple, np.ndarray, pd.DataFrame, pd.Series, pd.Index, type(None)), labels = (list, tuple, np.ndarray, pd.DataFrame, pd.Series, pd.Index, type(None)), colors= (list, tuple, np.ndarray, pd.DataFrame, pd.Series, pd.Index, type(None)),
+                    xlabel= (str,type(None)), ylabel= (str,type(None)), title= (str,type(None)),
+                    y_axis= (tuple, type(None)),
+                    multi_bar_plot= bool)
+    
+
+    if multi_bar_plot :
+        for iterable in data : check_parameter(iterable = (list, tuple, np.ndarray, pd.DataFrame, pd.Series, pd.Index))
+        if type(errors) != type(None) : 
+            for iterable in errors : check_parameter(iterable = (list, tuple, np.ndarray, pd.DataFrame, pd.Series, pd.Index))
+
+    number_of_set = len(data)
+
+    if len(labels) != number_of_set : raise ValueError("length of labels must match length of data.")
+      
+
+    #Layout
+    if multi_bar_plot :
+
+        if type(colors) != type(None) :
+            if len(colors) == len(data) :
+                new_colors = []
+                for color,distrib in zip(colors, data) :
+                    new_colors.extend([color]*len(distrib))
+                colors = new_colors
+
+        max_bar_number_per_set = max(len(set) for set in data)# + 1 # +1 for spacing bewteen groups of bars
+        positions, xticks_positions = multi_plot_positions(data)
+        data = list(chain(*data))
+        errors = list(chain(*errors))
+        assert len(data) == len(positions), "AssertionError : multi_bars_data wrongly flattened : positions : {0}, distributions {1}".format(len(positions), len(data))
+    
+    else : 
+        max_bar_number_per_set = 1
+        positions = np.arange(1, len(data) + 1)
+        xticks_positions = np.arange(1, len(data) + 1)
+    
+    ##### From there data is a flat iterable
+
+    #Plot
+        kwargs.setdefault('capsize', 10)
+    bar_plot = ax.bar(
+        x= positions, 
+        height= data,
+        yerr= errors,
+        width= 0.75,
+        align= 'center',
+        color= colors,
+        label= 'data_bars',
+        **kwargs
+           )
+    
+    # bar_handles(bar_plot, colors)
+
+    #x axis labels
+    if type(labels) == type(None) : labels = np.arange(1,len(data) + 1)
+    xticks = ax.set_xticks(xticks_positions, labels=labels)
+    ax.set_xlim(0.25, max(positions) + 0.75)
+        
+    #colors   
+    if type(colors) != type(None) :
+        if len(colors) != len(data) and len(colors) != number_of_set : raise ValueError("Length of colors must either match length of data or the number of element in data")
+    
+    if type(y_axis) != type(None) :
+        axis = list(ax.axis())
+        if y_axis[0] != None : axis[2] = y_axis[0]
+        if y_axis[1] != None : axis[3] = y_axis[1]
+        ax.axis(axis)
+    else : axis = ax.axis()
+
+    if type(xlabel) != type(None) : ax.set_xlabel(xlabel)
+    if type(ylabel) != type(None) : ax.set_ylabel(ylabel)
+    if type(title) != type(None) : ax.set_title(title)
+
+    return ax
+    
 
 
 def gene_bar_plot(rna_list: 'list[str]', values: 'list[float]', errors: 'list[float]'=None,
@@ -294,3 +381,26 @@ def gene_bar_plot(rna_list: 'list[str]', values: 'list[float]', errors: 'list[fl
     if close : plt.close()
 
     return fig
+
+
+def multi_plot_positions(distributions) :
+
+    max_individual_violin_number = max([len(distrib) for distrib in distributions]) + 1#Is the maximum number of violin plotted for one set.
+
+    positions = []
+    ticks_positions = []
+    for distrib_number, distrib in enumerate(distributions) :
+        positions.extend(list(
+            np.arange(1, len(distrib) + 1) + (distrib_number * max_individual_violin_number) if len(distrib) > 1 
+            else [distrib_number * max_individual_violin_number + (max_individual_violin_number-1)/2 + 1]
+        ))
+
+        ticks_positions.append(
+            distrib_number * max_individual_violin_number + (len(distrib)-1)/2 + 1 if len(distrib) > 1
+            else distrib_number * max_individual_violin_number + (max_individual_violin_number-1)/2 + 1
+        )
+
+    return positions, ticks_positions
+
+def _make_bar_handles(color_list) :
+    return [Rectangle(xy= (0,0), width= 0.75, height = 1, color= color) for color in color_list]

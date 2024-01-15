@@ -126,11 +126,14 @@ def _clusters_quant(cell: dict, clusters_coords_key= 'clusters_coords', clustere
     """
 
     ymin, xmin, ymax, xmax = cell.get('bbox')
-    clustered_spots = cell.get(clustered_spots_key)
-    unclustered_spots = cell.get(unclustered_spots_key)
+    clustered_spots = cell.setdefault(clustered_spots_key, np.empty(shape=(0,0,0), dtype= int))
+    unclustered_spots = cell.setdefault(unclustered_spots_key, np.empty(shape=(0,0,0), dtype= int))
+    clusters_coords = cell.setdefault(clusters_coords_key, np.empty(shape=(0,0,0), dtype= int))
 
-    clusters_coords = cell.get(clusters_coords_key)
-    Z,Y,X = zip(*clusters_coords)
+    if len(clusters_coords) == 0 :
+        Z = Y = X = []
+    else :
+        Z,Y,X = zip(*clusters_coords)
 
     nucleus_mask = cell.get("nuc_mask")
 
@@ -146,7 +149,7 @@ def _clusters_quant(cell: dict, clusters_coords_key= 'clusters_coords', clustere
         "nucleus_cluster_number" : [sum(nucleus_mask[Y,X])],
         "clustered_spots_number" : [clustered_spots_number],
         "unclustered_spots_number" : [unclustered_spots_number],
-        "clustered_spots_fraction" : [clustered_spots_number/(clustered_spots_number + unclustered_spots_number)]
+        "clustered_spots_fraction" : [clustered_spots_number/(clustered_spots_number + unclustered_spots_number)] if clustered_spots_number + unclustered_spots_number != 0 else [np.NaN]
     })
 
     return res
