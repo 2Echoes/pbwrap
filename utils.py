@@ -138,3 +138,21 @@ def _get_varname(variable):
         if id(locals()[name]) == id(variable):
             return name
     return None
+
+
+def get_centroids_list(clusters_df) :
+
+    """
+    clusters_list should be a pd.DataFrame with ['z', 'y', 'x'] or ['y', 'x'] keys.
+    """
+
+    if 'y' in clusters_df.columns and 'x' in clusters_df.columns :
+        if 'z' in clusters_df.columns : keys = [clusters_df['z'], clusters_df['y'], clusters_df['x']]
+        else : keys = [clusters_df['y'], clusters_df['x']]
+    else : raise ValueError("Expected keys : ['z', 'y', 'x'] or ['y', 'x']")
+
+    return list(zip(*keys))
+
+def get_centroids_array(cluster_df) :
+
+    return np.array(get_centroids_list(cluster_df), dtype= int)
