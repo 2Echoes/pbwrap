@@ -1,7 +1,9 @@
 import bigfish.stack as stack
 import numpy as np
 
-def remove_mean_gaussian_background(image, sigma = 5):
+from pbwrap.utils import compute_anisotropy_coef
+
+def remove_mean_gaussian_background(image, sigma = 5, voxel_size = (1,1,1)):
     """Removes background of the image using gaussian filter. If the input image is 3D the mean gaussian background is computed from all slices and then substract to the stack.
     
     Parameters
@@ -16,20 +18,12 @@ def remove_mean_gaussian_background(image, sigma = 5):
             Image with background substracted.
     """
 
-    stack.check_parameter(image = (np.ndarray), sigma = (int, float))
-    dim = image.ndim
-    if dim == 2 :
-        image_no_background = stack.remove_background_gaussian(image, sigma)
-    
-    elif dim == 3:
-        mean_gaussian_background = stack.gaussian_filter(image, sigma)
-        mean_gaussian_background = np.mean(mean_gaussian_background, axis= 0)
-        image_no_background = np.subtract(image, mean_gaussian_background)
-        image_no_background[image_no_background < 0] = 0
-        image_no_background = np.round(image_no_background)
-        image_no_background = np.array(image_no_background, dtype= image.dtype)
-    
-    else : raise ValueError("Incorrect image dimension. Dimension should be either 2 or 3.")   
+    stack.check_parameter(image = (np.ndarray), sigma = (int, float), voxel_size= (tuple, list))
+    if not len(voxel_size) == image.ndim : raise ValueError("Inconsistency between voxel_size length and image dimension.")
+    anisotropy_coef = compute_anisotropy_coef(voxel_size=voxel_size)
+    corrected_sigma = [sigma / anisotropy_i for anisotropy_i in anisotropy_coef]
+
+    image_no_background = stack.remove_background_gaussian(image, corrected_sigma)
 
     return image_no_background
 
