@@ -224,6 +224,16 @@ def bar_plot(ax: plt.Axes, data, errors=None,
             **kwargs
             ) :
     
+    """
+    Parameters
+    ----------
+
+    data : list[bar_height] (or list[list[bar_height]] for multi_bar_plot = True)
+    errors : list[float-like] : one per bar.
+    color : list[color] 1 per bar number or 1 per group of bars.
+    multi_bar_plot : pass True if data is listof list.
+    """
+    
     #Parameters check
     check_parameter(ax = plt.Axes, 
                     data = (list, tuple, np.ndarray, pd.DataFrame, pd.Series, pd.Index), errors = (list, tuple, np.ndarray, pd.DataFrame, pd.Series, pd.Index, type(None)), labels = (list, tuple, np.ndarray, pd.DataFrame, pd.Series, pd.Index, type(None)), colors= (list, tuple, np.ndarray, pd.DataFrame, pd.Series, pd.Index, type(None)),
@@ -239,7 +249,8 @@ def bar_plot(ax: plt.Axes, data, errors=None,
 
     number_of_set = len(data)
 
-    if len(labels) != number_of_set : raise ValueError("length of labels must match length of data.")
+    if type(labels) != type(None) :
+        if len(labels) != number_of_set : raise ValueError("length of labels must match length of data.")
       
 
     #Layout
@@ -255,7 +266,7 @@ def bar_plot(ax: plt.Axes, data, errors=None,
         max_bar_number_per_set = max(len(set) for set in data)# + 1 # +1 for spacing bewteen groups of bars
         positions, xticks_positions = multi_plot_positions(data)
         data = list(chain(*data))
-        errors = list(chain(*errors))
+        if type(errors) != type(None) : errors = list(chain(*errors))
         assert len(data) == len(positions), "AssertionError : multi_bars_data wrongly flattened : positions : {0}, distributions {1}".format(len(positions), len(data))
     
     else : 
@@ -281,7 +292,7 @@ def bar_plot(ax: plt.Axes, data, errors=None,
     # bar_handles(bar_plot, colors)
 
     #x axis labels
-    if type(labels) == type(None) : labels = np.arange(1,len(data) + 1)
+    if type(labels) == type(None) : labels = np.arange(1,len(xticks_positions) + 1)
     xticks = ax.set_xticks(xticks_positions, labels=labels)
     ax.set_xlim(0.25, max(positions) + 0.75)
         
