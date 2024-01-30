@@ -1,9 +1,36 @@
 import numpy as np
 import bigfish.stack as stack
 import scipy.ndimage as ndi
+from pbwrap.utils import compute_anisotropy_coef
 from skimage.segmentation import random_walker, watershed
 from skimage.feature import peak_local_max
 
+def gaussian_threshold_segmentation(image : np.ndarray, sigma, percentile, voxel_size)-> 'np.ndarray[bool]' :
+    """
+    Naive segmentation : first gaussian blur of kernel sigma is applied, then a threshold keeping pixels higer than the image-percentile will be used.
+
+    Parameters
+    ----------
+        image : np.ndarray
+            Either 3D (z; y; x) or 2D (y; x) image.
+        sigma : float-like
+            Gaussian blur kernel size will be adapted for anisotropic image using voxel_size
+        percentile : float
+            Between 0+ and 100. Threshold keeps the higer 'percentile' pixels. --> 1 keeps no pixel, 25 keeps top 75% pixels.
+        voxel_size : tuple
+            same dim as image. represent scale factor between pixels and real distance.
+    """
+
+    stack.check_parameter(image = np.ndarray, sigma = (float, int), percentile = (float, int), voxel_size = (tuple, list))
+    if len(voxel_size) != image.ndim : raise ValueError("Voxel size length must be equal to image dimension.")
+    if percentile <= 0 or percentile > 100 : raise ValueError("percentile must be in ]0;1].")
+
+    anisotropy_coef = compute_anisotropy_coef(voxel_size)
+    sigma = [coef * sigma for coef in anisotropy_coef]
+
+    image = stack.gaussian_filter(image, sigma=sigma)
+    percentile_pixel = np.percentile(image, percentile)
+    return image > percentile_pixel
 
 def thresholding(image, threshold) :
     """
