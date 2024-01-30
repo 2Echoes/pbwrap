@@ -3,7 +3,6 @@ import numpy as np
 import pbwrap.utils as utils
 import pbwrap.quantification.cell as cellquant
 import numpy as np
-import pbwrap.quantification.measures as measures
 from skimage.measure import regionprops_table
 from scipy.signal import fftconvolve
 from pbwrap.quantification.measures import count_spots_in_mask, count_rna_close_pbody_global
@@ -11,23 +10,44 @@ import time
 import pandas as pd
 
 """
-Testing : 26/10/23 ; ###Attempt at counting number of spots within given radius of a pixel, for all pixels
+Testing : 24/01/24 : Closest distance spot1 to spot 2 array
 """
-rng = np.random.default_rng(seed=100)
-anchor = np.zeros((30,2048, 2048))
-spots = np.zeros((30,2048, 2048))
-Z, Y, X = rng.integers(0,10,(3,10000))
-anchor_list = list(zip(Z,Y,X))
-anchor[Z, Y,X] += 1
+import testing_samples as samp
+import pbwrap.quantification.measures as measures
 
-Z, Y, X = rng.integers(0,10,(3,10000))
-spots_list = list(zip(Z,Y,X))
-spots[Z, Y,X] += 1
+shape = (15,2000,2000)
+voxel_size = (300,103,103)
+spot1_number = 6000
+spot2_number = 10000
 
-clock = time.process_time()
-count = measures.spots_colocalisation_à_rename(spots_list, anchor_list, radius_nm= 310, image_shape= (30, 2048, 2048), voxel_size= (300,103,103))
-print('time : ', time.process_time() - clock)
-print(count)
+gen = samp.get_random_gen(seed= 1)
+spot_1 = samp.random_spots_list(spot1_number, shape, gen=gen)
+spot_2 = samp.random_spots_list(spot2_number, shape=shape, gen=gen)
+
+signal_1 = measures._reconstruct_spot_signal(shape, spot_1)
+signal_2 = measures._reconstruct_spot_signal(shape, spot_2)
+
+distance = measures.closest_spot_distance(spot_1, spot_2, shape, voxel_size=voxel_size)
+print(distance)
+
+# """
+# Testing : 26/10/23 ; ###Attempt at counting number of spots within given radius of a pixel, for all pixels
+# """
+# rng = np.random.default_rng(seed=100)
+# anchor = np.zeros((30,2048, 2048))
+# spots = np.zeros((30,2048, 2048))
+# Z, Y, X = rng.integers(0,10,(3,10000))
+# anchor_list = list(zip(Z,Y,X))
+# anchor[Z, Y,X] += 1
+
+# Z, Y, X = rng.integers(0,10,(3,10000))
+# spots_list = list(zip(Z,Y,X))
+# spots[Z, Y,X] += 1
+
+# clock = time.process_time()
+# count = measures.spots_colocalisation_à_rename(spots_list, anchor_list, radius_nm= 310, image_shape= (30, 2048, 2048), voxel_size= (300,103,103))
+# print('time : ', time.process_time() - clock)
+# print(count)
 
 
 # """

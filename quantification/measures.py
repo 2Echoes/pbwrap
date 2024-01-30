@@ -308,6 +308,7 @@ def count_rna_close_pbody_global(pbody_label: np.ndarray, spots_coords: 'list[tu
 
 def reconstruct_boolean_signal(image_shape, spot_list: list):
     signal = np.zeros(image_shape, dtype= bool)
+    if len(spot_list) == 0 : return signal
     Z, Y, X = list(zip(*spot_list))
     signal[Z,Y,X] = True
 
@@ -428,3 +429,21 @@ def spots_multicolocalisation(spots_list, anchor_list, radius_nm, image_shape, v
     Z,Y,X = list(zip(*spots_list))
 
     return list(count_map[Z,Y,X])
+
+
+def closest_spot_distance(coordinates_list, spots_list, image_shape, voxel_size) :
+    """
+    Compute distance to closest spot (from spots_list) for each point in coordinates_list.
+    """
+
+    check_parameter(spots_list= (list, np.ndarray), coordinates_list= (list, np.ndarray), image_shape= (tuple,list), voxel_size= (tuple, list))
+    if len(image_shape) != 3 : raise ValueError("Only 3D colocalisation is supported, 'image_shape' should be (Z,Y,X).")
+    if len(voxel_size) != 3 : raise ValueError("Only 3D colocalisation is supported, 'voxel_size' should be (Z,Y,X).")
+    if voxel_size[1] != voxel_size[2] : raise ValueError("Unsupported anisotropy in xy plan. (yscale != xscale)")
+    if len(spots_list) == 0 or len(coordinates_list) == 0 : return 0
+
+    spot_array = _reconstruct_spot_signal(image_shape=image_shape, spot_list= spots_list).astype(bool)
+    distance_map = distance_transform_edt(np.logical_not(spot_array), sampling= voxel_size)
+    Z,Y,X = list(zip(*coordinates_list))
+
+    return list(distance_map[Z,Y,X])
