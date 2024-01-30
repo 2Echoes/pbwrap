@@ -9,6 +9,7 @@ import pbwrap.segmentation as segmentation
 from matplotlib.colors import ListedColormap
 from scipy.ndimage import binary_dilation
 from skimage.segmentation import find_boundaries
+from scipy.ndimage import distance_transform_edt
 from .utils import format_array_scientific_notation, save_plot
 
 
@@ -33,11 +34,11 @@ def output_spot_tiffvisual(channel,spots_list, path_output, dot_size = 3, rescal
     stack.check_array(channel, ndim= [2,3])
     if isinstance(spots_list, np.ndarray) : spots_list = [spots_list]
 
-    if channel.ndim == 3 : 
-        channel = stack.maximum_projection(channel)
+    # if channel.ndim == 3 : 
+    #     channel = stack.maximum_projection(channel)
 
     im = np.zeros([1 + len(spots_list)] + list(channel.shape))
-    im[0,:,:] = channel
+    im[0,:,:,:] = channel
 
     for level in range(len(spots_list)) :
         if len(spots_list[level]) == 0 : continue
@@ -49,63 +50,19 @@ def output_spot_tiffvisual(channel,spots_list, path_output, dot_size = 3, rescal
                 Y,X = zip(*spots_list[level])
             elif len(spots_list[level][0]) == 3 :
                 Z,Y,X = zip(*spots_list[level])
-                del Z
+                # del Z
             else :
                 Z,Y,X,*_ = zip(*spots_list[level])
-                del Z,_
+                # del Z,_
             
             #Reconstructing signal
-            spots_mask[Y,X] = 1
+            spots_mask[Z,Y,X] = 1
             if dot_size > 1 : spots_mask = binary_dilation(spots_mask, iterations= dot_size-1)
             spots_mask = stack.rescale(np.array(spots_mask, dtype = channel.dtype))
             im[level + 1] = spots_mask
 
     if rescale : channel = stack.rescale(channel, channel_to_stretch= 0)
     stack.save_image(im, path_output, extension= 'tif')
-
-
-def output_spot_tiffvisual_old(channel, spots, path_output, dot_size = 3, rescale = True):
-    #Obselete delete if pipeline is working
-    """
-    Outputs a tiff image with one channel being {channel} and the other a mask containing dots where sports are located.
-    
-    Parameters
-    ----------
-        channel : np.ndarray
-            3D monochannel image
-        spots :  
-        path_output : str
-        dot_size : int
-            in pixels
-    """
-    
-    stack.check_parameter(channel = (np.ndarray),spots= (list, np.ndarray), path_output = (str), dot_size = (int))
-    stack.check_array(channel, ndim= [2,3])
-    if channel.ndim == 3 : 
-        channel = stack.maximum_projection(channel)
-    if len(spots[0]) == 3 : 
-        new_spots = []
-        for i in range(0, len(spots)) : new_spots += [[spots[i][1], spots[i][2]]] 
-        spots = new_spots
-
-    spots_mask = np.zeros_like(channel)
-    for spot in new_spots :
-        spots_mask[spot[0], spot[1]] = 1
-
-    
-    #enlarging dots
-    if dot_size > 1 : spots_mask = binary_dilation(spots_mask, iterations= dot_size-1)
-
-
-    spots_mask = stack.rescale(np.array(spots_mask, dtype = channel.dtype))
-    im = np.zeros([2] + list(channel.shape))
-    im[0,:,:] = channel
-    im[1,:,:] = spots_mask
-
-    if rescale : channel = stack.rescale(channel, channel_to_stretch= 0)
-    stack.save_image(im, path_output, extension= 'tif')
-
-
 
 
 def nucleus_signal_control(dapi: np.ndarray, nucleus_label: np.ndarray, measures: 'list[float]' ,cells_centroids: 'list[float]',spots_coords:list = None, boundary_size = 3, 
@@ -321,3 +278,54 @@ def dapi_artifact_overlay(dapi_channel, spots_array, path_out):
         RGB[:,:,1] = stack.rescale(artifact_signal)
         RGB[:,:,2] = stack.rescale(nucleus_signal)
         stack.save_image(RGB, path=path_out, extension= 'tiff')
+
+def colocalisation_plot(background, shape, voxel_size, colocalisation_distance, path_output, spot_list1, spot_list2, spot_list3=[], dot_size= 2) :
+    """
+    Only works for 3d spots.
+    """
+
+    signal1 = reconstruct_boolean_signal(shape, spot_list1)
+    signal2 = reconstruct_boolean_signal(shape, spot_list2)
+    signal3 = reconstruct_boolean_signal(shape, spot_list3)
+    coord_grid = np.indices(shape)
+
+    #Coloc 1 & 2 and 1 & 3
+    distance_map_signal_1 = distance_transform_edt(
+        input= np.logical_not(signal1),
+        sampling= voxel_size
+        )
+    
+    distance_map_signal_1 = distance_map_signal_1 < colocalisation_distance
+
+    mask_coloc_1_2 = np.logical_and(signal2, distance_map_signal_1)
+    index_coloc_1_2 = (coord_grid[0][mask_coloc_1_2], coord_grid[1][mask_coloc_1_2], coord_grid[2][mask_coloc_1_2])
+    del mask_coloc_1_2
+
+    mask_coloc_1_3 = np.logical_and(signal3, distance_map_signal_1)
+    index_coloc_1_3 = (coord_grid[0][mask_coloc_1_3], coord_grid[1][mask_coloc_1_3], coord_grid[2][mask_coloc_1_3])
+    del mask_coloc_1_3
+
+    del distance_map_signal_1, signal1
+
+    #Coloc 2 & 3
+    distance_map_signal_2 = distance_transform_edt(
+        input= np.logical_not(signal2),
+        sampling= voxel_size
+        )
+    
+    distance_map_signal_2 = distance_map_signal_2 < colocalisation_distance
+
+    mask_coloc_2_3 = np.logical_and(signal3, distance_map_signal_2)
+    index_coloc_2_3 = (coord_grid[0][mask_coloc_2_3], coord_grid[1][mask_coloc_2_3], coord_grid[2][mask_coloc_2_3])
+    del mask_coloc_2_3, coord_grid
+
+    spots_colloc_1_2 = list(zip(*index_coloc_1_2))
+    spots_colloc_1_3 = list(zip(*index_coloc_1_3))
+    spots_colloc_2_3 = list(zip(*index_coloc_2_3))
+
+    output_spot_tiffvisual(
+        channel= background,
+        spots_list= [spot_list1, spot_list2, spot_list3, spots_colloc_1_2, spots_colloc_1_3, spots_colloc_2_3],
+        dot_size= dot_size,
+        path_output=path_output
+    )

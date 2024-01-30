@@ -7,6 +7,12 @@ from math import floor, ceil
 from itertools import zip_longest, product
 import functools, itertools
 
+def plot_horizontal_bar(y_value) :
+    xmin, xmax, ymin, ymax = plt.axis()
+    line = plt.plot([xmin, xmax], [1,1], '--k', alpha= 0.5)
+    return line
+    
+
 def from_label_get_centeroidscoords(label: np.ndarray):
     """
     Returns
