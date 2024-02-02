@@ -15,7 +15,7 @@ def ANOVA(sample_list : list, return_p_value= True, return_f_stats= False) :
     if len(sample_list) > 1 :
         f_stats, p_value = stats.f_oneway(*sample_list)
     else : 
-        f_stats, p_value = np.NaN
+        f_stats, p_value = np.NaN, np.NaN
 
     if return_p_value and return_f_stats :
         return p_value, f_stats
