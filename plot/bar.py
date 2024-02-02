@@ -241,6 +241,13 @@ def bar_plot(ax: plt.Axes, data, errors=None,
                     y_axis= (tuple, type(None)),
                     multi_bar_plot= bool)
     
+    #Catch KWARGS
+    #logscale
+    if kwargs.get('logscale') :
+        logscale=True
+        del kwargs['logscale']
+    else: logscale= False
+
 
     if multi_bar_plot :
         for iterable in data : check_parameter(iterable = (list, tuple, np.ndarray, pd.DataFrame, pd.Series, pd.Index))
@@ -295,7 +302,10 @@ def bar_plot(ax: plt.Axes, data, errors=None,
     if type(labels) == type(None) : labels = np.arange(1,len(xticks_positions) + 1)
     xticks = ax.set_xticks(xticks_positions, labels=labels)
     ax.set_xlim(0.25, max(positions) + 0.75)
-        
+    
+    if logscale :
+        ax.set_yscale('log')
+
     #colors   
     if type(colors) != type(None) :
         if len(colors) != len(data) and len(colors) != number_of_set : raise ValueError("Length of colors must either match length of data or the number of element in data")

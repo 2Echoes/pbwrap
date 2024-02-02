@@ -1,6 +1,58 @@
+"""
+Testing : 02/02/2024 : scipy.stats testing
+"""
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy.stats as scstats
+import pbwrap.plot.stats as plot
+import pbwrap.quantification.statistical_test as stats
+import CustomPandasFramework.centrosome.analysis as analysis
 
 
-### testing colocalisation_plot ###
+path = '/home/flo/Downloads/centrosome_scp/'
+measure = ['proportion_rna_centrosome', 'index_median_distance_centrosome']
+m1,m2 = measure
+
+analysis.p_value(path, path, measure)
+
+# data = analysis.prepare_data_frame(path, measure, index_keys=[])
+# data = data.groupby(['rna','treatment'])[m1].apply(list)
+
+# enlisted_data = data.reset_index().groupby(['rna'])[m1].apply(list)
+# print("DATA\n",data)
+# print(data.index.levels)
+
+# plt.figure(figsize= (15,15))
+# ax = plt.gca()
+# ax = plot.ANOVA_Tukey_hsd(ax, data, h0_treatment= 'DMSO')
+# plt.show()
+
+# for rna, rna_data in zip(enlisted_data.index, enlisted_data) :
+#     print('\n' + rna)
+#     print('group : {0}'.format(data[rna].index))
+#     print('ANOVA')
+#     f_stat,p_value = stats.ANOVA(rna_data, return_f_stats=True)
+#     print("F-Statistic : {0} \np-value : {1}\n".format(f_stat, p_value))
+
+#     print('Tukey-hsd')
+#     f_stat,p_value = stats.Tukey_hsd(rna_data, return_f_stats=True)
+#     print("F-Statistic : {0} \np-value : {1}\n".format(f_stat, p_value))
+
+#     print("variance")
+#     var = [np.var(sample) for sample in rna_data]
+#     print(var)
+
+# plt.figure(figsize= (15,15))
+# ax = plt.subplot(2,1,2)
+# plot.variance_plot(ax=ax, group_list= enlisted_data, labels= enlisted_data.index, normalise_var=True)
+# ax = plt.subplot(2,2,1)
+# plot.variance_plot(ax=ax, group_list= enlisted_data, labels= enlisted_data.index, normalise_var=True)
+# ax = plt.subplot(2,2,2)
+# plot.variance_plot(ax=ax, group_list= enlisted_data, labels= enlisted_data.index, normalise_var=True)
+# plt.show()
+
+"""### testing colocalisation_plot ###
 import pbwrap.plot.visuals as vis
 import testing_samples as samp
 import bigfish.stack as stack
@@ -22,7 +74,7 @@ read = stack.read_image(path)
 print(read.shape)
 
 
-
+"""
 
 
 ############

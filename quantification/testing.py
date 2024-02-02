@@ -1,17 +1,43 @@
-import pbwrap.quantification as quant
-import numpy as np
-import pbwrap.utils as utils
-import pbwrap.quantification.cell as cellquant
-import numpy as np
-from skimage.measure import regionprops_table
-from scipy.signal import fftconvolve
-from pbwrap.quantification.measures import count_spots_in_mask, count_rna_close_pbody_global
-import time
+"""
+Testing : 02/02/2024 : scipy.stats testing
+"""
 import pandas as pd
+import numpy as np
+import scipy.stats as scstats
+import pbwrap.quantification.statistical_test as stats
+import CustomPandasFramework.centrosome.analysis as analysis
+
+
+path = '/home/flo/Downloads/centrosome_scp/'
+measure = ['proportion_rna_centrosome', 'index_median_distance_centrosome']
+m1,m2 = measure
+
+data = analysis.prepare_data_frame(path, measure, index_keys=[])
+data = data.groupby(['rna','treatment'])[m1].apply(list)
+
+enlisted_data = data.reset_index().groupby(['rna'])[m1].apply(list)
+print("DATA\n",data)
+
+for rna, rna_data in zip(enlisted_data.index, enlisted_data) :
+    print('\n' + rna)
+    print('group : {0}'.format(data[rna].index))
+    print('ANOVA')
+    f_stat,p_value = stats.ANOVA(rna_data)
+    print("F-Statistic : {0} \np-value : {1}\n".format(f_stat, p_value))
+
+    print('Tukey-hsd')
+    f_stat,p_value = stats.Tukey_hsd(rna_data)
+    print("F-Statistic : {0} \np-value : {1}\n".format(f_stat, p_value))
+
+    print("variance")
+    var = [np.var(sample) for sample in rna_data]
+    print(var)
+
+
 
 """
 Testing : 24/01/24 : Closest distance spot1 to spot 2 array
-"""
+
 import testing_samples as samp
 import pbwrap.quantification.measures as measures
 
@@ -29,6 +55,8 @@ signal_2 = measures._reconstruct_spot_signal(shape, spot_2)
 
 distance = measures.closest_spot_distance(spot_1, spot_2, shape, voxel_size=voxel_size)
 print(distance)
+
+"""
 
 # """
 # Testing : 26/10/23 ; ###Attempt at counting number of spots within given radius of a pixel, for all pixels

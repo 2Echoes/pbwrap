@@ -9,7 +9,7 @@ import functools, itertools
 
 def plot_horizontal_bar(y_value) :
     xmin, xmax, ymin, ymax = plt.axis()
-    line = plt.plot([xmin, xmax], [1,1], '--k', alpha= 0.5)
+    line = plt.plot([xmin, xmax], [y_value, y_value], '--k', alpha= 0.5)
     return line
     
 
