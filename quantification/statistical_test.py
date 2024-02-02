@@ -11,7 +11,7 @@ def ANOVA(sample_list : list, return_p_value= True, return_f_stats= False) :
 
     f_stats
     """
-
+    print(*sample_list)
     f_stats, p_value = stats.f_oneway(*sample_list)
 
     if return_p_value and return_f_stats :
