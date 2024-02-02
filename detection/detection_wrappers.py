@@ -243,13 +243,19 @@ def compute_auto_threshold(images, voxel_size=None, spot_radius=None, log_kernel
     Compute bigfish auto threshold efficiently for list of images. In case on large set of images user can set im_number to only consider a random subset of image for threshold computation.
     """
     # check parameters
-    stack.check_parameter(images = (list, np.ndarray, GeneratorType), voxel_size=(int, float, tuple, list, type(None)),spot_radius=(int, float, tuple, list, type(None)),log_kernel_size=(int, float, tuple, list, type(None)),minimum_distance=(int, float, tuple, list, type(None)), im_number = int, crop_zstack= (type(None), tuple))
+    stack.check_parameter(images = (list, np.ndarray, GeneratorType,), voxel_size=(int, float, tuple, list, type(None)),spot_radius=(int, float, tuple, list, type(None)),log_kernel_size=(int, float, tuple, list, type(None)),minimum_distance=(int, float, tuple, list, type(None)), im_number = int, crop_zstack= (type(None), tuple))
 
     # if one image is provided we enlist it
     if not isinstance(images, list):
-        stack.check_array(images,ndim=[2, 3],dtype=[np.uint8, np.uint16, np.float32, np.float64])
-        ndim = images.ndim
-        images = [images]
+        if isinstance(images, np.ndarray) : 
+            stack.check_array(images,ndim=[2, 3],dtype=[np.uint8, np.uint16, np.float32, np.float64])
+            ndim = images.ndim
+            images = [images]
+        else : 
+            images = [image for image in images]
+            for image in images : stack.check_array(image,ndim=[2, 3],dtype=[np.uint8, np.uint16, np.float32, np.float64])
+            ndim = images[0].ndim
+
     else:
         ndim = None
         for i, image in enumerate(images):
@@ -266,6 +272,9 @@ def compute_auto_threshold(images, voxel_size=None, spot_radius=None, log_kernel
         images = [images[i] for i in idx]
         
     #Building a giant 3D array containing all information for threshold selection -> cheating detection.automated_threshold_setting that doesn't take lists and doesn't use spatial information.
+    if type(crop_zstack) == type(None) :
+        crop_zstack = (0, len(images[0]))
+    
     log_kernel_size, minimum_distance = _compute_threshold_parameters(ndim, voxel_size, spot_radius, minimum_distance, log_kernel_size)
     images_filtered = np.concatenate(
         [stack.log_filter(image[crop_zstack[0]: crop_zstack[1]], sigma= log_kernel_size) for image in images],

@@ -6,11 +6,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import pbwrap.data as data
 import pbwrap.segmentation as segmentation
+import tifffile as tif
 from matplotlib.colors import ListedColormap
 from scipy.ndimage import binary_dilation
 from skimage.segmentation import find_boundaries
 from scipy.ndimage import distance_transform_edt
 from .utils import format_array_scientific_notation, save_plot
+import warnings
 
 
 def output_spot_tiffvisual(channel,spots_list, path_output, dot_size = 3, rescale = True):
@@ -34,11 +36,11 @@ def output_spot_tiffvisual(channel,spots_list, path_output, dot_size = 3, rescal
     stack.check_array(channel, ndim= [2,3])
     if isinstance(spots_list, np.ndarray) : spots_list = [spots_list]
 
-    # if channel.ndim == 3 : 
-    #     channel = stack.maximum_projection(channel)
+    if channel.ndim == 3 : 
+        channel = stack.maximum_projection(channel)
 
     im = np.zeros([1 + len(spots_list)] + list(channel.shape))
-    im[0,:,:,:] = channel
+    im[0,:,:] = channel
 
     for level in range(len(spots_list)) :
         if len(spots_list[level]) == 0 : continue
@@ -50,13 +52,13 @@ def output_spot_tiffvisual(channel,spots_list, path_output, dot_size = 3, rescal
                 Y,X = zip(*spots_list[level])
             elif len(spots_list[level][0]) == 3 :
                 Z,Y,X = zip(*spots_list[level])
-                # del Z
+                del Z
             else :
                 Z,Y,X,*_ = zip(*spots_list[level])
-                # del Z,_
+                del Z,_
             
             #Reconstructing signal
-            spots_mask[Z,Y,X] = 1
+            spots_mask[Y,X] = 1
             if dot_size > 1 : spots_mask = binary_dilation(spots_mask, iterations= dot_size-1)
             spots_mask = stack.rescale(np.array(spots_mask, dtype = channel.dtype))
             im[level + 1] = spots_mask
@@ -251,7 +253,12 @@ def _G1_G2_labelling(Cell : pd.DataFrame, segmentation_plot:str, AcquisitionId:i
 
 def reconstruct_boolean_signal(image_shape, spot_list: list) :
     signal = np.zeros(image_shape, dtype= bool)
-    Z, Y, X = list(zip(*spot_list))
+    
+    if len(spot_list) > 0 :
+        Z, Y, X = list(zip(*spot_list))
+    else : 
+        return signal
+    
     if len(image_shape) == 2 :
         signal[Y,X] = 1
     else :
@@ -305,7 +312,7 @@ def colocalisation_plot(background, shape, voxel_size, colocalisation_distance, 
     index_coloc_1_3 = (coord_grid[0][mask_coloc_1_3], coord_grid[1][mask_coloc_1_3], coord_grid[2][mask_coloc_1_3])
     del mask_coloc_1_3
 
-    del distance_map_signal_1, signal1
+    del distance_map_signal_1
 
     #Coloc 2 & 3
     distance_map_signal_2 = distance_transform_edt(
@@ -323,9 +330,28 @@ def colocalisation_plot(background, shape, voxel_size, colocalisation_distance, 
     spots_colloc_1_3 = list(zip(*index_coloc_1_3))
     spots_colloc_2_3 = list(zip(*index_coloc_2_3))
 
-    output_spot_tiffvisual(
-        channel= background,
-        spots_list= [spot_list1, spot_list2, spot_list3, spots_colloc_1_2, spots_colloc_1_3, spots_colloc_2_3],
-        dot_size= dot_size,
-        path_output=path_output
-    )
+    colloc_1_2_signal = reconstruct_boolean_signal(shape, spots_colloc_1_2)
+    colloc_1_3_signal = reconstruct_boolean_signal(shape, spots_colloc_1_3)
+    colloc_2_3_signal = reconstruct_boolean_signal(shape, spots_colloc_2_3)
+
+    image = np.zeros((1,) + shape[:1] +(7,) + shape[1:])
+    image[0,:,0,:,:] = background
+    for channel, signal in enumerate([signal1, signal2, signal3, colloc_1_2_signal, colloc_1_3_signal, colloc_2_3_signal]) :
+        image[0,:,channel+1,:,:] = binary_dilation(signal, iterations= dot_size-1)
+
+    image = image.astype(np.int16)
+
+    warnings.simplefilter("ignore")
+    try :
+        tif.imwrite(
+            path_output,
+            image,
+            imagej= True,
+            bigtiff= True,
+            metadata={
+             'axes': 'TZCYX',
+            }
+            )
+    except Exception as error : raise error
+    finally : warnings.simplefilter("default")
+    

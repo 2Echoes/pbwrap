@@ -10,16 +10,16 @@ gen = samp.get_random_gen(seed=seed)
 shape = (15,1000,1000)
 spots1_number = 10000
 spots2_number = 25
-path = '/home/floricslimani/Documents/testing'
+path = '/home/floricslimani/Documents/testing.tif'
 
 spots1 = samp.random_spots_list(spots1_number, shape = shape, gen=gen)
 spots2 = samp.random_spots_list(spots2_number, shape = shape, gen=gen)
 
 signal = samp.random_spot_signal(shape, 100)
-print(signal)
 
-vis.colocalisation_plot(shape,path, spots1, spots2, spots2)
-read = stack.read_image(path  + '.tif')
+vis.colocalisation_plot(signal, shape, (1,1,1), 10, path, spots1, spots2, spots2)
+read = stack.read_image(path)
+print(read.shape)
 
 
 
