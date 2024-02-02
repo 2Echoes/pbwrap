@@ -2,7 +2,7 @@ import scipy.stats as stats
 import numpy as np
 
 
-def ANOVA(sample_list : list, return_p_value= True, return_f_stats= False) :
+def ANOVA(sample_list : list, return_p_value= True, return_f_stats= True) :
     """
     Performs ANOVA test (Analysis of Variance) using `scipy.stats.f_oneway` function.
     
