@@ -1,4 +1,5 @@
 import scipy.stats as stats
+import numpy as np
 
 
 def ANOVA(sample_list : list, return_p_value= True, return_f_stats= False) :
@@ -11,8 +12,10 @@ def ANOVA(sample_list : list, return_p_value= True, return_f_stats= False) :
 
     f_stats
     """
-    print(*sample_list)
-    f_stats, p_value = stats.f_oneway(*sample_list)
+    if len(sample_list) > 1 :
+        f_stats, p_value = stats.f_oneway(*sample_list)
+    else : 
+        f_stats, p_value = np.NaN
 
     if return_p_value and return_f_stats :
         return p_value, f_stats
