@@ -18,7 +18,6 @@ def remove_mean_gaussian_background(image, sigma = 5, voxel_size = (1,1,1)):
             Image with background substracted.
     """
 
-    stack.check_parameter(image = (np.ndarray), sigma = (int, float), voxel_size= (tuple, list))
     if not len(voxel_size) == image.ndim : raise ValueError("Inconsistency between voxel_size length and image dimension.")
     anisotropy_coef = compute_anisotropy_coef(voxel_size=voxel_size)
     corrected_sigma = [sigma / anisotropy_i for anisotropy_i in anisotropy_coef]

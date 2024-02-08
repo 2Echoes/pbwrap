@@ -57,7 +57,6 @@ def violin_plot(
         positions = np.arange(1, len(distributions) + 1)
         ticks_positions = np.arange(1, len(distributions) + 1)
         max_individual_violin_number = 1
-
     #Plot
     violin_plot = ax.violinplot(
         distributions,

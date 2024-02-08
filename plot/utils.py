@@ -456,3 +456,23 @@ def hide_overlapping_annotations(*annotations) :
     for annotation, overlaps in zip(annotations, truth_list) :
         if overlaps :
             annotation.remove()
+
+
+def multi_plot_positions(distributions) :
+
+    max_individual_violin_number = max([len(distrib) for distrib in distributions]) + 1#Is the maximum number of violin plotted for one set.
+
+    positions = []
+    ticks_positions = []
+    for distrib_number, distrib in enumerate(distributions) :
+        positions.extend(list(
+            np.arange(1, len(distrib) + 1) + (distrib_number * max_individual_violin_number) if len(distrib) > 1 
+            else [distrib_number * max_individual_violin_number + (max_individual_violin_number-1)/2 + 1]
+        ))
+
+        ticks_positions.append(
+            distrib_number * max_individual_violin_number + (len(distrib)-1)/2 + 1 if len(distrib) > 1
+            else distrib_number * max_individual_violin_number + (max_individual_violin_number-1)/2 + 1
+        )
+
+    return positions, ticks_positions
