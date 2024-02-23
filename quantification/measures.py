@@ -35,7 +35,8 @@ def compute_signalmetrics(signal:np.ndarray, mask: np.ndarray) :
         "99 percentile" : np.percentile(flat, 99),
         "mean" : flat.mean(),
         "std" : flat.std(),
-        "median" : np.median(flat) 
+        "median" : np.median(flat),
+        "sum" : np.sum(flat) 
     }
     return signalmetrics
 

@@ -10,10 +10,7 @@ from ..detection.centrosome import detect_centrosome
 def compute_Cell(cell, voxel_size, dapi_stack, acquisition_id, pipeline_name: str ,**pipeline_parameters) :
 
     if 'centrosome' in pipeline_name :
-
-        if 'centrosome_presegmentation' not in pipeline_parameters : raise KeyError("For centrosome pipeline, 'centrosome_presegmentation' parameter is expected.")
-        centrosome_presegmentation = pipeline_parameters['centrosome_presegmentation']
-        new_cell = _centrosome_cell_quant(cell, voxel_size, dapi_stack, acquisition_id, centrosome_presegmentation=centrosome_presegmentation)
+        new_cell = _centrosome_cell_quant(cell, voxel_size, dapi_stack, acquisition_id)
     
     else : raise ValueError("pipeline name not recognised.")
 
@@ -97,14 +94,16 @@ def _main_cell_quant(cell, voxel_size, dapi_stack, acquisition_id, compute_centr
     return new_cell
 
 
-def _centrosome_cell_quant(cell, voxel_size, dapi_stack, acquisition_id, centrosome_presegmentation) :
+def _centrosome_cell_quant(cell, voxel_size, dapi_stack, acquisition_id) :
     
-    centrosome_coords = detect_centrosome(cell=cell, centrosome_presegmentation= centrosome_presegmentation)
+    centrosome_coords = detect_centrosome(cell=cell)
 
     # Note : it appears bigfish centrosome features only work with 2D coords, while it accepts 3D coords only 2D measures are computed and worse it fails to remove the z dimension properly (as of today's version)
     # --> we have to remove the z coords
     # TODO : open pull request on github
     centrosome_coords_2d = centrosome_coords[:,1:]
+    min_y,min_x,max_y,max_x = cell['bbox']
+    min_z = 0
     centrosome_number = len(centrosome_coords)
 
     if centrosome_number == 0 : raise QuantificationError("No centrosome found")
@@ -112,8 +111,19 @@ def _centrosome_cell_quant(cell, voxel_size, dapi_stack, acquisition_id, centros
         
         cell_res = _main_cell_quant(cell=cell, voxel_size=voxel_size, dapi_stack=dapi_stack, acquisition_id=acquisition_id, compute_centrosome= True, centrosome_coords=centrosome_coords_2d)
         cell_res.at[0, "centrosome_number"] = centrosome_number
-        centrosome_coords = tuple([tuple(coords) for coords in centrosome_coords])
-        cell_res["centrosome_coords"] = (tuple([tuple(coords) for coords in centrosome_coords]),)
+
+        global_centrosome_coords = []
+        local_centrosome_coords = []
+        for local_coords in centrosome_coords :
+            global_coordinates = []
+            for offset, position in zip(local_coords, [min_z, min_y, min_x]) :
+                global_coordinates.append(position + offset)
+            global_centrosome_coords.append(tuple(global_coordinates))
+            local_centrosome_coords.append(tuple(local_coords))
+        global_centrosome_coords = tuple(global_centrosome_coords)
+        local_centrosome_coords = tuple(local_centrosome_coords)
+        cell_res["centrosome_coords"] = [global_centrosome_coords]
+        cell_res["centrosome_coords_local"] = [local_centrosome_coords]
         clusters_quant = _clusters_quant(cell)
         cell_res = pd.concat([cell_res, clusters_quant], axis= 1).reset_index(drop=True)
 
