@@ -287,9 +287,8 @@ def random_move(bbox, length= 1, x_direction=None, y_direction= None) :
     return (xmin,xmax,ymin,ymax)
 
 
-def compute_scale(fig, pos, text):
+def compute_scale(ax, pos, text):
 
-    ax = fig.gca()
     master_annotation = plt.annotate(text,pos)
     bbox = master_annotation.get_window_extent()
     [x0,y0],[x1,y1] = ax.transData.inverted().transform(bbox)
@@ -394,14 +393,14 @@ def write_annotation(annotation_df, x_unit, y_unit, master_length) :
         xy_text = (xy_text[0] + np.random.rand() * 1.5/master_length * random_direction(), xy_text[1])        
         
         if distance >= x_unit/3 : 
-            arrow_patch = {"width" : 0.25, "headwidth" : 5, 'headlength' : 2}
+            arrow_patch = {"width" : 0.01, "headwidth" : 5, 'headlength' : 5}
         else : arrow_patch = None
-        annotation_obj_list.append(plt.annotate(text, xy=xy, xytext = xy_text, arrowprops= arrow_patch))
+        annotation_obj_list.append(plt.annotate(text, xy=xy, xytext = xy_text, fontsize= 5, arrowprops= arrow_patch))
 
     return annotation_obj_list
 
 
-def annotate_plot(fig, pos_list, text_list) :
+def annotate_plot(ax, pos_list, text_list) :
     """
     Add annotations to a plot and correct overlapping annotations.
 
@@ -418,7 +417,7 @@ def annotate_plot(fig, pos_list, text_list) :
     if len(pos_list) <= 1 : raise ValueError("There should me more than 1 annotation to plot.")
     if len(pos_list) != len(text_list) : raise ValueError("pos_list and text_list should have the same number of elements.")
 
-    x_unit, y_unit = compute_scale(fig, pos_list[0], text_list[0])
+    x_unit, y_unit = compute_scale(ax, pos_list[0], text_list[0])
     master_length = len(text_list[0])
     annotation_df = compute_annotation_df(pos_list[1:],text_list[1:])
     grid = compute_grid(x_unit, y_unit)

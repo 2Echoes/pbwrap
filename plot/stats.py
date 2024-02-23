@@ -5,6 +5,8 @@ import pbwrap.plot.bar as bar
 import pbwrap.plot.utils as plot
 import pbwrap.quantification.statistical_test as s_test
 
+from matplotlib.colors import SymLogNorm
+
 
 
 def variance_plot(ax:plt.Axes, group_list: 'pd.Series[list]', labels= None, colors=None, normalise_var = True, index_normalisation=None) :
@@ -87,24 +89,24 @@ def ANOVA_Tukey_hsd(ax, data: pd.Series, h0_treatment, significance= 0.05, color
 
     return ax
 
-def ANOVA_test_plot(ax, data: pd.Series, significance= 0.05, colors=None, title = "ANOVA test", xlabel=None) :
+def ANOVA_test_plot(ax, data: pd.Series, significance= 0.05, title = "ANOVA test", xlabel=None, xtick_label = None, group=False) :
     
-    if len(data.index.levels) != 2 : raise ValueError("Expected 2 levels in data index : [group, treatment]. Given dim : {0}".format(len(data.index.ndim)))
-    group_key = data.index.names[0]
-    measure_name = data.name
-
-    anova_p_value = data.reset_index().groupby(group_key)[measure_name].apply(s_test.ANOVA).rename('anova_p_value')
-
-    if type(colors) != None :
-        colors = pd.Series(data = list(colors), index = data.index)
-
-
+    if group :
+        group_key = data.index.names[0]
+        measure_name = data.name
+        anova_p_value = data.reset_index().groupby(group_key)[measure_name].apply(s_test.ANOVA).rename('anova_p_value')
+    else :
+        anova_p_value = [s_test.ANOVA(data)]
+    
+    if type(xtick_label) == type(None) :
+        xtick_label = anova_p_value.index
+        
     ax = bar.bar_plot(
         ax=ax,
         data= anova_p_value,
         multi_bar_plot= False,
         colors=None,
-        labels= anova_p_value.index,
+        labels= xtick_label,
         ylabel= "p-value",
         title= title,
         xlabel= xlabel,
@@ -115,6 +117,39 @@ def ANOVA_test_plot(ax, data: pd.Series, significance= 0.05, colors=None, title 
 
     return ax
 
+def alexandergovern_test_plot(ax, data: pd.Series, significance= 0.05, title = "ANOVA test", xlabel=None, xtick_label = None, group=False) :
+    """
+    
+    """
+    
+    if group :
+        group_key = data.index.names[0]
+        measure_name = data.name
+        p_value = data.reset_index().groupby(group_key)[measure_name].apply(s_test.alexandergovern).rename('p_value')
+    else :
+        p_value = [s_test.alexandergovern(data)]
+    
+    if type(xtick_label) == type(None) and group :
+        xtick_label = p_value.index
+    elif type(xtick_label) == type(None) and not group :
+        xtick_label = ['sample']
+        
+    ax = bar.bar_plot(
+        ax=ax,
+        data= p_value,
+        multi_bar_plot= False,
+        colors=None,
+        labels= xtick_label,
+        ylabel= "p-value",
+        title= title,
+        xlabel= xlabel,
+        logscale= True
+    )
+
+    plot.plot_horizontal_bar(significance)
+
+    return ax
+    
 def Tukey_hsd_plot(ax, data: pd.Series, h0_treatment, significance= 0.05, colors=None, title = "Tukey honnestly significance difference test", xlabel=None) :
 
     if len(data.index.levels) != 2 : raise ValueError("Expected 2 levels in data index : [group, treatment]. Given dim : {0}".format(len(data.index.ndim)))
@@ -156,14 +191,74 @@ def Tukey_hsd_plot(ax, data: pd.Series, h0_treatment, significance= 0.05, colors
 
     return ax
 
-def p_value_plot(ax, data: pd.Series, statistical_test, significance= 0.05, colors=None, title = None, xlabel=None, ignore_level_test = False) :
+def pairwise_stest_tile(ax: plt.Axes, data: pd.DataFrame, measure=None, groupby_key=None, significance = 0.01, title= 'pairwise p-values',xlabel=None, test= 'tukey-hsd') :
+    """
+    Expected : Df with groupby_key as the treatment key to group on and measure the measure to compute pairwise pvalues on.
+
+    Parameters
+    ----------
+        ax : matplotlib.pyplot.Axes
+            axes to plot on
+        data : pd.DataFrame/pd.Series with multi-index
+        measure : str
+            key to measure to compute p-values on should be passed only if data is a DataFrame that needs to be grouped.
+        groupb_key : str
+            key to group data on should be passed only if data is a DataFrame that needs to be grouped.
+        significance : float
+            Significance of the test : used for colorscale, should be between 0 and 1
+        title : str
+        test : str
+            statistical test to perform : 'tukey-hsd' or 'gameshowell'
+
+            > tukey-hsd : Tukey-kramer Honnestly Significant differences appropriate for samples with equal or unequal size but same finite variance. 
+            Performed with `scipy.stats.tukey_hsd`
+            
+            > gameshowell : Pairwise test with correction for unequal sample size and unequal variance. 
+            Performed with `pingouin.pairwise_gameshowell`.
+    """
+
+    if (type(measure) != type(None) and type(groupby_key) == type(None)) or (type(measure) == type(None) and type(groupby_key) != type(None)):
+        raise ValueError("groupby_key and measure should be passed or set to None together.")
+    elif type(measure) == type(None) and type(data) != pd.Series :
+        raise ValueError("if groupby_key and measure set to None data should be a pd.Series with index corresponding to group") 
+
+    if type(groupby_key) != type(None) and type(measure) == type(None) :
+        data = data.groupby(groupby_key)[measure].apply(list)
+    
+    treatment_list = list(data.index)
+    if test == 'tukey-hsd' : tukey_p_value = np.array(s_test.Tukey_hsd(data))
+    elif test == 'gameshowell' : tukey_p_value = s_test.games_howell(data)
+    else : raise ValueError('test paremeter should be either "tukey-hsd" or "gameshowell".')
+
+    #plot
+    mesh = ax.pcolormesh(
+        np.flip(tukey_p_value, axis=0),
+        edgecolors= 'black',
+        norm= SymLogNorm(vmin= 10e-19, vmax= 1, linthresh= significance, linscale= -np.log10(significance)),
+        cmap= 'bwr',
+        )
+
+    ticks_positions = np.arange(len(treatment_list)) + 0.5
+    ax.set_xticks(ticks_positions, treatment_list)
+    ax.set_yticks(ticks_positions, treatment_list[::-1])
+    ax.xaxis.set_ticks_position('top')
+    
+    #color bar
+    cbar = plt.colorbar(mesh, ax=ax, location= 'right', ticks = [1, significance, 1e-1, 1e-3, 1e-18])
+
+
+    if type(title) != type(None) : ax.set_title(title)
+    if type(xlabel) != type(None) : ax.set_xlabel(xlabel)
+
+    return ax
+    
+def p_value_plot(ax : plt.Axes, data: pd.Series, statistical_test, significance= 0.05, colors=None, title = None, xlabel=None, ignore_level_test = False) :
         
     if len(data.index.levels) != 2  and not ignore_level_test: raise ValueError("Expected 2 levels in data index : [group, treatment]. Given dim : {0}".format(len(data.index.levels)))
     group_key = data.index.names[0]
     measure_name = data.name
 
     p_value = data.reset_index().groupby(group_key)[measure_name].apply(statistical_test).rename('p_value')
-    print(p_value)
 
     if type(colors) != None :
         colors = pd.Series(data = list(colors), index = data.index)
