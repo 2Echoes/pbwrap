@@ -99,6 +99,22 @@ def cluster_detection(spots, voxel_size, radius = 350, nb_min_spots = 4, keys_to
 
     return res
 
+def add_cell_tag(df, label) :
+    if type(label) != np.ndarray : raise TypeError("label must be ndarray")
+    # if not all(['x', 'y', 'z'] in df.columns) or all(['y', 'x'] in df.columns) : raise ValueError('coordinates not found in dataframe.')
+
+    is_3D = len(label.shape) == 3
+
+    if is_3D : Z = df['z']
+    Y = df['y']
+    X = df['x']
+
+    if is_3D : cell_tags = label[Z,Y,X]
+    else : cell_tags = label[Y,X]
+
+    df['cell_label'] = cell_tags
+
+    return df
 
 def get_centroids_list(clusters_df) :
 

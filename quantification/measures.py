@@ -419,7 +419,7 @@ def spots_multicolocalisation(spots_list, anchor_list, radius_nm, image_shape, v
     Returns the list of neighbouring spot number to 'spots_list'.
     """
 
-    check_parameter(spots_list= (list), anchor_list= (list), radius_nm = (int, float), image_shape= (tuple,list), voxel_size= (tuple, list))
+    check_parameter(spots_list= (list, np.ndarray), anchor_list= (list, np.ndarray), radius_nm = (int, float), image_shape= (tuple,list), voxel_size= (tuple, list))
     if len(image_shape) != 3 : raise ValueError("Only 3D colocalisation is supported, 'image_shape' should be (Z,Y,X).")
     if len(voxel_size) != 3 : raise ValueError("Only 3D colocalisation is supported, 'voxel_size' should be (Z,Y,X).")
     if voxel_size[1] != voxel_size[2] : raise ValueError("Unsupported anisotropy in xy plan. (yscale != xscale)")

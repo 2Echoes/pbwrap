@@ -175,7 +175,7 @@ def hist_maximum(hist:tuple) :
     return hist[1][index]
 
 def get_markers_generator() :
-    markers = (marker for marker in ['o','v','^','<','>','s','8','p','*','h','P','D'])
+    markers = (marker for marker in ['o','v','D','x','<','>','s','8','p','*','h','P','^'])
     gen = itertools.cycle(markers)
     return gen
 

@@ -56,7 +56,7 @@ def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False, use
             nucleus_label = nucleus_model.eval(dapi, diameter= diameter, channels = channels, anisotropy= anisotropy, do_3D= True)[0].astype(np.int64)
         else :
             list_dapi = unstack_slices(dapi)
-            nucleus_label = nucleus_model.eval(list_dapi, diameter= diameter, channels= channels)[0]
+            nucleus_label = nucleus_model.eval(list_dapi, diameter= diameter, channels= channels, cellprob_threshold= 0.5)[0]
             nucleus_label = np.array(nucleus_label, dtype = np.int64)
     
     else :
@@ -64,9 +64,6 @@ def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False, use
         nucleus_label = np.array(nucleus_label, dtype = np.int64)
 
     nucleus_label = seg.remove_disjoint(nucleus_label)
-
-    if ndim == 3 :
-        nucleus_label = from2Dlabel_to3Dlabel(nucleus_label, maximal_distance= 50)
 
     if len(nucleus_label) < min_cell_number : raise CellnumberError("{0} nucleus were segmented, minimum cells number was set at {1}".format(len(nucleus_label), min_cell_number))
     return nucleus_label

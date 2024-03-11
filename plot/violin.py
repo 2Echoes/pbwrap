@@ -11,8 +11,8 @@ from pbwrap.plot.utils import get_colors_list
 
 def violin_plot(
         ax: plt.Axes, distributions, labels=None, sub_labels=None, colors=None, xlabel=None, ylabel=None, title=None, y_axis= None,
-        linewith = 2, line_color = 'black',
-        vertical_plot=True, showmedians= True, showextrema = True, showmeans=False, multi_violin_plot= False
+        linewith = 2, line_color = 'black', alpha= 0.6,
+        vertical_plot=True, showmedians= True, showextrema = True, showmeans=False, mean_size = 45, multi_violin_plot= False
                 ) :
 
     """
@@ -63,7 +63,7 @@ def violin_plot(
         positions=positions, 
         vert= vertical_plot, 
         showmedians=showmedians,
-        showextrema= showextrema
+        showextrema= showextrema,
         )
 
     if type(labels) == type(None) :
@@ -76,7 +76,7 @@ def violin_plot(
     if type(colors) == type(None) : colors = get_colors_list(len(violin_plot['bodies']))
     for violin, color in zip(violin_plot['bodies'], colors) :
         violin.set_facecolor(color)
-        violin.set_alpha(0.6)
+        violin.set_alpha(alpha)
 
     for collection_name in ['cbars', 'cmins', 'cmaxes', 'cmedians'] :
         collection = violin_plot.get(collection_name)
@@ -98,7 +98,7 @@ def violin_plot(
     
     if showmeans :
         means = [np.mean(distrib) for distrib in distributions]
-        ax.scatter(positions, means, c= colors, s= 15, linewidths=0.5, edgecolors='black')
+        ax.scatter(positions, means, c= colors, s= mean_size, linewidths=0.5, edgecolors='black')
 
     if type(xlabel) != type(None) : ax.set_xlabel(xlabel)
     if type(ylabel) != type(None) : ax.set_ylabel(ylabel)

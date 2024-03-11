@@ -10,19 +10,15 @@ from pbwrap.integrity import detectiontimeout_handler
 from pbwrap.errors import DetectionTimeOutError, NoSpotError
 from ..errors import NoSpotError
 
-
-
-
-
-
 def cluster_deconvolution(image, spots, spot_radius, voxel_size, alpha, beta, sigma=5, timer= 0) :
     """
     Wrapper handling time out during deconvolution and preprocessing with gaussian background removal --> sigma defines the kernel size if 0 then no denoising is performed.
     --> `pbwrap.detection.spot_decomposition_nobckgrndrmv`
     """
+
     signal.signal(signal.SIGALRM, detectiontimeout_handler) #Initiating timeout handling
     try :
-        if sigma > 0 : im = preprocessing.remove_mean_gaussian_background(image, sigma=sigma)
+        if sigma > 0 : im = preprocessing.remove_mean_gaussian_background(image, sigma=sigma, voxel_size=voxel_size)
         else : im = image
         signal.alarm(timer)
         spots_postdecomp = spot_decomposition_nobckgrndrmv(im, spots, spot_radius, voxel_size_nm=voxel_size, alpha= alpha, beta= beta)
@@ -32,8 +28,12 @@ def cluster_deconvolution(image, spots, spot_radius, voxel_size, alpha, beta, si
     except NoSpotError :
         print(" No dense regions to deconvolute.")
         spots_postdecomp = spots
-    except ValueError :
+    except ValueError as e :
+        raise(e)
         print('x0 is infeasible error raised during cluster deconvolution. (Gaussian fit error)')
+        spots_postdecomp = spots
+    except RuntimeError as e:
+        print("Run time error {0}".format(e))
         spots_postdecomp = spots
     except Exception as error :
         raise error
@@ -158,8 +158,9 @@ def spot_decomposition_nobckgrndrmv(image, spots, spot_radius, voxel_size_nm, al
             background=background,
             precomputed_gaussian=precomputed_gaussian)
     
-    except ValueError :
-        raise NoSpotError("No dense regions have been found for deconvolution.")
+    except ValueError as error :
+        raise error
+        # raise NoSpotError("No dense regions have been found for deconvolution.")
     except Exception  as error :
         raise error
 
