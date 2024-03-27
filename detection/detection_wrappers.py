@@ -16,6 +16,8 @@ def cluster_deconvolution(image, spots, spot_radius, voxel_size, alpha, beta, si
     --> `pbwrap.detection.spot_decomposition_nobckgrndrmv`
     """
 
+    if len(spots) == 0 : return spots
+
     signal.signal(signal.SIGALRM, detectiontimeout_handler) #Initiating timeout handling
     try :
         if sigma > 0 : im = preprocessing.remove_mean_gaussian_background(image, sigma=sigma, voxel_size=voxel_size)
@@ -29,9 +31,11 @@ def cluster_deconvolution(image, spots, spot_radius, voxel_size, alpha, beta, si
         print(" No dense regions to deconvolute.")
         spots_postdecomp = spots
     except ValueError as e :
-        raise(e)
-        print('x0 is infeasible error raised during cluster deconvolution. (Gaussian fit error)')
-        spots_postdecomp = spots
+        if 'x0' in str(e) :
+            print('x0 is infeasible error raised during cluster deconvolution. (Gaussian fit error)')
+            spots_postdecomp = spots
+        else :
+            raise(e)
     except RuntimeError as e:
         print("Run time error {0}".format(e))
         spots_postdecomp = spots
@@ -159,8 +163,9 @@ def spot_decomposition_nobckgrndrmv(image, spots, spot_radius, voxel_size_nm, al
             precomputed_gaussian=precomputed_gaussian)
     
     except ValueError as error :
-        raise error
-        # raise NoSpotError("No dense regions have been found for deconvolution.")
+        if "need at least one array to concatenate" in str(error) :
+            raise NoSpotError("No dense regions have been found for deconvolution.")
+        else : raise error
     except Exception  as error :
         raise error
 

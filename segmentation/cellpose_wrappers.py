@@ -44,9 +44,6 @@ def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False, use
 
     ndim = dapi.ndim
 
-
-
-
     #Segmentation
     nucleus_model = models.CellposeModel(gpu= use_gpu, model_type = model_type)
     channels = [0,0]
@@ -56,7 +53,7 @@ def Nucleus_segmentation(dapi, diameter= 150, anisotropy= 3, use_gpu= False, use
             nucleus_label = nucleus_model.eval(dapi, diameter= diameter, channels = channels, anisotropy= anisotropy, do_3D= True)[0].astype(np.int64)
         else :
             list_dapi = unstack_slices(dapi)
-            nucleus_label = nucleus_model.eval(list_dapi, diameter= diameter, channels= channels, cellprob_threshold= 0.5)[0]
+            nucleus_label = nucleus_model.eval(list_dapi, diameter= diameter, channels= channels)[0]
             nucleus_label = np.array(nucleus_label, dtype = np.int64)
     
     else :
